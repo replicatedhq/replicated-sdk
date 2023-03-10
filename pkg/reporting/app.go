@@ -44,9 +44,8 @@ func SendAppInfo() error {
 
 func GetReportingInfo() *types.ReportingInfo {
 	r := types.ReportingInfo{
-		// TODO NOW: what should the ids be
-		InstanceID: "kots_sdk_prototype_instance_id",
-		ClusterID:  "kots_sdk_prototype_cluster_id",
+		ClusterID:  store.GetStore().GetKotsSDKID(),
+		InstanceID: store.GetStore().GetAppID(),
 	}
 
 	di, err := getDownstreamInfo()
