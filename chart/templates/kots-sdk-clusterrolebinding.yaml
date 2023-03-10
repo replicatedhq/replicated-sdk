@@ -1,0 +1,16 @@
+{{ if not .Values.minimalRBAC }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    {{- include "kots-sdk.labels" . | nindent 4 }}
+  name: kots-sdk-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kots-sdk-role
+subjects:
+- kind: ServiceAccount
+  name: kots-sdk
+  namespace: {{ .Release.Namespace }}
+{{ end }}

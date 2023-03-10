@@ -1,0 +1,15 @@
+{{ if .Values.minimalRBAC }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    {{- include "kots-sdk.labels" . | nindent 4 }}
+  name: kots-sdk-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+{{ end }}
