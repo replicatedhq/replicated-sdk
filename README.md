@@ -4,7 +4,7 @@ This is the software development kit (SDK) for Replicated KOTS.
 
 # Development
 
-## Go Binary / SDK API
+### Go Binary / SDK API
 
 Build the binary:
 ```shell
@@ -33,7 +33,7 @@ Example:
     --status-informers=default/deployment/nginx,default/statefulset/rqlite
 ```
 
-## Helm Chart
+### Helm Chart
 Build and push the kots-sdk Docker image and Helm chart to ttl.sh:
 
 ```shell
