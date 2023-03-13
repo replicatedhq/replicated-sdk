@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "kots-sdk.labels" . | nindent 4 }}
+  name: kots-sdk
+spec:
+  selector:
+    matchLabels:
+      app: kots-sdk
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: kots-sdk
+        {{- include "kots-sdk.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: kots-sdk
+        image: {{ .Values.images.kotssdk }}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KOTS_SDK_LICENSE_BASE64
+          value: {{ .Values.license | b64enc }}
+        - name: KOTS_SDK_CHANNEL_ID
+          value: {{ .Values.channelID }}
+        - name: KOTS_SDK_CHANNEL_NAME
+          value: {{ .Values.channelName }}
+        - name: KOTS_SDK_CHANNEL_SEQUENCE
+          value: "{{ .Values.channelSequence }}"
+        - name: KOTS_SDK_RELEASE_SEQUENCE
+          value: "{{ .Values.releaseSequence }}"
+        - name: KOTS_SDK_STATUS_INFORMERS
+          value: '{{ .Values.statusInformers | join " " }}' # viper expects spaces instead of commas when using env vars for arrays
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        ports:
+        - containerPort: 3000
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
+      serviceAccountName: kots-sdk
+status: {}

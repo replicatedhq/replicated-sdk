@@ -1,0 +1,31 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+bin/
+vendor
+.idea/
+.vscode/
+
+# goreleaser
+/dist
+
+# packaged charts
+/chart/kots-sdk-*.tgz
+/chart/Chart.yaml
+/chart/values.yaml
+
+.envrc
+.DS_Store
+
+sbom/
+cosign.key

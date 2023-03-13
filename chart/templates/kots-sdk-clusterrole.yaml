@@ -1,0 +1,15 @@
+{{ if not .Values.minimalRBAC }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "kots-sdk.labels" . | nindent 4 }}
+  name: kots-sdk-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+{{ end }}
