@@ -45,7 +45,7 @@ You can either extract and include the produced .tgz Helm chart as a subchart in
 
 ```shell
 helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
-    --namespace default \
+    --namespace [NAMESPACE] \
     --set-file license=[path/to/license.yaml] \
     --set channelID=[CHANNEL_ID] \
     --set channelName=[CHANNEL_NAME] \
@@ -57,8 +57,7 @@ helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
 Example:
 ```shell
 helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
-    --namespace [NAMESPACE] \
-    --create-namespace \
+    --namespace default \
     --set-file license=license.yaml \
     --set channelID=1YGSYsmJEjIj2XlyK1vqjCwuyb1 \
     --set channelName=Beta \
