@@ -26,25 +26,25 @@ var (
 )
 
 type Store struct {
-	kotsSDKID       string
-	appID           string
-	license         *kotsv1beta1.License
-	appSlug         string
-	channelID       string
-	channelName     string
-	channelSequence int64
-	releaseSequence int64
-	appStatus       appstatetypes.AppStatus
-	statusInformers []appstatetypes.StatusInformerString
+	kotsSDKID              string
+	appID                  string
+	license                *kotsv1beta1.License
+	appSlug                string
+	channelID              string
+	channelName            string
+	channelSequence        int64
+	releaseSequence        int64
+	appStatus              appstatetypes.AppStatus
+	informersLabelSelector string
 }
 
 type InitStoreOptions struct {
-	License         *kotsv1beta1.License
-	ChannelID       string
-	ChannelName     string
-	ChannelSequence int64
-	ReleaseSequence int64
-	StatusInformers []string
+	License                *kotsv1beta1.License
+	ChannelID              string
+	ChannelName            string
+	ChannelSequence        int64
+	ReleaseSequence        int64
+	InformersLabelSelector string
 }
 
 func Init(options InitStoreOptions) error {
@@ -78,21 +78,16 @@ func Init(options InitStoreOptions) error {
 		return errors.Wrap(err, "failed to generate ids")
 	}
 
-	informers := []appstatetypes.StatusInformerString{}
-	for _, informer := range options.StatusInformers {
-		informers = append(informers, appstatetypes.StatusInformerString(informer))
-	}
-
 	store = &Store{
-		kotsSDKID:       kotsSDKID,
-		appID:           appID,
-		license:         verifiedLicense,
-		appSlug:         verifiedLicense.Spec.AppSlug,
-		channelID:       options.ChannelID,
-		channelName:     options.ChannelName,
-		channelSequence: options.ChannelSequence,
-		releaseSequence: options.ReleaseSequence,
-		statusInformers: informers,
+		kotsSDKID:              kotsSDKID,
+		appID:                  appID,
+		license:                verifiedLicense,
+		appSlug:                verifiedLicense.Spec.AppSlug,
+		channelID:              options.ChannelID,
+		channelName:            options.ChannelName,
+		channelSequence:        options.ChannelSequence,
+		releaseSequence:        options.ReleaseSequence,
+		informersLabelSelector: options.InformersLabelSelector,
 	}
 
 	return nil
@@ -153,8 +148,8 @@ func (s *Store) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
 }
 
-func (s *Store) GetStatusInformers() []appstatetypes.StatusInformerString {
-	return s.statusInformers
+func (s *Store) GetInformersLabelSelector() string {
+	return s.informersLabelSelector
 }
 
 func generateIDs() (string, string, error) {

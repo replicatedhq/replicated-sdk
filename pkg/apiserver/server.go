@@ -16,22 +16,22 @@ import (
 )
 
 type APIServerParams struct {
-	License         *kotsv1beta1.License
-	ChannelID       string
-	ChannelName     string
-	ChannelSequence int64
-	ReleaseSequence int64
-	StatusInformers []string
+	License                *kotsv1beta1.License
+	ChannelID              string
+	ChannelName            string
+	ChannelSequence        int64
+	ReleaseSequence        int64
+	InformersLabelSelector string
 }
 
 func Start(params APIServerParams) {
 	storeOptions := store.InitStoreOptions{
-		License:         params.License,
-		ChannelID:       params.ChannelID,
-		ChannelName:     params.ChannelName,
-		ChannelSequence: params.ChannelSequence,
-		ReleaseSequence: params.ReleaseSequence,
-		StatusInformers: params.StatusInformers,
+		License:                params.License,
+		ChannelID:              params.ChannelID,
+		ChannelName:            params.ChannelName,
+		ChannelSequence:        params.ChannelSequence,
+		ReleaseSequence:        params.ReleaseSequence,
+		InformersLabelSelector: params.InformersLabelSelector,
 	}
 	if err := store.Init(storeOptions); err != nil {
 		log.Fatalf("Failed to init store: %v", err)
@@ -46,9 +46,9 @@ func Start(params APIServerParams) {
 	appStateOperator.Start()
 
 	appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
-		AppSlug:   store.GetStore().GetAppSlug(),
-		Sequence:  store.GetStore().GetReleaseSequence(),
-		Informers: store.GetStore().GetStatusInformers(),
+		AppSlug:       store.GetStore().GetAppSlug(),
+		Sequence:      store.GetStore().GetReleaseSequence(),
+		LabelSelector: store.GetStore().GetInformersLabelSelector(),
 	})
 
 	r := mux.NewRouter()

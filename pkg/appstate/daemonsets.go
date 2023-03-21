@@ -22,24 +22,21 @@ const (
 )
 
 type daemonSetEventHandler struct {
-	informers       []types.StatusInformer
 	resourceStateCh chan<- types.ResourceState
 	clientset       kubernetes.Interface
 	targetNamespace string
 }
 
-func init() {
-	registerResourceKindNames(DaemonSetResourceKind, "daemonsets", "ds")
-}
-
 func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
-	targetNamespace string, informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
+	targetNamespace string, labelSelector string, resourceStateCh chan<- types.ResourceState,
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.LabelSelector = labelSelector
 			return clientset.AppsV1().DaemonSets(targetNamespace).List(context.TODO(), options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.LabelSelector = labelSelector
 			return clientset.AppsV1().DaemonSets(targetNamespace).Watch(context.TODO(), options)
 		},
 	}
@@ -47,7 +44,6 @@ func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
 	informer := cache.NewSharedInformer(listwatch, &appsv1.DaemonSet{}, time.Minute)
 
 	eventHandler := &daemonSetEventHandler{
-		informers:       filterStatusInformersByResourceKind(informers, DaemonSetResourceKind),
 		resourceStateCh: resourceStateCh,
 		clientset:       clientset,
 		targetNamespace: targetNamespace,
@@ -58,41 +54,17 @@ func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
 
 func (h *daemonSetEventHandler) ObjectCreated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
-
 	h.resourceStateCh <- makeDaemonSetResourceState(r, h.calculateDaemonSetState(r))
 }
 
 func (h *daemonSetEventHandler) ObjectDeleted(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
-
 	h.resourceStateCh <- makeDaemonSetResourceState(r, types.StateMissing)
 }
 
 func (h *daemonSetEventHandler) ObjectUpdated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
-
 	h.resourceStateCh <- makeDaemonSetResourceState(r, h.calculateDaemonSetState(r))
-}
-
-func (h *daemonSetEventHandler) getInformer(r *appsv1.DaemonSet) (types.StatusInformer, bool) {
-	if r != nil {
-		for _, informer := range h.informers {
-			if r.Namespace == informer.Namespace && r.Name == informer.Name {
-				return informer, true
-			}
-		}
-	}
-
-	return types.StatusInformer{}, false
 }
 
 func (h *daemonSetEventHandler) cast(obj interface{}) *appsv1.DaemonSet {

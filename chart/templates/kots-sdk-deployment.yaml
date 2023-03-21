@@ -34,8 +34,8 @@ spec:
           value: "{{ .Values.channelSequence }}"
         - name: KOTS_SDK_RELEASE_SEQUENCE
           value: "{{ .Values.releaseSequence }}"
-        - name: KOTS_SDK_STATUS_INFORMERS
-          value: '{{ .Values.statusInformers | join " " }}' # viper expects spaces instead of commas when using env vars for arrays
+        - name: KOTS_SDK_INFORMERS_LABEL_SELECTOR
+          value: "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance={{ .Release.Name }}"
         - name: POD_NAMESPACE
           valueFrom:
             fieldRef:

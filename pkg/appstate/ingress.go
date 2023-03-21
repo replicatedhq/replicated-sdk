@@ -17,19 +17,17 @@ const (
 	IngressResourceKind = "ingress"
 )
 
-func init() {
-	registerResourceKindNames(IngressResourceKind, "ingresses", "ing")
-}
-
 func runIngressController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
-	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
+	labelSelector string, resourceStateCh chan<- types.ResourceState,
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.LabelSelector = labelSelector
 			return clientset.NetworkingV1().Ingresses(targetNamespace).List(context.TODO(), options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.LabelSelector = labelSelector
 			return clientset.NetworkingV1().Ingresses(targetNamespace).Watch(context.TODO(), options)
 		},
 	}
@@ -43,66 +41,42 @@ func runIngressController(
 
 	eventHandler := NewIngressEventHandler(
 		clientset,
-		filterStatusInformersByResourceKind(informers, IngressResourceKind),
 		resourceStateCh,
 	)
 
 	runInformer(ctx, informer, eventHandler)
-	return
 }
 
 type ingressEventHandler struct {
 	clientset       kubernetes.Interface
-	informers       []types.StatusInformer
 	resourceStateCh chan<- types.ResourceState
 }
 
-func NewIngressEventHandler(clientset kubernetes.Interface, informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState) *ingressEventHandler {
+func NewIngressEventHandler(clientset kubernetes.Interface, resourceStateCh chan<- types.ResourceState) *ingressEventHandler {
 	return &ingressEventHandler{
 		clientset:       clientset,
-		informers:       informers,
 		resourceStateCh: resourceStateCh,
 	}
 }
 
 func (h *ingressEventHandler) ObjectCreated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeIngressResourceState(r, calculateIngressState(h.clientset, r))
 }
 
 func (h *ingressEventHandler) ObjectUpdated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeIngressResourceState(r, calculateIngressState(h.clientset, r))
 }
 
 func (h *ingressEventHandler) ObjectDeleted(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeIngressResourceState(r, types.StateMissing)
 }
 
 func (h *ingressEventHandler) cast(obj interface{}) *networkingv1.Ingress {
 	r, _ := obj.(*networkingv1.Ingress)
 	return r
-}
-
-func (h *ingressEventHandler) getInformer(r *networkingv1.Ingress) (types.StatusInformer, bool) {
-	if r != nil {
-		for _, informer := range h.informers {
-			if r.Namespace == informer.Namespace && r.Name == informer.Name {
-				return informer, true
-			}
-		}
-	}
-	return types.StatusInformer{}, false
 }
 
 func makeIngressResourceState(r *networkingv1.Ingress, state types.State) types.ResourceState {

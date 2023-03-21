@@ -56,12 +56,12 @@ func APICmd() *cobra.Command {
 			}
 
 			params := apiserver.APIServerParams{
-				License:         license,
-				ChannelID:       v.GetString("channel-id"),
-				ChannelName:     v.GetString("channel-name"),
-				ChannelSequence: v.GetInt64("channel-sequence"),
-				ReleaseSequence: v.GetInt64("release-sequence"),
-				StatusInformers: v.GetStringSlice("status-informers"),
+				License:                license,
+				ChannelID:              v.GetString("channel-id"),
+				ChannelName:            v.GetString("channel-name"),
+				ChannelSequence:        v.GetInt64("channel-sequence"),
+				ReleaseSequence:        v.GetInt64("release-sequence"),
+				InformersLabelSelector: v.GetString("informers-label-selector"),
 			}
 			apiserver.Start(params)
 
@@ -75,7 +75,7 @@ func APICmd() *cobra.Command {
 	cmd.Flags().String("channel-name", "", "the application channel name")
 	cmd.Flags().Int64("channel-sequence", -1, "the application upstream channel sequence")
 	cmd.Flags().Int64("release-sequence", -1, "the application upstream release sequence")
-	cmd.Flags().StringSlice("status-informers", []string{}, "Comma separate list to specify status informers for the API server to watch")
+	cmd.Flags().String("informers-label-selector", "", "the label selector to use for status informers to detect application resources")
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 

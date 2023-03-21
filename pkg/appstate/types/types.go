@@ -1,8 +1,6 @@
 package types
 
 import (
-	"errors"
-	"regexp"
 	"time"
 )
 
@@ -12,34 +10,12 @@ var (
 	StateDegraded    State = "degraded"
 	StateUnavailable State = "unavailable"
 	StateMissing     State = "missing"
-
-	StatusInformerRegexp = regexp.MustCompile(`^(?:([^\/]+)\/)?([^\/]+)\/([^\/]+)$`)
 )
 
 type AppInformersArgs struct {
-	AppSlug   string                 `json:"app_id"`
-	Sequence  int64                  `json:"sequence"`
-	Informers []StatusInformerString `json:"informers"`
-}
-
-type StatusInformerString string
-
-type StatusInformer struct {
-	Kind      string
-	Name      string
-	Namespace string
-}
-
-func (s StatusInformerString) Parse() (i StatusInformer, err error) {
-	matches := StatusInformerRegexp.FindStringSubmatch(string(s))
-	if len(matches) != 4 {
-		err = errors.New("status informer format string incorrect")
-		return
-	}
-	i.Namespace = matches[1]
-	i.Kind = matches[2]
-	i.Name = matches[3]
-	return
+	AppSlug       string `json:"app_id"`
+	Sequence      int64  `json:"sequence"`
+	LabelSelector string `json:"label_selector"`
 }
 
 type AppStatus struct {

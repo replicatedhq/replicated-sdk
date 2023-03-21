@@ -18,19 +18,17 @@ const (
 	ServiceResourceKind = "service"
 )
 
-func init() {
-	registerResourceKindNames(ServiceResourceKind, "services", "svc")
-}
-
 func runServiceController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
-	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
+	labelSelector string, resourceStateCh chan<- types.ResourceState,
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.LabelSelector = labelSelector
 			return clientset.CoreV1().Services(targetNamespace).List(context.TODO(), options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.LabelSelector = labelSelector
 			return clientset.CoreV1().Services(targetNamespace).Watch(context.TODO(), options)
 		},
 	}
@@ -44,66 +42,42 @@ func runServiceController(
 
 	eventHandler := NewServiceEventHandler(
 		clientset,
-		filterStatusInformersByResourceKind(informers, ServiceResourceKind),
 		resourceStateCh,
 	)
 
 	runInformer(ctx, informer, eventHandler)
-	return
 }
 
 type serviceEventHandler struct {
 	clientset       kubernetes.Interface
-	informers       []types.StatusInformer
 	resourceStateCh chan<- types.ResourceState
 }
 
-func NewServiceEventHandler(clientset kubernetes.Interface, informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState) *serviceEventHandler {
+func NewServiceEventHandler(clientset kubernetes.Interface, resourceStateCh chan<- types.ResourceState) *serviceEventHandler {
 	return &serviceEventHandler{
 		clientset:       clientset,
-		informers:       informers,
 		resourceStateCh: resourceStateCh,
 	}
 }
 
 func (h *serviceEventHandler) ObjectCreated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeServiceResourceState(r, calculateServiceState(h.clientset, r))
 }
 
 func (h *serviceEventHandler) ObjectUpdated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeServiceResourceState(r, calculateServiceState(h.clientset, r))
 }
 
 func (h *serviceEventHandler) ObjectDeleted(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeServiceResourceState(r, types.StateMissing)
 }
 
 func (h *serviceEventHandler) cast(obj interface{}) *corev1.Service {
 	r, _ := obj.(*corev1.Service)
 	return r
-}
-
-func (h *serviceEventHandler) getInformer(r *corev1.Service) (types.StatusInformer, bool) {
-	if r != nil {
-		for _, informer := range h.informers {
-			if r.Namespace == informer.Namespace && r.Name == informer.Name {
-				return informer, true
-			}
-		}
-	}
-	return types.StatusInformer{}, false
 }
 
 func makeServiceResourceState(r *corev1.Service, state types.State) types.ResourceState {

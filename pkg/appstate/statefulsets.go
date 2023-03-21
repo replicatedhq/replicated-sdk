@@ -22,25 +22,22 @@ const (
 )
 
 type statefulSetEventHandler struct {
-	informers       []types.StatusInformer
 	resourceStateCh chan<- types.ResourceState
 	clientset       kubernetes.Interface
 	targetNamespace string
 }
 
-func init() {
-	registerResourceKindNames(StatefulSetResourceKind, "statefulsets", "sts")
-}
-
 func runStatefulSetController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
-	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
+	labelSelector string, resourceStateCh chan<- types.ResourceState,
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.LabelSelector = labelSelector
 			return clientset.AppsV1().StatefulSets(targetNamespace).List(context.TODO(), options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.LabelSelector = labelSelector
 			return clientset.AppsV1().StatefulSets(targetNamespace).Watch(context.TODO(), options)
 		},
 	}
@@ -51,54 +48,32 @@ func runStatefulSetController(
 	)
 
 	eventHandler := &statefulSetEventHandler{
-		informers:       informers,
 		resourceStateCh: resourceStateCh,
 		clientset:       clientset,
 		targetNamespace: targetNamespace,
 	}
 
 	runInformer(ctx, informer, eventHandler)
-	return
 }
 
 func (h *statefulSetEventHandler) ObjectCreated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeStatefulSetResourceState(r, h.calculateStatefulSetState(r))
 }
 
 func (h *statefulSetEventHandler) ObjectUpdated(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeStatefulSetResourceState(r, h.calculateStatefulSetState(r))
 }
 
 func (h *statefulSetEventHandler) ObjectDeleted(obj interface{}) {
 	r := h.cast(obj)
-	if _, ok := h.getInformer(r); !ok {
-		return
-	}
 	h.resourceStateCh <- makeStatefulSetResourceState(r, types.StateMissing)
 }
 
 func (h *statefulSetEventHandler) cast(obj interface{}) *appsv1.StatefulSet {
 	r, _ := obj.(*appsv1.StatefulSet)
 	return r
-}
-
-func (h *statefulSetEventHandler) getInformer(r *appsv1.StatefulSet) (types.StatusInformer, bool) {
-	if r != nil {
-		for _, informer := range h.informers {
-			if r.Namespace == informer.Namespace && r.Name == informer.Name {
-				return informer, true
-			}
-		}
-	}
-	return types.StatusInformer{}, false
 }
 
 func makeStatefulSetResourceState(r *appsv1.StatefulSet, state types.State) types.ResourceState {

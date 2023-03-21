@@ -28,9 +28,9 @@ type EventHandler interface {
 }
 
 type appInformer struct {
-	appSlug   string
-	sequence  int64
-	informers []types.StatusInformer
+	appSlug       string
+	sequence      int64
+	labelSelector string
 }
 
 func NewMonitor(clientset kubernetes.Interface, targetNamespace string) *Monitor {
@@ -53,15 +53,15 @@ func (m *Monitor) Shutdown() {
 	m.cancel()
 }
 
-func (m *Monitor) Apply(appSlug string, sequence int64, informers []types.StatusInformer) {
+func (m *Monitor) Apply(appSlug string, sequence int64, labelSelector string) {
 	m.appInformersCh <- struct {
-		appSlug   string
-		sequence  int64
-		informers []types.StatusInformer
+		appSlug       string
+		sequence      int64
+		labelSelector string
 	}{
-		appSlug:   appSlug,
-		sequence:  sequence,
-		informers: informers,
+		appSlug:       appSlug,
+		sequence:      sequence,
+		labelSelector: labelSelector,
 	}
 }
 
@@ -100,7 +100,7 @@ func (m *Monitor) run(ctx context.Context) {
 				}()
 				appMonitors[appInformer.appSlug] = appMonitor
 			}
-			appMonitor.Apply(appInformer.informers)
+			appMonitor.Apply(appInformer.labelSelector)
 		}
 	}
 }
@@ -109,7 +109,7 @@ type AppMonitor struct {
 	clientset       kubernetes.Interface
 	targetNamespace string
 	appSlug         string
-	informersCh     chan []types.StatusInformer
+	informersCh     chan string
 	appStatusCh     chan types.AppStatus
 	cancel          context.CancelFunc
 	sequence        int64
@@ -121,7 +121,7 @@ func NewAppMonitor(clientset kubernetes.Interface, targetNamespace, appSlug stri
 		appSlug:         appSlug,
 		clientset:       clientset,
 		targetNamespace: targetNamespace,
-		informersCh:     make(chan []types.StatusInformer),
+		informersCh:     make(chan string),
 		appStatusCh:     make(chan types.AppStatus),
 		cancel:          cancel,
 		sequence:        sequence,
@@ -134,8 +134,8 @@ func (m *AppMonitor) Shutdown() {
 	m.cancel()
 }
 
-func (m *AppMonitor) Apply(informers []types.StatusInformer) {
-	m.informersCh <- informers
+func (m *AppMonitor) Apply(labelSelector string) {
+	m.informersCh <- labelSelector
 }
 
 func (m *AppMonitor) AppStatusChan() <-chan types.AppStatus {
@@ -159,26 +159,24 @@ func (m *AppMonitor) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 
-		case informers := <-m.informersCh:
+		case labelSelector := <-m.informersCh:
 			prevCancel() // cancel previous loop
 
 			log.Println("App monitor got new informers")
 
 			ctx, cancel := context.WithCancel(ctx)
 			prevCancel = cancel
-			go m.runInformers(ctx, informers)
+			go m.runInformers(ctx, labelSelector)
 		}
 	}
 }
 
-type runControllerFunc func(context.Context, kubernetes.Interface, string, []types.StatusInformer, chan<- types.ResourceState)
+type runControllerFunc func(context.Context, kubernetes.Interface, string, string, chan<- types.ResourceState)
 
-func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusInformer) {
-	informers = normalizeStatusInformers(informers, m.targetNamespace)
+func (m *AppMonitor) runInformers(ctx context.Context, labelSelector string) {
+	log.Printf("Running informers with label selector: %#v", labelSelector)
 
-	log.Printf("Running informers: %#v", informers)
-
-	resourceStates := buildResourceStatesFromStatusInformers(informers)
+	resourceStates := types.ResourceStates{}
 	appStatus := types.AppStatus{
 		AppSlug:        m.appSlug,
 		ResourceStates: resourceStates,
@@ -195,49 +193,27 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		close(resourceStateCh)
 	}()
 
-	// Collect namespace/kind pairs
-	namespaceKinds := make(map[string]map[string][]types.StatusInformer)
-	for _, informer := range informers {
-		kindsInNs, ok := namespaceKinds[informer.Namespace]
-		if !ok {
-			kindsInNs = make(map[string][]types.StatusInformer)
-		}
-		kindsInNs[informer.Kind] = append(kindsInNs[informer.Kind], informer)
-		namespaceKinds[informer.Namespace] = kindsInNs
-	}
-
-	goRun := func(fn runControllerFunc, namespace string, informers []types.StatusInformer) {
+	goRun := func(fn runControllerFunc, namespace string, labelSelector string) {
 		shutdown.Add(1)
 		go func() {
-			fn(ctx, m.clientset, namespace, informers, resourceStateCh)
+			fn(ctx, m.clientset, namespace, labelSelector, resourceStateCh)
 			shutdown.Done()
 		}()
 	}
 
-	kindImpls := map[string]runControllerFunc{
-		DaemonSetResourceKind:             runDaemonSetController,
-		DeploymentResourceKind:            runDeploymentController,
-		IngressResourceKind:               runIngressController,
-		PersistentVolumeClaimResourceKind: runPersistentVolumeClaimController,
-		ServiceResourceKind:               runServiceController,
-		StatefulSetResourceKind:           runStatefulSetController,
-	}
-	for namespace, kinds := range namespaceKinds {
-		for kind, informers := range kinds {
-			if impl, ok := kindImpls[kind]; ok {
-				goRun(impl, namespace, informers)
-			} else {
-				log.Printf("Informer requested for unsupported resource kind %v", kind)
-			}
-		}
-	}
+	goRun(runStatefulSetController, m.targetNamespace, labelSelector)
+	goRun(runDeploymentController, m.targetNamespace, labelSelector)
+	goRun(runDaemonSetController, m.targetNamespace, labelSelector)
+	goRun(runIngressController, m.targetNamespace, labelSelector)
+	goRun(runPersistentVolumeClaimController, m.targetNamespace, labelSelector)
+	goRun(runServiceController, m.targetNamespace, labelSelector)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case resourceState := <-resourceStateCh:
-			appStatus.ResourceStates, _ = resourceStatesApplyNew(appStatus.ResourceStates, informers, resourceState)
+			appStatus.ResourceStates = resourceStatesApplyNew(appStatus.ResourceStates, resourceState)
 			appStatus.State = types.GetState(appStatus.ResourceStates)
 			appStatus.UpdatedAt = time.Now() // TODO: this should come from the informer
 			m.appStatusCh <- appStatus
