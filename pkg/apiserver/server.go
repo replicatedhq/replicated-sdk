@@ -44,7 +44,7 @@ func Start(params APIServerParams) {
 
 	targetNamespace := util.PodNamespace
 	if k8sutil.IsKotsSDKClusterScoped(context.Background(), clientset, util.PodNamespace) {
-		targetNamespace = ""
+		targetNamespace = "" // watch all namespaces
 	}
 	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
 	appStateOperator.Start()
