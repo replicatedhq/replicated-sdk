@@ -1,0 +1,46 @@
+name: publish-production
+on:
+  push:
+    tags:
+    - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  package-and-publish:
+    runs-on: 'ubuntu-20.04'
+    steps:
+    - name: Get tag
+      id: tag
+      uses: dawidd6/action-get-tag@v1
+      with:
+        strip_v: true
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install Helm
+      uses: azure/setup-helm@v1
+      with:
+        version: v3.10.1
+    - uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{github.actor}}
+        password: ${{secrets.GITHUB_TOKEN}}
+    - name: Run Package and Publish
+      env: 
+        KOTS_SDK_TAG: v${{steps.tag.outputs.tag}}
+        KOTS_SDK_REGISTRY: ghcr.io/replicatedhq # TODO: move to docker.io
+        CHART_VERSION: ${{steps.tag.outputs.tag}}
+        REPLICATED_USER: ${{secrets.KOTS_SDK_REPLICATED_USER_PROD}}
+        REPLICATED_PASS: ${{secrets.KOTS_SDK_REPLICATED_PASS_PROD}}
+      run: |
+        docker build --pull -t "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG" .
+        docker push "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG"
+
+        envsubst < Chart.yaml.tmpl > Chart.yaml
+        envsubst < values.yaml.tmpl > values.yaml
+        rm -f *.tmpl
+
+        cd chart
+        export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
+        echo pushing ${CHART_NAME} to production
+        helm registry login registry.replicated.com --username $REPLICATED_USER --password $REPLICATED_PASS
+        helm push $CHART_NAME oci://registry.replicated.com/library
