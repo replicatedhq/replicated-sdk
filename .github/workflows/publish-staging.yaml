@@ -36,11 +36,11 @@ jobs:
         docker build --pull -t "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG" .
         docker push "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG"
 
+        cd chart
         envsubst < Chart.yaml.tmpl > Chart.yaml
         envsubst < values.yaml.tmpl > values.yaml
         rm -f *.tmpl
 
-        cd chart
         export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
         echo pushing ${CHART_NAME} to staging
         helm registry login registry.staging.replicated.com --username $REPLICATED_USER --password $REPLICATED_PASS
