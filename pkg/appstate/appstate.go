@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/replicatedhq/kots-sdk/pkg/appstate/types"
-	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -34,9 +33,6 @@ type appInformer struct {
 }
 
 func NewMonitor(clientset kubernetes.Interface, targetNamespace string) *Monitor {
-	if targetNamespace == "" {
-		targetNamespace = corev1.NamespaceDefault
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &Monitor{
 		clientset:       clientset,

@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -26,12 +27,11 @@ type APIServerParams struct {
 
 func Start(params APIServerParams) {
 	storeOptions := store.InitStoreOptions{
-		License:                params.License,
-		ChannelID:              params.ChannelID,
-		ChannelName:            params.ChannelName,
-		ChannelSequence:        params.ChannelSequence,
-		ReleaseSequence:        params.ReleaseSequence,
-		InformersLabelSelector: params.InformersLabelSelector,
+		License:         params.License,
+		ChannelID:       params.ChannelID,
+		ChannelName:     params.ChannelName,
+		ChannelSequence: params.ChannelSequence,
+		ReleaseSequence: params.ReleaseSequence,
 	}
 	if err := store.Init(storeOptions); err != nil {
 		log.Fatalf("Failed to init store: %v", err)
@@ -42,13 +42,17 @@ func Start(params APIServerParams) {
 		log.Fatalf("Failed to get clientset: %v", err)
 	}
 
-	appStateOperator := appstate.InitOperator(clientset, util.PodNamespace)
+	targetNamespace := util.PodNamespace
+	if k8sutil.IsKotsSDKClusterScoped(context.Background(), clientset, util.PodNamespace) {
+		targetNamespace = ""
+	}
+	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
 	appStateOperator.Start()
 
 	appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
 		AppSlug:       store.GetStore().GetAppSlug(),
 		Sequence:      store.GetStore().GetReleaseSequence(),
-		LabelSelector: store.GetStore().GetInformersLabelSelector(),
+		LabelSelector: params.InformersLabelSelector,
 	})
 
 	r := mux.NewRouter()

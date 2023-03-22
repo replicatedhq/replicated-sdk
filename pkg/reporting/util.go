@@ -19,16 +19,13 @@ func InjectReportingInfoHeaders(req *http.Request, reportingInfo *types.Reportin
 	req.Header.Set("X-Replicated-ClusterID", reportingInfo.ClusterID)
 	req.Header.Set("X-Replicated-InstanceID", reportingInfo.InstanceID)
 
-	if reportingInfo.Downstream.ChannelID != "" {
-		req.Header.Set("X-Replicated-DownstreamChannelID", reportingInfo.Downstream.ChannelID)
-	} else if reportingInfo.Downstream.ChannelName != "" {
-		req.Header.Set("X-Replicated-DownstreamChannelName", reportingInfo.Downstream.ChannelName)
-	}
-	if reportingInfo.Downstream.Status != "" {
-		req.Header.Set("X-Replicated-InstallStatus", reportingInfo.Downstream.Status)
+	if reportingInfo.ChannelID != "" {
+		req.Header.Set("X-Replicated-DownstreamChannelID", reportingInfo.ChannelID)
+	} else if reportingInfo.ChannelName != "" {
+		req.Header.Set("X-Replicated-DownstreamChannelName", reportingInfo.ChannelName)
 	}
 
-	req.Header.Set("X-Replicated-DownstreamChannelSequence", strconv.FormatInt(reportingInfo.Downstream.ChannelSequence, 10))
+	req.Header.Set("X-Replicated-DownstreamChannelSequence", strconv.FormatInt(reportingInfo.ChannelSequence, 10))
 }
 
 func canReport(license *kotsv1beta1.License) bool {

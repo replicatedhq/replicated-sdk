@@ -1,7 +1,9 @@
 package reporting
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -19,14 +21,27 @@ func SendAppInfo() error {
 		return nil
 	}
 
-	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", license.Spec.Endpoint), nil)
+	reportingInfo := GetReportingInfo()
+
+	marshalledRS, err := json.Marshal(reportingInfo.ResourceStates)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal resource states")
+	}
+	reqPayload := map[string]interface{}{
+		"resource_states": string(marshalledRS),
+	}
+	reqBody, err := json.Marshal(reqPayload)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal request payload")
+	}
+
+	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", license.Spec.Endpoint), bytes.NewBuffer(reqBody))
 	if err != nil {
 		return errors.Wrap(err, "failed to create http request")
 	}
 	postReq.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
 	postReq.Header.Set("Content-Type", "application/json")
 
-	reportingInfo := GetReportingInfo()
 	InjectReportingInfoHeaders(postReq, reportingInfo)
 
 	resp, err := http.DefaultClient.Do(postReq)
@@ -44,16 +59,13 @@ func SendAppInfo() error {
 
 func GetReportingInfo() *types.ReportingInfo {
 	r := types.ReportingInfo{
-		ClusterID:  store.GetStore().GetKotsSDKID(),
-		InstanceID: store.GetStore().GetAppID(),
-	}
-
-	di, err := getDownstreamInfo()
-	if err != nil {
-		logger.Debugf("failed to get downstream info: %v", err.Error())
-	}
-	if di != nil {
-		r.Downstream = *di
+		ClusterID:       store.GetStore().GetKotsSDKID(),
+		InstanceID:      store.GetStore().GetAppID(),
+		ChannelID:       store.GetStore().GetChannelID(),
+		ChannelName:     store.GetStore().GetChannelName(),
+		ChannelSequence: store.GetStore().GetChannelSequence(),
+		AppStatus:       string(store.GetStore().GetAppStatus().State),
+		ResourceStates:  store.GetStore().GetAppStatus().ResourceStates,
 	}
 
 	// get kubernetes cluster version
@@ -64,19 +76,5 @@ func GetReportingInfo() *types.ReportingInfo {
 		r.K8sVersion = k8sVersion
 	}
 
-	// get app status
-	r.AppStatus = string(store.GetStore().GetAppStatus().State)
-
 	return &r
-}
-
-func getDownstreamInfo() (*types.DownstreamInfo, error) {
-	di := types.DownstreamInfo{}
-
-	di.ChannelID = store.GetStore().GetChannelID()
-	di.ChannelName = store.GetStore().GetChannelName()
-	di.ChannelSequence = store.GetStore().GetChannelSequence()
-	di.Status = string(store.GetStore().GetAppStatus().State)
-
-	return &di, nil
 }

@@ -26,25 +26,23 @@ var (
 )
 
 type Store struct {
-	kotsSDKID              string
-	appID                  string
-	license                *kotsv1beta1.License
-	appSlug                string
-	channelID              string
-	channelName            string
-	channelSequence        int64
-	releaseSequence        int64
-	appStatus              appstatetypes.AppStatus
-	informersLabelSelector string
+	kotsSDKID       string
+	appID           string
+	license         *kotsv1beta1.License
+	appSlug         string
+	channelID       string
+	channelName     string
+	channelSequence int64
+	releaseSequence int64
+	appStatus       appstatetypes.AppStatus
 }
 
 type InitStoreOptions struct {
-	License                *kotsv1beta1.License
-	ChannelID              string
-	ChannelName            string
-	ChannelSequence        int64
-	ReleaseSequence        int64
-	InformersLabelSelector string
+	License         *kotsv1beta1.License
+	ChannelID       string
+	ChannelName     string
+	ChannelSequence int64
+	ReleaseSequence int64
 }
 
 func Init(options InitStoreOptions) error {
@@ -79,15 +77,14 @@ func Init(options InitStoreOptions) error {
 	}
 
 	store = &Store{
-		kotsSDKID:              kotsSDKID,
-		appID:                  appID,
-		license:                verifiedLicense,
-		appSlug:                verifiedLicense.Spec.AppSlug,
-		channelID:              options.ChannelID,
-		channelName:            options.ChannelName,
-		channelSequence:        options.ChannelSequence,
-		releaseSequence:        options.ReleaseSequence,
-		informersLabelSelector: options.InformersLabelSelector,
+		kotsSDKID:       kotsSDKID,
+		appID:           appID,
+		license:         verifiedLicense,
+		appSlug:         verifiedLicense.Spec.AppSlug,
+		channelID:       options.ChannelID,
+		channelName:     options.ChannelName,
+		channelSequence: options.ChannelSequence,
+		releaseSequence: options.ReleaseSequence,
 	}
 
 	return nil
@@ -146,10 +143,6 @@ func (s *Store) GetAppStatus() appstatetypes.AppStatus {
 
 func (s *Store) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
-}
-
-func (s *Store) GetInformersLabelSelector() string {
-	return s.informersLabelSelector
 }
 
 func generateIDs() (string, string, error) {
