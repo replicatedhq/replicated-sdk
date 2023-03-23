@@ -3,6 +3,7 @@ FROM golang:1.20 as builder
 ENV PROJECTPATH=/go/src/github.com/replicatedhq/kots-sdk
 WORKDIR $PROJECTPATH
 
+COPY Makefile.build.mk ./
 COPY Makefile ./
 COPY go.mod go.sum ./
 COPY cmd ./cmd
