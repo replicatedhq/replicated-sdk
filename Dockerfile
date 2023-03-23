@@ -9,6 +9,9 @@ COPY go.mod go.sum ./
 COPY cmd ./cmd
 COPY pkg ./pkg
 
+ARG git_tag
+ENV GIT_TAG=${git_tag}
+
 RUN make build && mv ./bin/kots-sdk /kots-sdk
 
 FROM golang:1.20
@@ -26,7 +29,5 @@ COPY --from=builder --chown=kots-sdk:kots-sdk /kots-sdk /kots-sdk
 WORKDIR /
 
 EXPOSE 3000
-ARG version=unknown
-ENV VERSION=${version}
 ENTRYPOINT ["/kots-sdk"]
 CMD ["api"]

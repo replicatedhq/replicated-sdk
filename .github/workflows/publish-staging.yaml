@@ -33,7 +33,7 @@ jobs:
         REPLICATED_USER: ${{secrets.KOTS_SDK_REPLICATED_USER_STAGING}}
         REPLICATED_PASS: ${{secrets.KOTS_SDK_REPLICATED_PASS_STAGING}}
       run: |
-        docker build --pull -t "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG" .
+        docker build --pull -t "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG" --build-arg git_tag=${{steps.tag.outputs.tag}} .
         docker push "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG"
 
         cd chart
