@@ -2,7 +2,7 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 SHELL := /bin/bash -o pipefail
-VERSION_PACKAGE = github.com/replicatedhq/kots/pkg/buildversion
+VERSION_PACKAGE = github.com/replicatedhq/kots-sdk/pkg/buildversion
 VERSION?=$(if $(GIT_TAG),$(GIT_TAG),alpha)
 DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 
