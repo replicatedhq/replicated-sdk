@@ -6,9 +6,8 @@ import (
 	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/kots-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
-	kotslicense "github.com/replicatedhq/kots-sdk/pkg/license"
+	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
 	"github.com/replicatedhq/kots-sdk/pkg/logger"
-	"github.com/replicatedhq/kots-sdk/pkg/replicatedapp"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/segmentio/ksuid"
@@ -34,6 +33,7 @@ type Store struct {
 	channelName     string
 	channelSequence int64
 	releaseSequence int64
+	versionLabel    string
 	appStatus       appstatetypes.AppStatus
 }
 
@@ -43,10 +43,11 @@ type InitStoreOptions struct {
 	ChannelName     string
 	ChannelSequence int64
 	ReleaseSequence int64
+	VersionLabel    string
 }
 
 func Init(options InitStoreOptions) error {
-	verifiedLicense, err := kotslicense.VerifySignature(options.License)
+	verifiedLicense, err := sdklicense.VerifySignature(options.License)
 	if err != nil {
 		return errors.Wrap(err, "failed to verify license signature")
 	}
@@ -54,7 +55,7 @@ func Init(options InitStoreOptions) error {
 	if !util.IsAirgap() {
 		// sync license
 		logger.Info("syncing license with server to retrieve latest version")
-		licenseData, err := replicatedapp.GetLatestLicense(verifiedLicense)
+		licenseData, err := sdklicense.GetLatestLicense(verifiedLicense)
 		if err != nil {
 			return errors.Wrap(err, "failed to get latest license")
 		}
@@ -62,7 +63,7 @@ func Init(options InitStoreOptions) error {
 	}
 
 	// check license expiration
-	expired, err := kotslicense.LicenseIsExpired(verifiedLicense)
+	expired, err := sdklicense.LicenseIsExpired(verifiedLicense)
 	if err != nil {
 		return errors.Wrapf(err, "failed to check if license is expired")
 	}
@@ -85,6 +86,7 @@ func Init(options InitStoreOptions) error {
 		channelName:     options.ChannelName,
 		channelSequence: options.ChannelSequence,
 		releaseSequence: options.ReleaseSequence,
+		versionLabel:    options.VersionLabel,
 	}
 
 	return nil
@@ -132,6 +134,10 @@ func (s *Store) GetChannelSequence() int64 {
 
 func (s *Store) GetReleaseSequence() int64 {
 	return s.releaseSequence
+}
+
+func (s *Store) GetVersionLabel() string {
+	return s.versionLabel
 }
 
 func (s *Store) GetAppStatus() appstatetypes.AppStatus {

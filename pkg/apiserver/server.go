@@ -22,6 +22,7 @@ type APIServerParams struct {
 	ChannelName            string
 	ChannelSequence        int64
 	ReleaseSequence        int64
+	VersionLabel           string
 	InformersLabelSelector string
 }
 
@@ -32,6 +33,7 @@ func Start(params APIServerParams) {
 		ChannelName:     params.ChannelName,
 		ChannelSequence: params.ChannelSequence,
 		ReleaseSequence: params.ReleaseSequence,
+		VersionLabel:    params.VersionLabel,
 	}
 	if err := store.Init(storeOptions); err != nil {
 		log.Fatalf("Failed to init store: %v", err)
@@ -60,8 +62,13 @@ func Start(params APIServerParams) {
 
 	r.HandleFunc("/healthz", handlers.Healthz)
 
+	// license
 	r.HandleFunc("/api/v1/licensefields", handlers.GetLicenseFields).Methods("GET")
 	r.HandleFunc("/api/v1/licensefield/{fieldName}", handlers.GetLicenseField).Methods("GET")
+
+	// app
+	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
+	r.HandleFunc("/api/v1/app/updatecheck", handlers.CheckForUpdates).Methods("GET")
 
 	srv := &http.Server{
 		Handler: r,
