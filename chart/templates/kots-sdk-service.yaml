@@ -12,5 +12,3 @@ spec:
   selector:
     app: kots-sdk
   type: {{ .Values.service.type }}
-status:
-  loadBalancer: {}
