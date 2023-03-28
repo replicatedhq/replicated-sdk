@@ -22,10 +22,10 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		license = licenseData.License
-	}
 
-	// update the store
-	store.GetStore().SetLicense(license)
+		// update the store
+		store.GetStore().SetLicense(license)
+	}
 
 	JSON(w, http.StatusOK, license.Spec.Entitlements)
 }
@@ -41,10 +41,10 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		license = licenseData.License
-	}
 
-	// update the store
-	store.GetStore().SetLicense(license)
+		// update the store
+		store.GetStore().SetLicense(license)
+	}
 
 	fieldName := mux.Vars(r)["fieldName"]
 

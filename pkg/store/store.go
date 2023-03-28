@@ -111,7 +111,7 @@ func (s *Store) GetLicense() *kotsv1beta1.License {
 }
 
 func (s *Store) SetLicense(license *kotsv1beta1.License) {
-	s.license = license
+	s.license = license.DeepCopy()
 }
 
 func (s *Store) GetAppSlug() string {
