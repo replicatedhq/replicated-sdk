@@ -110,6 +110,10 @@ func (s *Store) GetLicense() *kotsv1beta1.License {
 	return s.license
 }
 
+func (s *Store) SetLicense(license *kotsv1beta1.License) {
+	s.license = license
+}
+
 func (s *Store) GetAppSlug() string {
 	return s.appSlug
 }
