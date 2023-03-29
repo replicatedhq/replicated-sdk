@@ -56,7 +56,7 @@ func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor type
 		return nil, errors.Wrap(err, "failed to marshal request payload")
 	}
 
-	req, err := util.NewRequest("GET", url, bytes.NewBuffer(reqBody))
+	req, err := util.NewRequest("POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call newrequest")
 	}
