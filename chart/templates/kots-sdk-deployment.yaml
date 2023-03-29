@@ -34,6 +34,8 @@ spec:
           value: "{{ .Values.channelSequence }}"
         - name: KOTS_SDK_RELEASE_SEQUENCE
           value: "{{ .Values.releaseSequence }}"
+        - name: KOTS_SDK_VERSION_LABEL
+          value: "{{ .Values.versionLabel }}"
         - name: KOTS_SDK_INFORMERS_LABEL_SELECTOR
           value: "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance={{ .Release.Name }}"
         - name: POD_NAMESPACE

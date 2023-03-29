@@ -18,7 +18,8 @@ Run the SDK API:
     --channel-id=[CHANNEL_ID] \
     --channel-name=[CHANNEL_NAME] \
     --channel-sequence=[CHANNEL_SEQUENCE] \
-    --release-sequence=[RELEASE_SEQUENCE]
+    --release-sequence=[RELEASE_SEQUENCE] \
+    --version-label=[VERSION_LABEL]
 ```
 
 Example:
@@ -28,7 +29,8 @@ Example:
     --channel-id=1YGSYsmJEjIj2XlyK1vqjCwuyb1 \
     --channel-name=Beta \
     --channel-sequence=1 \
-    --release-sequence=1
+    --release-sequence=1 \
+    --version-label="v1.0.0"
 ```
 
 ### Helm Chart
@@ -48,7 +50,8 @@ helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
     --set channelID=[CHANNEL_ID] \
     --set channelName=[CHANNEL_NAME] \
     --set channelSequence=[CHANNEL_SEQUENCE] \
-    --set releaseSequence=[RELEASE_SEQUENCE]
+    --set releaseSequence=[RELEASE_SEQUENCE] \
+    --set versionLabel=[VERSION_LABEL]
 ```
 
 Example:
@@ -60,6 +63,7 @@ helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
     --set channelName=Beta \
     --set channelSequence=1 \
     --set releaseSequence=1 \
+    --set versionLabel="v1.0.0"
 ```
 
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.

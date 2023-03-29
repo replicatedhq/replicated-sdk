@@ -5,8 +5,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
 	"github.com/replicatedhq/kots-sdk/pkg/logger"
-	"github.com/replicatedhq/kots-sdk/pkg/replicatedapp"
 	"github.com/replicatedhq/kots-sdk/pkg/store"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 )
@@ -15,7 +15,7 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 
 	if !util.IsAirgap() {
-		licenseData, err := replicatedapp.GetLatestLicense(license)
+		licenseData, err := sdklicense.GetLatestLicense(license)
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 			w.WriteHeader(http.StatusInternalServerError)
@@ -34,7 +34,7 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 
 	if !util.IsAirgap() {
-		licenseData, err := replicatedapp.GetLatestLicense(license)
+		licenseData, err := sdklicense.GetLatestLicense(license)
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 			w.WriteHeader(http.StatusInternalServerError)
