@@ -60,8 +60,9 @@ func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor type
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call newrequest")
 	}
-
 	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
+	req.Header.Set("Content-Type", "application/json")
+
 	reporting.InjectReportingInfoHeaders(req, reportingInfo)
 
 	resp, err := http.DefaultClient.Do(req)
