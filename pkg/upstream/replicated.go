@@ -10,7 +10,7 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
-	reporting "github.com/replicatedhq/kots-sdk/pkg/reporting"
+	"github.com/replicatedhq/kots-sdk/pkg/heartbeat"
 	types "github.com/replicatedhq/kots-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
@@ -42,9 +42,9 @@ func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor type
 	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, license.Spec.AppSlug, urlValues.Encode())
 
 	// build the request body
-	reportingInfo := reporting.GetReportingInfo()
+	heartbeatInfo := heartbeat.GetHeartbeatInfo()
 
-	marshalledRS, err := json.Marshal(reportingInfo.ResourceStates)
+	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal resource states")
 	}
@@ -63,7 +63,7 @@ func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor type
 	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
 	req.Header.Set("Content-Type", "application/json")
 
-	reporting.InjectReportingInfoHeaders(req, reportingInfo)
+	heartbeat.InjectHeartbeatInfoHeaders(req, heartbeatInfo)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

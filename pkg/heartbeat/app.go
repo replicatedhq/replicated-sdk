@@ -1,4 +1,4 @@
-package reporting
+package heartbeat
 
 import (
 	"bytes"
@@ -8,22 +8,22 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/kots-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/kots-sdk/pkg/logger"
-	"github.com/replicatedhq/kots-sdk/pkg/reporting/types"
 	"github.com/replicatedhq/kots-sdk/pkg/store"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 )
 
-func SendAppInfo() error {
+func SendAppHeartbeat() error {
 	license := store.GetStore().GetLicense()
 	if !canReport(license) {
 		return nil
 	}
 
-	reportingInfo := GetReportingInfo()
+	heartbeatInfo := GetHeartbeatInfo()
 
-	marshalledRS, err := json.Marshal(reportingInfo.ResourceStates)
+	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal resource states")
 	}
@@ -42,7 +42,7 @@ func SendAppInfo() error {
 	postReq.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
 	postReq.Header.Set("Content-Type", "application/json")
 
-	InjectReportingInfoHeaders(postReq, reportingInfo)
+	InjectHeartbeatInfoHeaders(postReq, heartbeatInfo)
 
 	resp, err := http.DefaultClient.Do(postReq)
 	if err != nil {
@@ -57,8 +57,8 @@ func SendAppInfo() error {
 	return nil
 }
 
-func GetReportingInfo() *types.ReportingInfo {
-	r := types.ReportingInfo{
+func GetHeartbeatInfo() *types.HeartbeatInfo {
+	r := types.HeartbeatInfo{
 		ClusterID:       store.GetStore().GetKotsSDKID(),
 		InstanceID:      store.GetStore().GetAppID(),
 		ChannelID:       store.GetStore().GetChannelID(),

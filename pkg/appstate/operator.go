@@ -9,7 +9,7 @@ import (
 	"github.com/mitchellh/hashstructure"
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/kots-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/kots-sdk/pkg/reporting"
+	"github.com/replicatedhq/kots-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/kots-sdk/pkg/store"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
@@ -101,7 +101,7 @@ func (o *Operator) setAppStatus(newAppStatus types.AppStatus) error {
 
 	if newAppStatus.State != currentAppStatus.State {
 		log.Printf("app state changed from %s to %s", currentAppStatus.State, newAppStatus.State)
-		go reporting.SendAppInfo()
+		go heartbeat.SendAppHeartbeat()
 	}
 
 	return nil
