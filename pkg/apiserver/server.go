@@ -10,6 +10,7 @@ import (
 	"github.com/replicatedhq/kots-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/kots-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/kots-sdk/pkg/handlers"
+	"github.com/replicatedhq/kots-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/kots-sdk/pkg/store"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
@@ -56,6 +57,10 @@ func Start(params APIServerParams) {
 		Sequence:      store.GetStore().GetReleaseSequence(),
 		LabelSelector: params.InformersLabelSelector,
 	})
+
+	if err := heartbeat.Start(); err != nil {
+		log.Println("Failed to start heartbeat:", err)
+	}
 
 	r := mux.NewRouter()
 	r.Use(handlers.CorsMiddleware)

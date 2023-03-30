@@ -4,7 +4,7 @@ import (
 	appstatetypes "github.com/replicatedhq/kots-sdk/pkg/appstate/types"
 )
 
-type ReportingInfo struct {
+type HeartbeatInfo struct {
 	InstanceID      string                       `json:"instance_id"`
 	ClusterID       string                       `json:"cluster_id"`
 	ChannelID       string                       `json:"channel_id"`
