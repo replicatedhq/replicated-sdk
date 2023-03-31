@@ -49,9 +49,9 @@ jobs:
         export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
 
         echo pushing ${CHART_NAME} to staging
-        helm registry login registry.staging.replicated.com --username $REPLICATED_USER --password $REPLICATED_PASS
+        helm registry login registry.staging.replicated.com --username $REPLICATED_USER_STAGING --password $REPLICATED_PASS_STAGING
         helm push $CHART_NAME oci://registry.staging.replicated.com/library
 
         echo pushing ${CHART_NAME} to production
-        helm registry login registry.replicated.com --username $REPLICATED_USER --password $REPLICATED_PASS
+        helm registry login registry.replicated.com --username $REPLICATED_USER_PROD --password $REPLICATED_PASS_PROD
         helm push $CHART_NAME oci://registry.replicated.com/library
