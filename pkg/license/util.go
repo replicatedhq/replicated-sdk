@@ -1,7 +1,7 @@
 package license
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
@@ -14,7 +14,7 @@ func init() {
 }
 
 func LoadLicenseFromPath(licenseFilePath string) (*kotsv1beta1.License, error) {
-	licenseData, err := ioutil.ReadFile(licenseFilePath)
+	licenseData, err := os.ReadFile(licenseFilePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read license file")
 	}

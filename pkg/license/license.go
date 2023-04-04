@@ -3,7 +3,7 @@ package license
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -43,7 +43,7 @@ func getLicenseFromAPI(url string, licenseID string) (*LicenseData, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load response")
 	}
@@ -99,7 +99,7 @@ func GetLatestLicenseFields(license *kotsv1beta1.License) (types.LicenseFields, 
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load response")
 	}
@@ -132,7 +132,7 @@ func GetLatestLicenseField(license *kotsv1beta1.License, fieldName string) (*typ
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load response")
 	}
