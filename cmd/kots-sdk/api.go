@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/base64"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -68,7 +68,7 @@ func APICmd() *cobra.Command {
 
 			var licenseFields sdklicensetypes.LicenseFields
 			if v.GetString("license-fields-file") != "" {
-				b, err := ioutil.ReadFile(v.GetString("license-fields-file"))
+				b, err := os.ReadFile(v.GetString("license-fields-file"))
 				if err != nil {
 					return errors.Wrap(err, "failed to read license file")
 				}

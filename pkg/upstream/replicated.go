@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -71,7 +71,7 @@ func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor type
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read response body")
 	}
