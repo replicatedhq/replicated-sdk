@@ -1,4 +1,4 @@
-package kotsutil
+package license
 
 import (
 	"io/ioutil"

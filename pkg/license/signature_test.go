@@ -3,7 +3,6 @@ package license
 import (
 	"testing"
 
-	"github.com/replicatedhq/kots-sdk/pkg/kotsutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -231,7 +230,7 @@ spec:
 		t.Run(tt.name, func(t *testing.T) {
 			req := require.New(t)
 
-			license, err := kotsutil.LoadLicenseFromBytes([]byte(tt.license))
+			license, err := LoadLicenseFromBytes([]byte(tt.license))
 			req.NoError(err)
 
 			_, err = VerifySignature(license)

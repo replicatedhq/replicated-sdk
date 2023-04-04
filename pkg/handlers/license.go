@@ -6,54 +6,63 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
+	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
 	"github.com/replicatedhq/kots-sdk/pkg/logger"
 	"github.com/replicatedhq/kots-sdk/pkg/store"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 )
 
 func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
-	license := store.GetStore().GetLicense()
+	licenseFields := store.GetStore().GetLicenseFields()
 
 	if !util.IsAirgap() {
-		licenseData, err := sdklicense.GetLatestLicense(license)
+		fields, err := sdklicense.GetLatestLicenseFields(store.GetStore().GetLicense())
 		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get latest license"))
+			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		license = licenseData.License
+		licenseFields = fields
 
 		// update the store
-		store.GetStore().SetLicense(license)
+		store.GetStore().SetLicenseFields(licenseFields)
 	}
 
-	JSON(w, http.StatusOK, license.Spec.Entitlements)
+	JSON(w, http.StatusOK, licenseFields)
 }
 
 func GetLicenseField(w http.ResponseWriter, r *http.Request) {
-	license := store.GetStore().GetLicense()
+	fieldName := mux.Vars(r)["fieldName"]
+
+	licenseFields := store.GetStore().GetLicenseFields()
+	if licenseFields == nil {
+		licenseFields = sdklicensetypes.LicenseFields{}
+	}
 
 	if !util.IsAirgap() {
-		licenseData, err := sdklicense.GetLatestLicense(license)
+		field, err := sdklicense.GetLatestLicenseField(store.GetStore().GetLicense(), fieldName)
 		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get latest license"))
+			logger.Error(errors.Wrap(err, "failed to get latest license field"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		license = licenseData.License
+
+		if field == nil {
+			// field might not exist or has been removed
+			delete(licenseFields, fieldName)
+		} else {
+			licenseFields[fieldName] = *field
+		}
 
 		// update the store
-		store.GetStore().SetLicense(license)
+		store.GetStore().SetLicenseFields(licenseFields)
 	}
 
-	fieldName := mux.Vars(r)["fieldName"]
-
-	entitlement, ok := license.Spec.Entitlements[fieldName]
-	if !ok {
-		logger.Error(errors.Errorf("no entitlement named %q found", fieldName))
+	if _, ok := licenseFields[fieldName]; !ok {
+		logger.Errorf("license field %q not found", fieldName)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	JSON(w, http.StatusOK, entitlement)
+	JSON(w, http.StatusOK, licenseFields[fieldName])
 }
