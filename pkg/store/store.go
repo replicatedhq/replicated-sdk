@@ -7,6 +7,7 @@ import (
 	appstatetypes "github.com/replicatedhq/kots-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
+	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
 	"github.com/replicatedhq/kots-sdk/pkg/logger"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
@@ -28,6 +29,7 @@ type Store struct {
 	kotsSDKID       string
 	appID           string
 	license         *kotsv1beta1.License
+	licenseFields   sdklicensetypes.LicenseFields
 	appSlug         string
 	channelID       string
 	channelName     string
@@ -39,6 +41,7 @@ type Store struct {
 
 type InitStoreOptions struct {
 	License         *kotsv1beta1.License
+	LicenseFields   sdklicensetypes.LicenseFields
 	ChannelID       string
 	ChannelName     string
 	ChannelSequence int64
@@ -81,6 +84,7 @@ func Init(options InitStoreOptions) error {
 		kotsSDKID:       kotsSDKID,
 		appID:           appID,
 		license:         verifiedLicense,
+		licenseFields:   options.LicenseFields,
 		appSlug:         verifiedLicense.Spec.AppSlug,
 		channelID:       options.ChannelID,
 		channelName:     options.ChannelName,
@@ -114,6 +118,24 @@ func (s *Store) GetLicense() *kotsv1beta1.License {
 
 func (s *Store) SetLicense(license *kotsv1beta1.License) {
 	s.license = license.DeepCopy()
+}
+
+func (s *Store) GetLicenseFields() sdklicensetypes.LicenseFields {
+	return s.licenseFields
+}
+
+func (s *Store) SetLicenseFields(licenseFields sdklicensetypes.LicenseFields) {
+	// copy by value not reference
+	if licenseFields == nil {
+		s.licenseFields = nil
+		return
+	}
+	if s.licenseFields == nil {
+		s.licenseFields = sdklicensetypes.LicenseFields{}
+	}
+	for k, v := range licenseFields {
+		s.licenseFields[k] = v
+	}
 }
 
 func (s *Store) GetAppSlug() string {

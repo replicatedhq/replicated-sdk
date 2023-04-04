@@ -12,6 +12,7 @@ import (
 	"github.com/replicatedhq/kots-sdk/pkg/handlers"
 	"github.com/replicatedhq/kots-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
+	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
 	"github.com/replicatedhq/kots-sdk/pkg/store"
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
@@ -19,6 +20,7 @@ import (
 
 type APIServerParams struct {
 	License                *kotsv1beta1.License
+	LicenseFields          sdklicensetypes.LicenseFields
 	ChannelID              string
 	ChannelName            string
 	ChannelSequence        int64
@@ -30,6 +32,7 @@ type APIServerParams struct {
 func Start(params APIServerParams) {
 	storeOptions := store.InitStoreOptions{
 		License:         params.License,
+		LicenseFields:   params.LicenseFields,
 		ChannelID:       params.ChannelID,
 		ChannelName:     params.ChannelName,
 		ChannelSequence: params.ChannelSequence,

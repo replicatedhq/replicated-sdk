@@ -2,15 +2,18 @@ package main
 
 import (
 	"encoding/base64"
+	"io/ioutil"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/kots-sdk/pkg/apiserver"
-	"github.com/replicatedhq/kots-sdk/pkg/kotsutil"
+	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
+	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
 	"github.com/replicatedhq/kots-sdk/pkg/logger"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 func APICmd() *cobra.Command {
@@ -38,7 +41,7 @@ func APICmd() *cobra.Command {
 
 			var license *kotsv1beta1.License
 			if v.GetString("license-file") != "" {
-				l, err := kotsutil.LoadLicenseFromPath(v.GetString("license-file"))
+				l, err := sdklicense.LoadLicenseFromPath(v.GetString("license-file"))
 				if err != nil {
 					return errors.Wrap(err, "failed to parse license from file")
 				}
@@ -48,15 +51,43 @@ func APICmd() *cobra.Command {
 				if err != nil {
 					return errors.Wrap(err, "failed to base64 decode license")
 				}
-				l, err := kotsutil.LoadLicenseFromBytes(decoded)
+				l, err := sdklicense.LoadLicenseFromBytes(decoded)
 				if err != nil {
 					return errors.Wrap(err, "failed to parse license from base64")
 				}
 				license = l
 			}
 
+			if v.GetString("license-fields-file") == "" && v.GetString("license-fields-base64") == "" {
+				return errors.New("--license-fields-file or --license-fields-base64 is required")
+			}
+
+			if v.GetString("license-fields-file") != "" && v.GetString("license-fields-base64") != "" {
+				return errors.New("only one of --license-fields-file and --license-fields-base64 can be specified")
+			}
+
+			var licenseFields sdklicensetypes.LicenseFields
+			if v.GetString("license-fields-file") != "" {
+				b, err := ioutil.ReadFile(v.GetString("license-fields-file"))
+				if err != nil {
+					return errors.Wrap(err, "failed to read license file")
+				}
+				if err := yaml.Unmarshal(b, &licenseFields); err != nil {
+					return errors.Wrap(err, "failed to unmarshal license fields")
+				}
+			} else if v.GetString("license-fields-base64") != "" {
+				decoded, err := base64.StdEncoding.DecodeString(v.GetString("license-fields-base64"))
+				if err != nil {
+					return errors.Wrap(err, "failed to base64 decode license fields")
+				}
+				if err := yaml.Unmarshal(decoded, &licenseFields); err != nil {
+					return errors.Wrap(err, "failed to unmarshal license fields")
+				}
+			}
+
 			params := apiserver.APIServerParams{
 				License:                license,
+				LicenseFields:          licenseFields,
 				ChannelID:              v.GetString("channel-id"),
 				ChannelName:            v.GetString("channel-name"),
 				ChannelSequence:        v.GetInt64("channel-sequence"),
@@ -72,6 +103,8 @@ func APICmd() *cobra.Command {
 
 	cmd.Flags().String("license-file", "", "path to the application license file")
 	cmd.Flags().String("license-base64", "", "base64 encoded application license")
+	cmd.Flags().String("license-fields-file", "", "path to the application license fields file")
+	cmd.Flags().String("license-fields-base64", "", "base64 encoded application license fields")
 	cmd.Flags().String("channel-id", "", "the application channel id")
 	cmd.Flags().String("channel-name", "", "the application channel name")
 	cmd.Flags().Int64("channel-sequence", -1, "the application upstream channel sequence")
