@@ -40,7 +40,7 @@ spec:
           value: "{{ .Values.versionLabel }}"
         - name: KOTS_SDK_INFORMERS_LABEL_SELECTOR
           value: "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance={{ .Release.Name }}"
-        - name: POD_NAMESPACE
+        - name: KOTS_SDK_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
