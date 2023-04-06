@@ -36,6 +36,7 @@ type Store struct {
 	channelSequence int64
 	releaseSequence int64
 	versionLabel    string
+	namespace       string
 	appStatus       appstatetypes.AppStatus
 }
 
@@ -47,6 +48,7 @@ type InitStoreOptions struct {
 	ChannelSequence int64
 	ReleaseSequence int64
 	VersionLabel    string
+	Namespace       string
 }
 
 func Init(options InitStoreOptions) error {
@@ -75,7 +77,7 @@ func Init(options InitStoreOptions) error {
 	}
 
 	// generate / retrieve sdk and app ids
-	kotsSDKID, appID, err := generateIDs()
+	kotsSDKID, appID, err := generateIDs(options.Namespace)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate ids")
 	}
@@ -91,6 +93,7 @@ func Init(options InitStoreOptions) error {
 		channelSequence: options.ChannelSequence,
 		releaseSequence: options.ReleaseSequence,
 		versionLabel:    options.VersionLabel,
+		namespace:       options.Namespace,
 	}
 
 	return nil
@@ -162,6 +165,10 @@ func (s *Store) GetVersionLabel() string {
 	return s.versionLabel
 }
 
+func (s *Store) GetNamespace() string {
+	return s.namespace
+}
+
 func (s *Store) GetAppStatus() appstatetypes.AppStatus {
 	if s.appStatus.State == "" {
 		return appstatetypes.AppStatus{
@@ -177,13 +184,13 @@ func (s *Store) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
 }
 
-func generateIDs() (string, string, error) {
+func generateIDs(namespace string) (string, string, error) {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to get clientset")
 	}
 
-	cm, err := clientset.CoreV1().ConfigMaps(util.PodNamespace).Get(context.TODO(), kotsSDKConfigMapName, metav1.GetOptions{})
+	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), kotsSDKConfigMapName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return "", "", errors.Wrap(err, "failed to get kots sdk configmap")
 	}
@@ -202,7 +209,7 @@ func generateIDs() (string, string, error) {
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kotsSDKConfigMapName,
-				Namespace: util.PodNamespace,
+				Namespace: namespace,
 			},
 			Data: map[string]string{
 				"kots-sdk-id": kotsSDKID,
@@ -210,7 +217,7 @@ func generateIDs() (string, string, error) {
 			},
 		}
 
-		_, err := clientset.CoreV1().ConfigMaps(util.PodNamespace).Create(context.TODO(), &configmap, metav1.CreateOptions{})
+		_, err := clientset.CoreV1().ConfigMaps(namespace).Create(context.TODO(), &configmap, metav1.CreateOptions{})
 		if err != nil {
 			return "", "", errors.Wrap(err, "failed to create kots sdk configmap")
 		}

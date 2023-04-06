@@ -14,7 +14,6 @@ import (
 	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
 	"github.com/replicatedhq/kots-sdk/pkg/store"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 )
 
@@ -27,6 +26,7 @@ type APIServerParams struct {
 	ReleaseSequence        int64
 	VersionLabel           string
 	InformersLabelSelector string
+	Namespace              string
 }
 
 func Start(params APIServerParams) {
@@ -38,6 +38,7 @@ func Start(params APIServerParams) {
 		ChannelSequence: params.ChannelSequence,
 		ReleaseSequence: params.ReleaseSequence,
 		VersionLabel:    params.VersionLabel,
+		Namespace:       params.Namespace,
 	}
 	if err := store.Init(storeOptions); err != nil {
 		log.Fatalf("Failed to init store: %v", err)
@@ -48,8 +49,8 @@ func Start(params APIServerParams) {
 		log.Fatalf("Failed to get clientset: %v", err)
 	}
 
-	targetNamespace := util.PodNamespace
-	if k8sutil.IsKotsSDKClusterScoped(context.Background(), clientset, util.PodNamespace) {
+	targetNamespace := params.Namespace
+	if k8sutil.IsKotsSDKClusterScoped(context.Background(), clientset, params.Namespace) {
 		targetNamespace = "" // watch all namespaces
 	}
 	appStateOperator := appstate.InitOperator(clientset, targetNamespace)

@@ -94,6 +94,7 @@ func APICmd() *cobra.Command {
 				ReleaseSequence:        v.GetInt64("release-sequence"),
 				VersionLabel:           v.GetString("version-label"),
 				InformersLabelSelector: v.GetString("informers-label-selector"),
+				Namespace:              v.GetString("namespace"),
 			}
 			apiserver.Start(params)
 
@@ -111,6 +112,7 @@ func APICmd() *cobra.Command {
 	cmd.Flags().Int64("release-sequence", -1, "the application upstream release sequence")
 	cmd.Flags().String("version-label", "", "the application version label")
 	cmd.Flags().String("informers-label-selector", "", "the label selector to use for status informers to detect application resources")
+	cmd.Flags().String("namespace", "", "the namespace where the sdk/application is installed")
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
