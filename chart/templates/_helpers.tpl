@@ -53,7 +53,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 License Fields
 */}}
-{{- define "licenseFields" -}}
+{{- define "kots-sdk.licenseFields" -}}
 {{- if .Values.global -}}
 {{- if .Values.global.licenseFields -}}
 {{- .Values.global.licenseFields | toYaml -}}
