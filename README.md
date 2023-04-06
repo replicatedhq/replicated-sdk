@@ -20,7 +20,8 @@ Run the SDK API:
     --channel-name=[CHANNEL_NAME] \
     --channel-sequence=[CHANNEL_SEQUENCE] \
     --release-sequence=[RELEASE_SEQUENCE] \
-    --version-label=[VERSION_LABEL]
+    --version-label=[VERSION_LABEL] \
+    --namespace=[NAMESPACE]
 ```
 
 Example:
@@ -32,7 +33,8 @@ Example:
     --channel-name=Beta \
     --channel-sequence=1 \
     --release-sequence=1 \
-    --version-label="v1.0.0"
+    --version-label="v1.0.0" \
+    --namespace=default
 ```
 
 ### Helm Chart
