@@ -7,12 +7,13 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: kots-sdk
-  strategy: {}
+      {{- include "kots-sdk.selectorLabels" . | nindent 6 }}
+  strategy:
+    # this is to avoid having two sdk instances reporting at the same time for different app versions.
+    type: Recreate
   template:
     metadata:
       labels:
-        app: kots-sdk
         {{- include "kots-sdk.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
@@ -27,7 +28,7 @@ spec:
         - name: KOTS_SDK_LICENSE_BASE64
           value: {{ .Values.license | b64enc }}
         - name: KOTS_SDK_LICENSE_FIELDS_BASE64
-          value: {{ include "licenseFields" . | b64enc }}
+          value: {{ include "kots-sdk.licenseFields" . | b64enc }}
         - name: KOTS_SDK_CHANNEL_ID
           value: {{ .Values.channelID }}
         - name: KOTS_SDK_CHANNEL_NAME
@@ -39,7 +40,7 @@ spec:
         - name: KOTS_SDK_VERSION_LABEL
           value: "{{ .Values.versionLabel }}"
         - name: KOTS_SDK_INFORMERS_LABEL_SELECTOR
-          value: "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance={{ .Release.Name }}"
+          value: "app.kubernetes.io/managed-by={{ .Release.Service }},app.kubernetes.io/name!={{ include "kots-sdk.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
         - name: KOTS_SDK_NAMESPACE
           valueFrom:
             fieldRef:

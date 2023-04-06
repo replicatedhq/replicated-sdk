@@ -3,12 +3,12 @@ kind: Service
 metadata:
   labels:
     {{- include "kots-sdk.labels" . | nindent 4 }}
-  name: {{ include "kots-sdk.fullname" . }}
+  name: kots-sdk
 spec:
   ports:
   - name: http
     port: {{ .Values.service.port }}
     targetPort: 3000
   selector:
-    app: kots-sdk
+    {{- include "kots-sdk.selectorLabels" . | nindent 4 }}
   type: {{ .Values.service.type }}
