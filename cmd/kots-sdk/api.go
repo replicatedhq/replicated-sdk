@@ -73,7 +73,7 @@ func APICmd() *cobra.Command {
 					return errors.Wrap(err, "failed to read license file")
 				}
 				if err := yaml.Unmarshal(b, &licenseFields); err != nil {
-					return errors.Wrap(err, "failed to unmarshal license fields")
+					return errors.Wrap(err, "failed to unmarshal license fields from file")
 				}
 			} else if v.GetString("license-fields-base64") != "" {
 				decoded, err := base64.StdEncoding.DecodeString(v.GetString("license-fields-base64"))
@@ -81,7 +81,7 @@ func APICmd() *cobra.Command {
 					return errors.Wrap(err, "failed to base64 decode license fields")
 				}
 				if err := yaml.Unmarshal(decoded, &licenseFields); err != nil {
-					return errors.Wrap(err, "failed to unmarshal license fields")
+					return errors.Wrap(err, "failed to unmarshal decoded license fields")
 				}
 			}
 
