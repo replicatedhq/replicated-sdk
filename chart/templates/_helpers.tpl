@@ -51,21 +51,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-License Fields
-*/}}
-{{- define "kots-sdk.licenseFields" -}}
-{{- if .Values.global -}}
-{{- if .Values.global.licenseFields -}}
-{{- .Values.global.licenseFields | toYaml -}}
-{{- end -}}
-{{- else if .Values.licenseFields -}}
-{{- .Values.licenseFields | toYaml -}}
-{{- else -}}
-"{}"
-{{- end -}}
-{{- end -}}
-
-{{/*
 Create the name of the service account to use
 */}}
 {{- define "kots-sdk.serviceAccountName" -}}
