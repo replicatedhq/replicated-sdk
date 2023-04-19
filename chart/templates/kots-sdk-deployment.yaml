@@ -40,7 +40,7 @@ spec:
         - name: KOTS_SDK_VERSION_LABEL
           value: "{{ .Values.versionLabel }}"
         - name: KOTS_SDK_INFORMERS_LABEL_SELECTOR
-          value: "app.kubernetes.io/managed-by={{ .Release.Service }},app.kubernetes.io/name!={{ include "kots-sdk.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+          value: ""
         - name: KOTS_SDK_NAMESPACE
           valueFrom:
             fieldRef:
