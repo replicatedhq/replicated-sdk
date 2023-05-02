@@ -30,7 +30,7 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 	if !util.IsAirgap() {
 		l, err := sdklicense.GetLatestLicense(license)
 		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
+			logger.Error(errors.Wrap(err, "failed to get latest license"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
