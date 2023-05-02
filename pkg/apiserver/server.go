@@ -72,6 +72,7 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/healthz", handlers.Healthz)
 
 	// license
+	r.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
 	r.HandleFunc("/api/v1/licensefields", handlers.GetLicenseFields).Methods("GET")
 	r.HandleFunc("/api/v1/licensefield/{fieldName}", handlers.GetLicenseField).Methods("GET")
 
