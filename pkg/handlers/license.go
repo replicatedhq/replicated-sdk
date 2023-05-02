@@ -12,6 +12,49 @@ import (
 	"github.com/replicatedhq/kots-sdk/pkg/util"
 )
 
+type LicenseInfo struct {
+	LicenseID           string `json:"licenseID"`
+	ChannelID           string `json:"channelID"`
+	ChannelName         string `json:"channelName"`
+	CustomerName        string `json:"customerName"`
+	CustomerEmail       string `json:"customerEmail"`
+	LicenseType         string `json:"licenseType"`
+	IsAirgapSupported   bool   `json:"isAirgapSupported"`
+	IsGitOpsSupported   bool   `json:"isGitOpsSupported"`
+	IsSnapshotSupported bool   `json:"isSnapshotSupported"`
+}
+
+func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
+	license := store.GetStore().GetLicense()
+
+	if !util.IsAirgap() {
+		l, err := sdklicense.GetLatestLicense(license)
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		license = l.License
+
+		// update the store
+		store.GetStore().SetLicense(license)
+	}
+
+	licenseInfo := LicenseInfo{
+		LicenseID:           license.Spec.LicenseID,
+		ChannelID:           license.Spec.ChannelID,
+		ChannelName:         license.Spec.ChannelName,
+		CustomerName:        license.Spec.CustomerName,
+		CustomerEmail:       license.Spec.CustomerEmail,
+		LicenseType:         license.Spec.LicenseType,
+		IsAirgapSupported:   license.Spec.IsAirgapSupported,
+		IsGitOpsSupported:   license.Spec.IsGitOpsSupported,
+		IsSnapshotSupported: license.Spec.IsSnapshotSupported,
+	}
+
+	JSON(w, http.StatusOK, licenseInfo)
+}
+
 func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 	licenseFields := store.GetStore().GetLicenseFields()
 
