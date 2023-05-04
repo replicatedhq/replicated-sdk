@@ -73,12 +73,12 @@ func Start(params APIServerParams) {
 
 	// license
 	r.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
-	r.HandleFunc("/api/v1/licensefields", handlers.GetLicenseFields).Methods("GET")
-	r.HandleFunc("/api/v1/licensefield/{fieldName}", handlers.GetLicenseField).Methods("GET")
+	r.HandleFunc("/api/v1/license/fields", handlers.GetLicenseFields).Methods("GET")
+	r.HandleFunc("/api/v1/license/fields/{fieldName}", handlers.GetLicenseField).Methods("GET")
 
 	// app
 	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
-	r.HandleFunc("/api/v1/app/updatecheck", handlers.CheckForUpdates).Methods("GET")
+	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 
 	srv := &http.Server{
 		Handler: r,
