@@ -13,12 +13,12 @@ import (
 )
 
 type GetCurrentAppInfoResponse struct {
-	AppSlug         string `json:"app_slug"`
-	VersionLabel    string `json:"version_label"`
-	ChannelID       string `json:"channel_id"`
-	ChannelName     string `json:"channel_name"`
-	ChannelSequence int64  `json:"channel_sequence"`
-	ReleaseSequence int64  `json:"release_sequence"`
+	AppSlug         string `json:"appSlug"`
+	VersionLabel    string `json:"versionLabel"`
+	ChannelID       string `json:"channelId"`
+	ChannelName     string `json:"channelName"`
+	ChannelSequence int64  `json:"channelSequence"`
+	ReleaseSequence int64  `json:"releaseSequence"`
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +34,7 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, response)
 }
 
-func CheckForUpdates(w http.ResponseWriter, r *http.Request) {
+func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 
 	if !util.IsAirgap() {
