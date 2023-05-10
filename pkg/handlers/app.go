@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
-	"github.com/replicatedhq/kots-sdk/pkg/logger"
-	"github.com/replicatedhq/kots-sdk/pkg/store"
-	"github.com/replicatedhq/kots-sdk/pkg/upstream"
-	upstreamtypes "github.com/replicatedhq/kots-sdk/pkg/upstream/types"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
+	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
+	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 type GetCurrentAppInfoResponse struct {

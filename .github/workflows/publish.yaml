@@ -30,16 +30,16 @@ jobs:
         password: ${{secrets.GITHUB_TOKEN}}
     - name: Run Package and Publish
       env: 
-        KOTS_SDK_TAG: v${{steps.tag.outputs.tag}}
-        KOTS_SDK_REGISTRY: ghcr.io/replicatedhq # TODO: move to docker.io
+        REPLICATED_SDK_TAG: v${{steps.tag.outputs.tag}}
+        REPLICATED_SDK_REGISTRY: ghcr.io/replicatedhq # TODO: move to docker.io
         CHART_VERSION: ${{steps.tag.outputs.tag}}
-        REPLICATED_USER_STAGING: ${{secrets.KOTS_SDK_REPLICATED_USER_STAGING}}
-        REPLICATED_PASS_STAGING: ${{secrets.KOTS_SDK_REPLICATED_PASS_STAGING}}
-        REPLICATED_USER_PROD: ${{secrets.KOTS_SDK_REPLICATED_USER_PROD}}
-        REPLICATED_PASS_PROD: ${{secrets.KOTS_SDK_REPLICATED_PASS_PROD}}
+        REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
+        REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
+        REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
+        REPLICATED_PASS_PROD: ${{secrets.REPLICATED_PASS_PROD}}
       run: |
-        docker build --pull -t "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG" --build-arg git_tag=${{steps.tag.outputs.tag}} .
-        docker push "$KOTS_SDK_REGISTRY/kots-sdk:$KOTS_SDK_TAG"
+        docker build --pull -t "$REPLICATED_SDK_REGISTRY/replicated:$REPLICATED_SDK_TAG" --build-arg git_tag=${{steps.tag.outputs.tag}} .
+        docker push "$REPLICATED_SDK_REGISTRY/replicated:$REPLICATED_SDK_TAG"
 
         cd chart
         envsubst < Chart.yaml.tmpl > Chart.yaml

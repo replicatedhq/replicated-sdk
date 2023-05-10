@@ -7,14 +7,14 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/replicatedhq/kots-sdk/pkg/appstate"
-	appstatetypes "github.com/replicatedhq/kots-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/kots-sdk/pkg/handlers"
-	"github.com/replicatedhq/kots-sdk/pkg/heartbeat"
-	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
-	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
-	"github.com/replicatedhq/kots-sdk/pkg/store"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
+	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
 type APIServerParams struct {
@@ -52,7 +52,7 @@ func Start(params APIServerParams) {
 	}
 
 	targetNamespace := params.Namespace
-	if k8sutil.IsKotsSDKClusterScoped(context.Background(), clientset, params.Namespace) {
+	if k8sutil.IsReplicatedClusterScoped(context.Background(), clientset, params.Namespace) {
 		targetNamespace = "" // watch all namespaces
 	}
 	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
@@ -87,7 +87,7 @@ func Start(params APIServerParams) {
 		Addr:    ":3000",
 	}
 
-	fmt.Printf("Starting KOTS SDK API on port %d...\n", 3000)
+	fmt.Printf("Starting Replicated API on port %d...\n", 3000)
 
 	log.Fatal(srv.ListenAndServe())
 }

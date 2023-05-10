@@ -1,19 +1,19 @@
 # Introduction
 
-This is the software development kit (SDK) for Replicated KOTS.
+This is the software development kit (SDK) for Replicated.
 
 # Development
 
-### Go Binary / SDK API
+### Go Binary / API
 
 Build the binary:
 ```shell
 make build
 ```
 
-Run the SDK API:
+Run the Replicated API:
 ```shell
-./bin/kots-sdk api \
+./bin/replicated api \
     --license-file=[path/to/license.yaml] \
     --license-fields-file=[path/to/license-fields.yaml] \
     --app-name=[APP_NAME] \
@@ -27,7 +27,7 @@ Run the SDK API:
 
 Example:
 ```shell
-./bin/kots-sdk api \
+./bin/replicated api \
     --license-file=license.yaml \
     --license-fields-file=license-fields.yaml \
     --app-name="My App" \
@@ -40,17 +40,17 @@ Example:
 ```
 
 ### Helm Chart
-Build and push the kots-sdk Docker image and Helm chart to ttl.sh:
+Build and push the replicated Docker image and Helm chart to ttl.sh:
 
 ```shell
 make build-ttl.sh
 ```
 
-The above command will also output the .tgz Helm chart under `chart/kots-sdk-0.0.0.tgz`.
+The above command will also output the .tgz Helm chart under `chart/replicated-0.0.0.tgz`.
 You can either extract and include the produced .tgz Helm chart as a subchart in other applications, or you can run the following command to install the chart:
 
 ```shell
-helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
+helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --namespace [NAMESPACE] \
     --set-file license=[path/to/license.yaml] \
     --set-file licenseFields=[path/to/license-fields.yaml] \
@@ -64,7 +64,7 @@ helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
 
 Example:
 ```shell
-helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
+helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --namespace default \
     --set-file license=license.yaml \
     --set-file licenseFields=license-fields.yaml \

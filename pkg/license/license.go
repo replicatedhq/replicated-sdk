@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/kots-sdk/pkg/license/types"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	"github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 type LicenseData struct {

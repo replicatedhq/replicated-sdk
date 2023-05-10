@@ -7,9 +7,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// IsKotsSDKClusterScoped will check if the kots-sdk has cluster scope access or not
-func IsKotsSDKClusterScoped(ctx context.Context, clientset kubernetes.Interface, namespace string) bool {
-	rb, err := clientset.RbacV1().ClusterRoleBindings().Get(ctx, "kots-sdk-rolebinding", metav1.GetOptions{})
+// IsReplicatedClusterScoped will check if replicated has cluster scope access or not
+func IsReplicatedClusterScoped(ctx context.Context, clientset kubernetes.Interface, namespace string) bool {
+	rb, err := clientset.RbacV1().ClusterRoleBindings().Get(ctx, "replicated-rolebinding", metav1.GetOptions{})
 	if err != nil {
 		return false
 	}
@@ -17,7 +17,7 @@ func IsKotsSDKClusterScoped(ctx context.Context, clientset kubernetes.Interface,
 		if s.Kind != "ServiceAccount" {
 			continue
 		}
-		if s.Name != "kots-sdk" {
+		if s.Name != "replicated" {
 			continue
 		}
 		if s.Namespace != "" && s.Namespace == namespace {

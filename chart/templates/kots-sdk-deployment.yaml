@@ -2,48 +2,48 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    {{- include "kots-sdk.labels" . | nindent 4 }}
-  name: kots-sdk
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: replicated
 spec:
   selector:
     matchLabels:
-      {{- include "kots-sdk.selectorLabels" . | nindent 6 }}
+      {{- include "replicated.selectorLabels" . | nindent 6 }}
   strategy:
-    # this is to avoid having two sdk instances reporting at the same time for different app versions.
+    # this is to avoid having two replicated instances reporting at the same time for different app versions.
     type: Recreate
   template:
     metadata:
       labels:
-        {{- include "kots-sdk.labels" . | nindent 8 }}
+        {{- include "replicated.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-      - name: kots-sdk
-        image: {{ .Values.images.kotssdk }}
+      - name: replicated
+        image: {{ .Values.images.replicated }}
         imagePullPolicy: IfNotPresent
         env:
-        - name: KOTS_SDK_LICENSE_BASE64
+        - name: REPLICATED_LICENSE_BASE64
           value: {{ .Values.license | b64enc }}
-        - name: KOTS_SDK_LICENSE_FIELDS_BASE64
-          value: {{ include "kots-sdk.licenseFields" . | b64enc }}
-        - name: KOTS_SDK_APP_NAME
+        - name: REPLICATED_LICENSE_FIELDS_BASE64
+          value: {{ include "replicated.licenseFields" . | b64enc }}
+        - name: REPLICATED_APP_NAME
           value: {{ .Values.appName }}
-        - name: KOTS_SDK_CHANNEL_ID
+        - name: REPLICATED_CHANNEL_ID
           value: {{ .Values.channelID }}
-        - name: KOTS_SDK_CHANNEL_NAME
+        - name: REPLICATED_CHANNEL_NAME
           value: {{ .Values.channelName }}
-        - name: KOTS_SDK_CHANNEL_SEQUENCE
+        - name: REPLICATED_CHANNEL_SEQUENCE
           value: "{{ .Values.channelSequence }}"
-        - name: KOTS_SDK_RELEASE_SEQUENCE
+        - name: REPLICATED_RELEASE_SEQUENCE
           value: "{{ .Values.releaseSequence }}"
-        - name: KOTS_SDK_VERSION_LABEL
+        - name: REPLICATED_VERSION_LABEL
           value: "{{ .Values.versionLabel }}"
-        - name: KOTS_SDK_INFORMERS_LABEL_SELECTOR
-          value: "app.kubernetes.io/managed-by={{ .Release.Service }},app.kubernetes.io/name!={{ include "kots-sdk.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
-        - name: KOTS_SDK_NAMESPACE
+        - name: REPLICATED_INFORMERS_LABEL_SELECTOR
+          value: "app.kubernetes.io/managed-by={{ .Release.Service }},app.kubernetes.io/name!={{ include "replicated.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+        - name: REPLICATED_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
@@ -71,5 +71,5 @@ spec:
       securityContext:
         fsGroup: 1001
         runAsUser: 1001
-      serviceAccountName: kots-sdk
+      serviceAccountName: replicated
 status: {}

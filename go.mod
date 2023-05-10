@@ -1,4 +1,4 @@
-module github.com/replicatedhq/kots-sdk
+module github.com/replicatedhq/replicated-sdk
 
 go 1.20
 

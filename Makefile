@@ -6,7 +6,7 @@ test:
 
 .PHONY: build
 build:
-	go build ${LDFLAGS} ${GCFLAGS} -v -o bin/kots-sdk $(BUILDFLAGS) ./cmd/kots-sdk
+	go build ${LDFLAGS} ${GCFLAGS} -v -o bin/replicated $(BUILDFLAGS) ./cmd/replicated
 
 .PHONY: fmt
 fmt:
@@ -18,7 +18,7 @@ vet:
 
 .PHONY: build-ttl.sh
 build-ttl.sh:
-	docker build -t ttl.sh/${USER}/kots-sdk:24h .
-	docker push ttl.sh/${USER}/kots-sdk:24h
+	docker build -t ttl.sh/${USER}/replicated:24h .
+	docker push ttl.sh/${USER}/replicated:24h
 
 	make -C chart build-ttl.sh

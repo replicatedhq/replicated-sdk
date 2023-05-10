@@ -10,10 +10,10 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/kots-sdk/pkg/heartbeat"
-	types "github.com/replicatedhq/kots-sdk/pkg/upstream/types"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {

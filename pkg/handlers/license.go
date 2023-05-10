@@ -5,11 +5,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
-	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
-	"github.com/replicatedhq/kots-sdk/pkg/logger"
-	"github.com/replicatedhq/kots-sdk/pkg/store"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
+	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
+	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 type LicenseInfo struct {

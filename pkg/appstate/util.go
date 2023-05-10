@@ -3,7 +3,7 @@ package appstate
 import (
 	"sort"
 
-	"github.com/replicatedhq/kots-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 )
 
 func resourceStatesApplyNew(resourceStates types.ResourceStates, resourceState types.ResourceState) (next types.ResourceStates) {

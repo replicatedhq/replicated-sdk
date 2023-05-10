@@ -8,11 +8,11 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/kots-sdk/pkg/heartbeat/types"
-	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
-	"github.com/replicatedhq/kots-sdk/pkg/logger"
-	"github.com/replicatedhq/kots-sdk/pkg/store"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 func SendAppHeartbeat() error {
@@ -59,7 +59,7 @@ func SendAppHeartbeat() error {
 
 func GetHeartbeatInfo() *types.HeartbeatInfo {
 	r := types.HeartbeatInfo{
-		ClusterID:       store.GetStore().GetKotsSDKID(),
+		ClusterID:       store.GetStore().GetReplicatedID(),
 		InstanceID:      store.GetStore().GetAppID(),
 		ChannelID:       store.GetStore().GetChannelID(),
 		ChannelName:     store.GetStore().GetChannelName(),

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/kots-sdk/pkg/buildversion"
+	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -46,7 +46,7 @@ func VersionCmd() *cobra.Command {
 			}
 
 			// print basic version info
-			fmt.Printf("Replicated KOTS-SDK %s\n", buildversion.Version())
+			fmt.Printf("Replicated %s\n", buildversion.Version())
 
 			return nil
 		},
