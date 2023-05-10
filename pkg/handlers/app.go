@@ -15,37 +15,41 @@ import (
 )
 
 type GetCurrentAppInfoResponse struct {
-	AppSlug         string `json:"appSlug"`
-	AppName         string `json:"appName"`
-	VersionLabel    string `json:"versionLabel"`
-	ChannelID       string `json:"channelId"`
-	ChannelName     string `json:"channelName"`
-	ChannelSequence int64  `json:"channelSequence"`
-	ReleaseSequence int64  `json:"releaseSequence"`
-	HelmRevision    int64  `json:"helmRevision,omitempty"`
+	AppSlug              string `json:"appSlug"`
+	AppName              string `json:"appName"`
+	VersionLabel         string `json:"versionLabel"`
+	ChannelID            string `json:"channelId"`
+	ChannelName          string `json:"channelName"`
+	ChannelSequence      int64  `json:"channelSequence"`
+	ReleaseSequence      int64  `json:"releaseSequence"`
+	HelmReleaseName      string `json:"helmReleaseName,omitempty"`
+	HelmReleaseRevision  int64  `json:"helmReleaseRevision,omitempty"`
+	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
-	var helmRevision int64
-	if os.Getenv("HELM_REVISION") != "" {
-		hr, err := strconv.ParseInt(os.Getenv("HELM_REVISION"), 10, 64)
+	var helmReleaseRevision int64
+	if os.Getenv("HELM_RELEASE_REVISION") != "" {
+		hr, err := strconv.ParseInt(os.Getenv("HELM_RELEASE_REVISION"), 10, 64)
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to parse helm revision"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		helmRevision = hr
+		helmReleaseRevision = hr
 	}
 
 	response := GetCurrentAppInfoResponse{
-		AppSlug:         store.GetStore().GetAppSlug(),
-		AppName:         store.GetStore().GetAppName(),
-		VersionLabel:    store.GetStore().GetVersionLabel(),
-		ChannelID:       store.GetStore().GetChannelID(),
-		ChannelName:     store.GetStore().GetChannelName(),
-		ChannelSequence: store.GetStore().GetChannelSequence(),
-		ReleaseSequence: store.GetStore().GetReleaseSequence(),
-		HelmRevision:    helmRevision,
+		AppSlug:              store.GetStore().GetAppSlug(),
+		AppName:              store.GetStore().GetAppName(),
+		VersionLabel:         store.GetStore().GetVersionLabel(),
+		ChannelID:            store.GetStore().GetChannelID(),
+		ChannelName:          store.GetStore().GetChannelName(),
+		ChannelSequence:      store.GetStore().GetChannelSequence(),
+		ReleaseSequence:      store.GetStore().GetReleaseSequence(),
+		HelmReleaseName:      os.Getenv("HELM_RELEASE_NAME"),
+		HelmReleaseRevision:  helmReleaseRevision,
+		HelmReleaseNamespace: os.Getenv("HELM_RELEASE_NAMESPACE"),
 	}
 
 	JSON(w, http.StatusOK, response)
