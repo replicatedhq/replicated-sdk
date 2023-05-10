@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/replicatedhq/kots-sdk/pkg/buildversion"
+	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 )
 
 // NewRequest returns a http.Request object with kots defaults set, including a User-Agent header.

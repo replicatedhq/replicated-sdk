@@ -2,13 +2,13 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    {{- include "kots-sdk.labels" . | nindent 4 }}
-  name: kots-sdk
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: replicated
 spec:
   ports:
   - name: http
     port: {{ .Values.service.port }}
     targetPort: 3000
   selector:
-    {{- include "kots-sdk.selectorLabels" . | nindent 4 }}
+    {{- include "replicated.selectorLabels" . | nindent 4 }}
   type: {{ .Values.service.type }}

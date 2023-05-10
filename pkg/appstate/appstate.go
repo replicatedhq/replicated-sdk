@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/replicatedhq/kots-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"

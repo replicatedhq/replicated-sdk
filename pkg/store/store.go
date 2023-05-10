@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	appstatetypes "github.com/replicatedhq/kots-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/kots-sdk/pkg/k8sutil"
-	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
-	sdklicensetypes "github.com/replicatedhq/kots-sdk/pkg/license/types"
-	"github.com/replicatedhq/kots-sdk/pkg/logger"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
+	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/segmentio/ksuid"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	kotsSDKConfigMapName = "kots-sdk"
+	replicatedConfigMapName = "replicated"
 )
 
 var (
@@ -26,7 +26,7 @@ var (
 )
 
 type Store struct {
-	kotsSDKID       string
+	replicatedID    string
 	appID           string
 	license         *kotsv1beta1.License
 	licenseFields   sdklicensetypes.LicenseFields
@@ -79,13 +79,13 @@ func Init(options InitStoreOptions) error {
 	}
 
 	// generate / retrieve sdk and app ids
-	kotsSDKID, appID, err := generateIDs(options.Namespace)
+	replicatedID, appID, err := generateIDs(options.Namespace)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate ids")
 	}
 
 	store = &Store{
-		kotsSDKID:       kotsSDKID,
+		replicatedID:    replicatedID,
 		appID:           appID,
 		license:         verifiedLicense,
 		licenseFields:   options.LicenseFields,
@@ -110,8 +110,8 @@ func GetStore() *Store {
 	return store
 }
 
-func (s *Store) GetKotsSDKID() string {
-	return s.kotsSDKID
+func (s *Store) GetReplicatedID() string {
+	return s.replicatedID
 }
 
 func (s *Store) GetAppID() string {
@@ -197,16 +197,16 @@ func generateIDs(namespace string) (string, string, error) {
 		return "", "", errors.Wrap(err, "failed to get clientset")
 	}
 
-	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), kotsSDKConfigMapName, metav1.GetOptions{})
+	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), replicatedConfigMapName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
-		return "", "", errors.Wrap(err, "failed to get kots sdk configmap")
+		return "", "", errors.Wrap(err, "failed to get replicated configmap")
 	}
 
-	kotsSDKID := ""
+	replicatedID := ""
 	appID := ""
 
 	if kuberneteserrors.IsNotFound(err) {
-		kotsSDKID = ksuid.New().String()
+		replicatedID = ksuid.New().String()
 		appID = ksuid.New().String()
 
 		configmap := corev1.ConfigMap{
@@ -215,23 +215,23 @@ func generateIDs(namespace string) (string, string, error) {
 				Kind:       "ConfigMap",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      kotsSDKConfigMapName,
+				Name:      replicatedConfigMapName,
 				Namespace: namespace,
 			},
 			Data: map[string]string{
-				"kots-sdk-id": kotsSDKID,
-				"app-id":      appID,
+				"replicated-id": replicatedID,
+				"app-id":        appID,
 			},
 		}
 
 		_, err := clientset.CoreV1().ConfigMaps(namespace).Create(context.TODO(), &configmap, metav1.CreateOptions{})
 		if err != nil {
-			return "", "", errors.Wrap(err, "failed to create kots sdk configmap")
+			return "", "", errors.Wrap(err, "failed to create replicated configmap")
 		}
 	} else {
-		kotsSDKID = cm.Data["kots-sdk-id"]
+		replicatedID = cm.Data["replicated-id"]
 		appID = cm.Data["app-id"]
 	}
 
-	return kotsSDKID, appID, nil
+	return replicatedID, appID, nil
 }

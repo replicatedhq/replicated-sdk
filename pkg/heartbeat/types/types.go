@@ -1,7 +1,7 @@
 package types
 
 import (
-	appstatetypes "github.com/replicatedhq/kots-sdk/pkg/appstate/types"
+	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 )
 
 type HeartbeatInfo struct {

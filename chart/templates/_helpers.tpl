@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "kots-sdk.name" -}}
+{{- define "replicated.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "kots-sdk.fullname" -}}
+{{- define "replicated.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "kots-sdk.chart" -}}
+{{- define "replicated.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "kots-sdk.labels" -}}
-helm.sh/chart: {{ include "kots-sdk.chart" . }}
-{{ include "kots-sdk.selectorLabels" . }}
+{{- define "replicated.labels" -}}
+helm.sh/chart: {{ include "replicated.chart" . }}
+{{ include "replicated.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,15 +45,15 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "kots-sdk.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "kots-sdk.name" . }}
+{{- define "replicated.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "replicated.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 License Fields
 */}}
-{{- define "kots-sdk.licenseFields" -}}
+{{- define "replicated.licenseFields" -}}
 {{- if .Values.global -}}
 {{- if .Values.global.licenseFields -}}
 {{- .Values.global.licenseFields | toYaml -}}
@@ -68,9 +68,9 @@ License Fields
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "kots-sdk.serviceAccountName" -}}
+{{- define "replicated.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "kots-sdk.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "replicated.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

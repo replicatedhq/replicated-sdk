@@ -76,5 +76,5 @@ func getGoInfo() GoInfo {
 }
 
 func GetUserAgent() string {
-	return fmt.Sprintf("KOTS-SDK/%s", Version())
+	return fmt.Sprintf("Replicated/%s", Version())
 }

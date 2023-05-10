@@ -1,10 +1,10 @@
-{{ if .Values.minimalRBAC }}
+{{ if not .Values.minimalRBAC }}
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   labels:
-    {{- include "kots-sdk.labels" . | nindent 4 }}
-  name: kots-sdk-role
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: replicated-role
 rules:
 - apiGroups:
   - '*'

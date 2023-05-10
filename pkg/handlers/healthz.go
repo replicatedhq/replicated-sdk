@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/replicatedhq/kots-sdk/pkg/buildversion"
+	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 )
 
 type HealthzResponse struct {

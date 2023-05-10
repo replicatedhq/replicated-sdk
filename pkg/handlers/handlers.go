@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/replicatedhq/kots-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 )
 
 func JSON(w http.ResponseWriter, code int, payload interface{}) {

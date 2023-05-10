@@ -9,8 +9,8 @@ import (
 
 func RootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "kots-sdk",
-		Short: "kots-sdk is the software development kit for KOTS",
+		Use:   "replicated",
+		Short: "replicated is the software development kit for Replicated",
 		Long:  ``,
 		Args:  cobra.MinimumNArgs(1),
 		PreRun: func(cmd *cobra.Command, args []string) {
@@ -34,6 +34,6 @@ func RootCmd() *cobra.Command {
 }
 
 func initConfig() {
-	viper.SetEnvPrefix("KOTS_SDK")
+	viper.SetEnvPrefix("REPLICATED")
 	viper.AutomaticEnv()
 }

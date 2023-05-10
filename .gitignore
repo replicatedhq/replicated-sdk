@@ -20,7 +20,7 @@ vendor
 /dist
 
 # packaged charts
-/chart/kots-sdk-*.tgz
+/chart/replicated-*.tgz
 /chart/Chart.yaml
 /chart/values.yaml
 

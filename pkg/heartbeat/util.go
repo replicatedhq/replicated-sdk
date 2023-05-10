@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/replicatedhq/kots-sdk/pkg/heartbeat/types"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.HeartbeatInfo) {

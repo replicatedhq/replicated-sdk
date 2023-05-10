@@ -8,10 +8,10 @@ import (
 
 	"github.com/mitchellh/hashstructure"
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/kots-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/kots-sdk/pkg/heartbeat"
-	"github.com/replicatedhq/kots-sdk/pkg/store"
-	"github.com/replicatedhq/kots-sdk/pkg/util"
+	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
 )
 

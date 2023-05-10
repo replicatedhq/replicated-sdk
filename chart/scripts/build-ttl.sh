@@ -3,8 +3,8 @@
 set -e
 
 export CHART_VERSION=0.0.0
-export KOTS_SDK_TAG=24h
-export KOTS_SDK_REGISTRY=ttl.sh/$USER
+export REPLICATED_SDK_TAG=24h
+export REPLICATED_SDK_REGISTRY=ttl.sh/$USER
 
 envsubst < Chart.yaml.tmpl > Chart.yaml
 envsubst < values.yaml.tmpl > values.yaml
