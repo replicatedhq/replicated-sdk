@@ -47,8 +47,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: HELM_REVISION
+        - name: HELM_RELEASE_REVISION
           value: "{{ .Release.Revision }}"
+        - name: HELM_RELEASE_NAME
+          value: "{{ .Release.Name }}"
+        - name: HELM_RELEASE_NAMESPACE
+          value: "{{ .Release.Namespace }}"
         ports:
         - containerPort: 3000
           name: http
