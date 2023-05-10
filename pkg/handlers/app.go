@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/pkg/errors"
 	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
@@ -14,21 +15,25 @@ import (
 
 type GetCurrentAppInfoResponse struct {
 	AppSlug         string `json:"appSlug"`
+	AppName         string `json:"appName"`
 	VersionLabel    string `json:"versionLabel"`
 	ChannelID       string `json:"channelId"`
 	ChannelName     string `json:"channelName"`
 	ChannelSequence int64  `json:"channelSequence"`
 	ReleaseSequence int64  `json:"releaseSequence"`
+	HelmRevision    string `json:"helmRevision,omitempty"`
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	response := GetCurrentAppInfoResponse{
 		AppSlug:         store.GetStore().GetAppSlug(),
+		AppName:         store.GetStore().GetAppName(),
 		VersionLabel:    store.GetStore().GetVersionLabel(),
 		ChannelID:       store.GetStore().GetChannelID(),
 		ChannelName:     store.GetStore().GetChannelName(),
 		ChannelSequence: store.GetStore().GetChannelSequence(),
 		ReleaseSequence: store.GetStore().GetReleaseSequence(),
+		HelmRevision:    os.Getenv("HELM_REVISION"),
 	}
 
 	JSON(w, http.StatusOK, response)

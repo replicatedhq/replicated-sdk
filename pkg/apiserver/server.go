@@ -20,6 +20,7 @@ import (
 type APIServerParams struct {
 	License                *kotsv1beta1.License
 	LicenseFields          sdklicensetypes.LicenseFields
+	AppName                string
 	ChannelID              string
 	ChannelName            string
 	ChannelSequence        int64
@@ -33,6 +34,7 @@ func Start(params APIServerParams) {
 	storeOptions := store.InitStoreOptions{
 		License:         params.License,
 		LicenseFields:   params.LicenseFields,
+		AppName:         params.AppName,
 		ChannelID:       params.ChannelID,
 		ChannelName:     params.ChannelName,
 		ChannelSequence: params.ChannelSequence,
