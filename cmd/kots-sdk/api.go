@@ -88,6 +88,7 @@ func APICmd() *cobra.Command {
 			params := apiserver.APIServerParams{
 				License:                license,
 				LicenseFields:          licenseFields,
+				AppName:                v.GetString("app-name"),
 				ChannelID:              v.GetString("channel-id"),
 				ChannelName:            v.GetString("channel-name"),
 				ChannelSequence:        v.GetInt64("channel-sequence"),
@@ -106,6 +107,7 @@ func APICmd() *cobra.Command {
 	cmd.Flags().String("license-base64", "", "base64 encoded application license")
 	cmd.Flags().String("license-fields-file", "", "path to the application license fields file")
 	cmd.Flags().String("license-fields-base64", "", "base64 encoded application license fields")
+	cmd.Flags().String("app-name", "", "the application name")
 	cmd.Flags().String("channel-id", "", "the application channel id")
 	cmd.Flags().String("channel-name", "", "the application channel name")
 	cmd.Flags().Int64("channel-sequence", -1, "the application upstream channel sequence")

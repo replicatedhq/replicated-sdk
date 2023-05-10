@@ -31,6 +31,7 @@ type Store struct {
 	license         *kotsv1beta1.License
 	licenseFields   sdklicensetypes.LicenseFields
 	appSlug         string
+	appName         string
 	channelID       string
 	channelName     string
 	channelSequence int64
@@ -43,6 +44,7 @@ type Store struct {
 type InitStoreOptions struct {
 	License         *kotsv1beta1.License
 	LicenseFields   sdklicensetypes.LicenseFields
+	AppName         string
 	ChannelID       string
 	ChannelName     string
 	ChannelSequence int64
@@ -88,6 +90,7 @@ func Init(options InitStoreOptions) error {
 		license:         verifiedLicense,
 		licenseFields:   options.LicenseFields,
 		appSlug:         verifiedLicense.Spec.AppSlug,
+		appName:         options.AppName,
 		channelID:       options.ChannelID,
 		channelName:     options.ChannelName,
 		channelSequence: options.ChannelSequence,
@@ -143,6 +146,10 @@ func (s *Store) SetLicenseFields(licenseFields sdklicensetypes.LicenseFields) {
 
 func (s *Store) GetAppSlug() string {
 	return s.appSlug
+}
+
+func (s *Store) GetAppName() string {
+	return s.appName
 }
 
 func (s *Store) GetChannelID() string {

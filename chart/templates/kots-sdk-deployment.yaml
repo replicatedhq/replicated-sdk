@@ -29,6 +29,8 @@ spec:
           value: {{ .Values.license | b64enc }}
         - name: KOTS_SDK_LICENSE_FIELDS_BASE64
           value: {{ include "kots-sdk.licenseFields" . | b64enc }}
+        - name: KOTS_SDK_APP_NAME
+          value: {{ .Values.appName }}
         - name: KOTS_SDK_CHANNEL_ID
           value: {{ .Values.channelID }}
         - name: KOTS_SDK_CHANNEL_NAME
@@ -45,6 +47,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: HELM_REVISION
+          value: "{{ .Release.Revision }}"
         ports:
         - containerPort: 3000
           name: http

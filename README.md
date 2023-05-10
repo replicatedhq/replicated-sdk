@@ -16,6 +16,7 @@ Run the SDK API:
 ./bin/kots-sdk api \
     --license-file=[path/to/license.yaml] \
     --license-fields-file=[path/to/license-fields.yaml] \
+    --app-name=[APP_NAME] \
     --channel-id=[CHANNEL_ID] \
     --channel-name=[CHANNEL_NAME] \
     --channel-sequence=[CHANNEL_SEQUENCE] \
@@ -29,6 +30,7 @@ Example:
 ./bin/kots-sdk api \
     --license-file=license.yaml \
     --license-fields-file=license-fields.yaml \
+    --app-name="My App" \
     --channel-id=1YGSYsmJEjIj2XlyK1vqjCwuyb1 \
     --channel-name=Beta \
     --channel-sequence=1 \
@@ -52,6 +54,7 @@ helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
     --namespace [NAMESPACE] \
     --set-file license=[path/to/license.yaml] \
     --set-file licenseFields=[path/to/license-fields.yaml] \
+    --set appName=[APP_NAME] \
     --set channelID=[CHANNEL_ID] \
     --set channelName=[CHANNEL_NAME] \
     --set channelSequence=[CHANNEL_SEQUENCE] \
@@ -65,6 +68,7 @@ helm upgrade --install kots-sdk oci://ttl.sh/salah/kots-sdk \
     --namespace default \
     --set-file license=license.yaml \
     --set-file licenseFields=license-fields.yaml \
+    --set appName="My App" \
     --set channelID=1YGSYsmJEjIj2XlyK1vqjCwuyb1 \
     --set channelName=Beta \
     --set channelSequence=1 \
