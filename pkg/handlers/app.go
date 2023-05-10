@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/pkg/errors"
 	sdklicense "github.com/replicatedhq/kots-sdk/pkg/license"
@@ -21,10 +22,21 @@ type GetCurrentAppInfoResponse struct {
 	ChannelName     string `json:"channelName"`
 	ChannelSequence int64  `json:"channelSequence"`
 	ReleaseSequence int64  `json:"releaseSequence"`
-	HelmRevision    string `json:"helmRevision,omitempty"`
+	HelmRevision    int64  `json:"helmRevision,omitempty"`
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
+	var helmRevision int64
+	if os.Getenv("HELM_REVISION") != "" {
+		hr, err := strconv.ParseInt(os.Getenv("HELM_REVISION"), 10, 64)
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to parse helm revision"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		helmRevision = hr
+	}
+
 	response := GetCurrentAppInfoResponse{
 		AppSlug:         store.GetStore().GetAppSlug(),
 		AppName:         store.GetStore().GetAppName(),
@@ -33,7 +45,7 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 		ChannelName:     store.GetStore().GetChannelName(),
 		ChannelSequence: store.GetStore().GetChannelSequence(),
 		ReleaseSequence: store.GetStore().GetReleaseSequence(),
-		HelmRevision:    os.Getenv("HELM_REVISION"),
+		HelmRevision:    helmRevision,
 	}
 
 	JSON(w, http.StatusOK, response)
