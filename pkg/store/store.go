@@ -26,31 +26,37 @@ var (
 )
 
 type Store struct {
-	replicatedID    string
-	appID           string
-	license         *kotsv1beta1.License
-	licenseFields   sdklicensetypes.LicenseFields
-	appSlug         string
-	appName         string
-	channelID       string
-	channelName     string
-	channelSequence int64
-	releaseSequence int64
-	versionLabel    string
-	namespace       string
-	appStatus       appstatetypes.AppStatus
+	replicatedID      string
+	appID             string
+	license           *kotsv1beta1.License
+	licenseFields     sdklicensetypes.LicenseFields
+	appSlug           string
+	appName           string
+	channelID         string
+	channelName       string
+	channelSequence   int64
+	releaseSequence   int64
+	releaseIsRequired bool
+	releaseCreatedAt  string
+	releaseNotes      string
+	versionLabel      string
+	namespace         string
+	appStatus         appstatetypes.AppStatus
 }
 
 type InitStoreOptions struct {
-	License         *kotsv1beta1.License
-	LicenseFields   sdklicensetypes.LicenseFields
-	AppName         string
-	ChannelID       string
-	ChannelName     string
-	ChannelSequence int64
-	ReleaseSequence int64
-	VersionLabel    string
-	Namespace       string
+	License           *kotsv1beta1.License
+	LicenseFields     sdklicensetypes.LicenseFields
+	AppName           string
+	ChannelID         string
+	ChannelName       string
+	ChannelSequence   int64
+	ReleaseSequence   int64
+	ReleaseIsRequired bool
+	ReleaseCreatedAt  string
+	ReleaseNotes      string
+	VersionLabel      string
+	Namespace         string
 }
 
 func Init(options InitStoreOptions) error {
@@ -85,18 +91,21 @@ func Init(options InitStoreOptions) error {
 	}
 
 	store = &Store{
-		replicatedID:    replicatedID,
-		appID:           appID,
-		license:         verifiedLicense,
-		licenseFields:   options.LicenseFields,
-		appSlug:         verifiedLicense.Spec.AppSlug,
-		appName:         options.AppName,
-		channelID:       options.ChannelID,
-		channelName:     options.ChannelName,
-		channelSequence: options.ChannelSequence,
-		releaseSequence: options.ReleaseSequence,
-		versionLabel:    options.VersionLabel,
-		namespace:       options.Namespace,
+		replicatedID:      replicatedID,
+		appID:             appID,
+		license:           verifiedLicense,
+		licenseFields:     options.LicenseFields,
+		appSlug:           verifiedLicense.Spec.AppSlug,
+		appName:           options.AppName,
+		channelID:         options.ChannelID,
+		channelName:       options.ChannelName,
+		channelSequence:   options.ChannelSequence,
+		releaseSequence:   options.ReleaseSequence,
+		releaseIsRequired: options.ReleaseIsRequired,
+		releaseCreatedAt:  options.ReleaseCreatedAt,
+		releaseNotes:      options.ReleaseNotes,
+		versionLabel:      options.VersionLabel,
+		namespace:         options.Namespace,
 	}
 
 	return nil
@@ -166,6 +175,18 @@ func (s *Store) GetChannelSequence() int64 {
 
 func (s *Store) GetReleaseSequence() int64 {
 	return s.releaseSequence
+}
+
+func (s *Store) GetReleaseIsRequired() bool {
+	return s.releaseIsRequired
+}
+
+func (s *Store) GetReleaseCreatedAt() string {
+	return s.releaseCreatedAt
+}
+
+func (s *Store) GetReleaseNotes() string {
+	return s.releaseNotes
 }
 
 func (s *Store) GetVersionLabel() string {

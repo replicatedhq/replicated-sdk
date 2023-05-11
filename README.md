@@ -21,6 +21,9 @@ Run the Replicated API:
     --channel-name=[CHANNEL_NAME] \
     --channel-sequence=[CHANNEL_SEQUENCE] \
     --release-sequence=[RELEASE_SEQUENCE] \
+    --release-is-required=[RELEASE_IS_REQUIRED] \
+    --release-created-at=[RELEASE_CREATED_AT] \
+    --release-notes=[RELEASE_NOTES] \
     --version-label=[VERSION_LABEL] \
     --namespace=[NAMESPACE]
 ```
@@ -35,6 +38,9 @@ Example:
     --channel-name=Beta \
     --channel-sequence=1 \
     --release-sequence=1 \
+    --release-is-required=false \
+    --release-created-at="2023-05-09T16:41:35.000Z" \
+    --release-notes="my release notes" \
     --version-label="v1.0.0" \
     --namespace=default
 ```
@@ -59,6 +65,9 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set channelName=[CHANNEL_NAME] \
     --set channelSequence=[CHANNEL_SEQUENCE] \
     --set releaseSequence=[RELEASE_SEQUENCE] \
+    --set releaseIsRequired=[IS_REQUIRED] \
+    --set releaseCreatedAt=[VERSION_LABEL] \
+    --set releaseNotes=[RELEASE_NOTES] \
     --set versionLabel=[VERSION_LABEL]
 ```
 
@@ -73,6 +82,9 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set channelName=Beta \
     --set channelSequence=1 \
     --set releaseSequence=1 \
+    --set releaseIsRequired=false \
+    --set releaseCreatedAt="2023-05-09T16:41:35.000Z" \
+    --set releaseNotes="my release notes" \
     --set versionLabel="v1.0.0"
 ```
 

@@ -14,14 +14,14 @@ const (
 	DEFAULT_K8S_CLIENT_BURST = 100
 )
 
-var kubernetesConfigFlags *genericclioptions.ConfigFlags
+var KubernetesConfigFlags *genericclioptions.ConfigFlags
 
 func init() {
-	kubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
+	KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
 }
 
 func AddFlags(flags *flag.FlagSet) {
-	kubernetesConfigFlags.AddFlags(flags)
+	KubernetesConfigFlags.AddFlags(flags)
 }
 
 func GetClientset() (*kubernetes.Clientset, error) {
@@ -42,8 +42,8 @@ func GetClusterConfig() (*rest.Config, error) {
 	var cfg *rest.Config
 	var err error
 
-	if kubernetesConfigFlags != nil {
-		cfg, err = kubernetesConfigFlags.ToRESTConfig()
+	if KubernetesConfigFlags != nil {
+		cfg, err = KubernetesConfigFlags.ToRESTConfig()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert kube flags to rest config")
 		}

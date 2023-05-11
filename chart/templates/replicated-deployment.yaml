@@ -24,35 +24,24 @@ spec:
       - name: replicated
         image: {{ .Values.images.replicated }}
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - secretRef:
+            name: replicated
         env:
-        - name: REPLICATED_LICENSE_BASE64
-          value: {{ .Values.license | b64enc }}
-        - name: REPLICATED_LICENSE_FIELDS_BASE64
-          value: {{ include "replicated.licenseFields" . | b64enc }}
-        - name: REPLICATED_APP_NAME
-          value: {{ .Values.appName }}
-        - name: REPLICATED_CHANNEL_ID
-          value: {{ .Values.channelID }}
-        - name: REPLICATED_CHANNEL_NAME
-          value: {{ .Values.channelName }}
-        - name: REPLICATED_CHANNEL_SEQUENCE
-          value: "{{ .Values.channelSequence }}"
-        - name: REPLICATED_RELEASE_SEQUENCE
-          value: "{{ .Values.releaseSequence }}"
-        - name: REPLICATED_VERSION_LABEL
-          value: "{{ .Values.versionLabel }}"
-        - name: REPLICATED_INFORMERS_LABEL_SELECTOR
-          value: "app.kubernetes.io/managed-by={{ .Release.Service }},app.kubernetes.io/name!={{ include "replicated.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
         - name: REPLICATED_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: IS_HELM_MANAGED
+          value: "true"
         - name: HELM_RELEASE_REVISION
           value: "{{ .Release.Revision }}"
         - name: HELM_RELEASE_NAME
           value: "{{ .Release.Name }}"
         - name: HELM_RELEASE_NAMESPACE
           value: "{{ .Release.Namespace }}"
+        - name: HELM_DRIVER # TODO NOW: find this out
+          value: secrets
         ports:
         - containerPort: 3000
           name: http
