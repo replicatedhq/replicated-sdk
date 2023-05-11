@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -110,10 +111,14 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// sort in descending order
+	sort.Slice(helmHistory, func(i, j int) bool {
+		return helmHistory[i].Version > helmHistory[j].Version
+	})
+
 	response := GetAppHistoryResponse{
 		Releases: []AppRelease{},
 	}
-
 	for _, helmRelease := range helmHistory {
 		response.Releases = append(response.Releases, helmReleaseToAppRelease(helmRelease))
 	}
