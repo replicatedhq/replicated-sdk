@@ -40,8 +40,8 @@ spec:
           value: "{{ .Release.Name }}"
         - name: HELM_RELEASE_NAMESPACE
           value: "{{ .Release.Namespace }}"
-        - name: HELM_DRIVER # TODO NOW: find this out
-          value: secrets
+        - name: HELM_DRIVER
+          value: secret # TODO: support other drivers
         ports:
         - containerPort: 3000
           name: http
