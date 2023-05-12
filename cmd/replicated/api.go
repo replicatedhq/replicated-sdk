@@ -93,6 +93,9 @@ func APICmd() *cobra.Command {
 				ChannelName:            v.GetString("channel-name"),
 				ChannelSequence:        v.GetInt64("channel-sequence"),
 				ReleaseSequence:        v.GetInt64("release-sequence"),
+				ReleaseIsRequired:      v.GetBool("release-is-required"),
+				ReleaseCreatedAt:       v.GetString("release-created-at"),
+				ReleaseNotes:           v.GetString("release-notes"),
 				VersionLabel:           v.GetString("version-label"),
 				InformersLabelSelector: v.GetString("informers-label-selector"),
 				Namespace:              v.GetString("namespace"),
@@ -112,6 +115,9 @@ func APICmd() *cobra.Command {
 	cmd.Flags().String("channel-name", "", "the application channel name")
 	cmd.Flags().Int64("channel-sequence", -1, "the application upstream channel sequence")
 	cmd.Flags().Int64("release-sequence", -1, "the application upstream release sequence")
+	cmd.Flags().Bool("release-is-required", false, "if the application release is required")
+	cmd.Flags().String("release-created-at", "", "when the application release was created")
+	cmd.Flags().String("release-notes", "", "the application release notes")
 	cmd.Flags().String("version-label", "", "the application version label")
 	cmd.Flags().String("informers-label-selector", "", "the label selector to use for status informers to detect application resources")
 	cmd.Flags().String("namespace", "", "the namespace where the sdk/application is installed")
