@@ -152,11 +152,7 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 
 		data, ok := unstructured.Object["stringData"].(map[string]interface{})
 		if !ok {
-			// try data
-			data, ok = unstructured.Object["data"].(map[string]interface{})
-			if !ok {
-				return nil
-			}
+			return nil
 		}
 
 		appRelease := &AppRelease{
