@@ -120,19 +120,16 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 		Releases: []AppRelease{},
 	}
 	for _, helmRelease := range helmHistory {
-		response.Releases = append(response.Releases, helmReleaseToAppRelease(helmRelease))
+		appRelease := helmReleaseToAppRelease(helmRelease)
+		if appRelease != nil {
+			response.Releases = append(response.Releases, *appRelease)
+		}
 	}
 
 	JSON(w, http.StatusOK, response)
 }
 
-func helmReleaseToAppRelease(helmRelease *helmrelease.Release) AppRelease {
-	appRelease := AppRelease{
-		HelmReleaseName:      helmRelease.Name,
-		HelmReleaseRevision:  helmRelease.Version,
-		HelmReleaseNamespace: helmRelease.Namespace,
-	}
-
+func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 	// find the replicated secret in the helm release and get the info from it
 	for _, doc := range strings.Split(helmRelease.Manifest, "\n---\n") {
 		if doc == "" {
@@ -158,8 +155,14 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) AppRelease {
 			// try data
 			data, ok = unstructured.Object["data"].(map[string]interface{})
 			if !ok {
-				break
+				return nil
 			}
+		}
+
+		appRelease := &AppRelease{
+			HelmReleaseName:      helmRelease.Name,
+			HelmReleaseRevision:  helmRelease.Version,
+			HelmReleaseNamespace: helmRelease.Namespace,
 		}
 
 		appRelease.ChannelID = data["REPLICATED_CHANNEL_ID"].(string)
@@ -170,8 +173,11 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) AppRelease {
 		appRelease.CreatedAt = data["REPLICATED_RELEASE_CREATED_AT"].(string)
 		appRelease.ReleaseNotes = data["REPLICATED_RELEASE_NOTES"].(string)
 		appRelease.VersionLabel = data["REPLICATED_VERSION_LABEL"].(string)
-		break
+
+		return appRelease
 	}
 
-	return appRelease
+	logger.Debugf("replicated secret not found in helm release %s revision %d", helmRelease.Name, helmRelease.Version)
+
+	return nil
 }
