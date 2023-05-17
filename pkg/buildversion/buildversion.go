@@ -76,5 +76,5 @@ func getGoInfo() GoInfo {
 }
 
 func GetUserAgent() string {
-	return fmt.Sprintf("Replicated/%s", Version())
+	return fmt.Sprintf("Replicated-SDK/%s", Version())
 }

@@ -46,7 +46,7 @@ func VersionCmd() *cobra.Command {
 			}
 
 			// print basic version info
-			fmt.Printf("Replicated %s\n", buildversion.Version())
+			fmt.Printf("Replicated SDK %s\n", buildversion.Version())
 
 			return nil
 		},
