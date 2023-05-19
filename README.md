@@ -69,7 +69,7 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set releaseCreatedAt=[VERSION_LABEL] \
     --set releaseNotes=[RELEASE_NOTES] \
     --set versionLabel=[VERSION_LABEL] \
-    --set parentChartURL=[VERSION_LABEL]
+    --set parentChartURL=[PARENT_CHART_URL]
 ```
 
 Example:
