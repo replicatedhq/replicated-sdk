@@ -68,7 +68,8 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set releaseIsRequired=[IS_REQUIRED] \
     --set releaseCreatedAt=[VERSION_LABEL] \
     --set releaseNotes=[RELEASE_NOTES] \
-    --set versionLabel=[VERSION_LABEL]
+    --set versionLabel=[VERSION_LABEL] \
+    --set parentChartURL=[PARENT_CHART_URL]
 ```
 
 Example:
@@ -85,7 +86,8 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set releaseIsRequired=false \
     --set releaseCreatedAt="2023-05-09T16:41:35.000Z" \
     --set releaseNotes="my release notes" \
-    --set versionLabel="v1.0.0"
+    --set versionLabel="v1.0.0" \
+    --set parentChartURL="oci://registry.replicated.com/my-app/my-channel/my-parent-chart"
 ```
 
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.

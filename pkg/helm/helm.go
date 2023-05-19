@@ -26,6 +26,10 @@ func GetReleaseRevision() int {
 	return hr
 }
 
+func GetParentChartURL() string {
+	return os.Getenv("HELM_PARENT_CHART_URL")
+}
+
 func GetHelmDriver() string {
 	return os.Getenv("HELM_DRIVER")
 }

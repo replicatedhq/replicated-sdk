@@ -22,6 +22,7 @@ import (
 type GetCurrentAppInfoResponse struct {
 	AppSlug        string     `json:"appSlug"`
 	AppName        string     `json:"appName"`
+	HelmChartURL   string     `json:"helmChartURL,omitempty"`
 	CurrentRelease AppRelease `json:"currentRelease"`
 }
 
@@ -45,8 +46,9 @@ type AppRelease struct {
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	response := GetCurrentAppInfoResponse{
-		AppSlug: store.GetStore().GetAppSlug(),
-		AppName: store.GetStore().GetAppName(),
+		AppSlug:      store.GetStore().GetAppSlug(),
+		AppName:      store.GetStore().GetAppName(),
+		HelmChartURL: helm.GetParentChartURL(),
 		CurrentRelease: AppRelease{
 			VersionLabel:         store.GetStore().GetVersionLabel(),
 			ChannelID:            store.GetStore().GetChannelID(),
