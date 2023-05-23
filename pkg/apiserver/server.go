@@ -83,7 +83,10 @@ func Start(params APIServerParams) {
 
 	if util.IsDeveloperModeEnabled() {
 		logger.Info("Developer mode enabled")
-		handlers.RegisterDeveloperModeRoutes(r)
+		err := handlers.RegisterDeveloperModeRoutes(r)
+		if err != nil {
+			log.Fatalf("Failed to register developer mode routes: %v", err)
+		}
 	} else {
 		handlers.RegisterProductionRoutes(r)
 	}

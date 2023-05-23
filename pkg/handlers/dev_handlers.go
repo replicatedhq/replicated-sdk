@@ -14,29 +14,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func RegisterDeveloperModeRoutes(r *mux.Router) {
+func RegisterDeveloperModeRoutes(r *mux.Router) error {
 	devModeData, err := getDevModeSecretData()
 	if err != nil {
-		logger.Errorf("failed to get dev data: %v", err)
-		return
+		return errors.Wrap(err, "failed to get dev mode secret data")
 	}
 
 	mockData := devModeData["REPLICATED_MOCK_DATA"]
-	if mockData == nil {
-		return
+	if len(mockData) == 0 {
+		return nil
 	}
 
 	var mockResponseMap map[string]interface{}
 	if err := json.Unmarshal(mockData, &mockResponseMap); err != nil {
-		logger.Errorf("failed to unmarshal dev mode routes: %v", err)
-		return
+		return errors.Wrap(err, "failed to unmarshal replicated mock data")
 	}
 
 	for urlPath, response := range mockResponseMap {
 		r.HandleFunc(urlPath, func(w http.ResponseWriter, r *http.Request) {
 			resp, err := json.Marshal(response)
 			if err != nil {
-				logger.Errorf("failed to marshal dev mode response: %v", err)
+				logger.Errorf("failed to marshal dev mode mock response: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -46,6 +44,7 @@ func RegisterDeveloperModeRoutes(r *mux.Router) {
 			w.Write(resp)
 		})
 	}
+	return nil
 }
 
 func getDevModeSecretData() (map[string][]byte, error) {
