@@ -44,6 +44,8 @@ spec:
           value: "{{ .Values.parentChartURL }}"
         - name: HELM_DRIVER
           value: secret # TODO: support other drivers
+        - name: DEV_ENABLED
+          value: "{{ .Values.dev.enabled }}"
         ports:
         - containerPort: 3000
           name: http

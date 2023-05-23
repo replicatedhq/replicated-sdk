@@ -19,3 +19,7 @@ func IsDevLicense(license *kotsv1beta1.License) bool {
 	result, _ := regexp.MatchString(`replicated-app`, license.Spec.Endpoint)
 	return result
 }
+
+func IsDeveloperModeEnabled() bool {
+	return os.Getenv("DEV_ENABLED") == "true"
+}

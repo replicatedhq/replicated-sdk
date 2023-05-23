@@ -14,7 +14,9 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 type APIServerParams struct {
@@ -79,22 +81,20 @@ func Start(params APIServerParams) {
 
 	r.HandleFunc("/healthz", handlers.Healthz)
 
-	// license
-	r.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
-	r.HandleFunc("/api/v1/license/fields", handlers.GetLicenseFields).Methods("GET")
-	r.HandleFunc("/api/v1/license/fields/{fieldName}", handlers.GetLicenseField).Methods("GET")
-
-	// app
-	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
-	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
-	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
-
-	srv := &http.Server{
-		Handler: r,
-		Addr:    ":3000",
+	if util.IsDeveloperModeEnabled() {
+		logger.Info("Developer mode enabled")
+		handlers.RegisterDeveloperModeRoutes(r)
+	} else {
+		handlers.RegisterProductionRoutes(r)
 	}
 
-	fmt.Printf("Starting Replicated API on port %d...\n", 3000)
+	port := 3000
+	srv := &http.Server{
+		Handler: r,
+		Addr:    fmt.Sprintf(":%d", port),
+	}
+
+	fmt.Printf("Starting Replicated API on port %d...\n", port)
 
 	log.Fatal(srv.ListenAndServe())
 }
