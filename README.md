@@ -91,3 +91,39 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 ```
 
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.
+
+## Enabling Replicated SDK "Dev" mode
+The Replicated SDK can be started in `dev` mode by setting `--set dev.enabled=true`. 
+The `dev` mode will return mock responses for SDK APIs.
+Mock data can be provided to the dev mode by setting `--set-file dev.mockData=mock_data.json`.
+The mock data needs to be in a format with the key as the URL path and the value as the response for the mocked API.
+An example of mock data is shown below:
+```json
+{
+	"/api/v1/app/history": {
+		"releases": [
+			{
+				"versionLabel": "0.1.5",
+				"channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
+				"channelName": "Stable",
+				"channelSequence": 6,
+				"releaseSequence": 7,
+				"isRequired": false,
+				"createdAt": "2023-05-23T01:26:01Z",
+				"releaseNotes": "",
+				"helmReleaseName": "nginx-chart",
+				"helmReleaseRevision": 2,
+				"helmReleaseNamespace": "default"
+			}
+		]
+	}
+}
+```
+
+While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the parent chart YAML:
+```yaml
+replicated:
+  dev:
+    enabled: true
+    mockData: '{"/api/v1/app/history": { "releases": [] }}'
+```

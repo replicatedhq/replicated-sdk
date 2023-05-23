@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func RegisterDeveloperModeRoutes(r *mux.Router) error {
+func RegisterDevModeRoutes(r *mux.Router) error {
 	devModeData, err := getDevModeSecretData()
 	if err != nil {
 		return errors.Wrap(err, "failed to get dev mode secret data")

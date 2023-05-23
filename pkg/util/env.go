@@ -20,6 +20,6 @@ func IsDevLicense(license *kotsv1beta1.License) bool {
 	return result
 }
 
-func IsDeveloperModeEnabled() bool {
+func IsDevModeEnabled() bool {
 	return os.Getenv("DEV_ENABLED") == "true"
 }

@@ -81,11 +81,11 @@ func Start(params APIServerParams) {
 
 	r.HandleFunc("/healthz", handlers.Healthz)
 
-	if util.IsDeveloperModeEnabled() {
-		logger.Info("Developer mode enabled")
-		err := handlers.RegisterDeveloperModeRoutes(r)
+	if util.IsDevModeEnabled() {
+		logger.Info("dev mode enabled")
+		err := handlers.RegisterDevModeRoutes(r)
 		if err != nil {
-			log.Fatalf("Failed to register developer mode routes: %v", err)
+			log.Fatalf("Failed to register dev mode routes: %v", err)
 		}
 	} else {
 		handlers.RegisterProductionRoutes(r)
