@@ -13,15 +13,12 @@ import (
 )
 
 type LicenseInfo struct {
-	LicenseID           string `json:"licenseID"`
-	ChannelID           string `json:"channelID"`
-	ChannelName         string `json:"channelName"`
-	CustomerName        string `json:"customerName"`
-	CustomerEmail       string `json:"customerEmail"`
-	LicenseType         string `json:"licenseType"`
-	IsAirgapSupported   bool   `json:"isAirgapSupported"`
-	IsGitOpsSupported   bool   `json:"isGitOpsSupported"`
-	IsSnapshotSupported bool   `json:"isSnapshotSupported"`
+	LicenseID     string `json:"licenseID"`
+	ChannelID     string `json:"channelID"`
+	ChannelName   string `json:"channelName"`
+	CustomerName  string `json:"customerName"`
+	CustomerEmail string `json:"customerEmail"`
+	LicenseType   string `json:"licenseType"`
 }
 
 func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
@@ -41,15 +38,12 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	licenseInfo := LicenseInfo{
-		LicenseID:           license.Spec.LicenseID,
-		ChannelID:           license.Spec.ChannelID,
-		ChannelName:         license.Spec.ChannelName,
-		CustomerName:        license.Spec.CustomerName,
-		CustomerEmail:       license.Spec.CustomerEmail,
-		LicenseType:         license.Spec.LicenseType,
-		IsAirgapSupported:   license.Spec.IsAirgapSupported,
-		IsGitOpsSupported:   license.Spec.IsGitOpsSupported,
-		IsSnapshotSupported: license.Spec.IsSnapshotSupported,
+		LicenseID:     license.Spec.LicenseID,
+		ChannelID:     license.Spec.ChannelID,
+		ChannelName:   license.Spec.ChannelName,
+		CustomerName:  license.Spec.CustomerName,
+		CustomerEmail: license.Spec.CustomerEmail,
+		LicenseType:   license.Spec.LicenseType,
 	}
 
 	JSON(w, http.StatusOK, licenseInfo)
