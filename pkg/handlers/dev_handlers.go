@@ -16,7 +16,8 @@ import (
 
 func RegisterDevModeRoutes(r *mux.Router) {
 	for _, route := range routeMap {
-		r.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
+		routeaPath := route
+		r.HandleFunc(routeaPath, func(w http.ResponseWriter, r *http.Request) {
 			devModeData, err := getDevModeSecretData()
 			if err != nil {
 				logger.Errorf("failed to get dev mode secret data: %v", err)
@@ -39,7 +40,7 @@ func RegisterDevModeRoutes(r *mux.Router) {
 				return
 			}
 
-			response := mockResponseMap[route]
+			response := mockResponseMap[routeaPath]
 			if response == nil {
 				// no mock data return 200
 				logger.Debug("failed to get dev mode mock response")
