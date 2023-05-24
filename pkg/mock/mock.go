@@ -103,7 +103,7 @@ func (m *Mock) getMockData() (*MockData, error) {
 	}
 
 	b := secret.Data[replicatedMockDataKey]
-	if b == nil {
+	if len(b) == 0 {
 		return nil, nil
 	}
 
