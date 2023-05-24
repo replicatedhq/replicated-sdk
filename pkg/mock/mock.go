@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -21,13 +20,13 @@ var (
 
 type Mock struct {
 	clientset kubernetes.Interface
-	store     *store.Store
+	namespace string
 }
 
-func InitMock(clientset kubernetes.Interface, store *store.Store) {
+func InitMock(clientset kubernetes.Interface, namespace string) {
 	mock = &Mock{
-		store:     store,
 		clientset: clientset,
+		namespace: namespace,
 	}
 }
 
@@ -98,7 +97,7 @@ func (m *Mock) GetAllReleases() ([]MockRelease, error) {
 }
 
 func (m *Mock) getMockData() (*MockData, error) {
-	secret, err := m.clientset.CoreV1().Secrets(m.store.GetNamespace()).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get secret replicated-dev")
 	}

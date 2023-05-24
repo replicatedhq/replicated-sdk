@@ -78,7 +78,7 @@ func Start(params APIServerParams) {
 
 	if store.GetStore().IsDevLicense() {
 		logger.Info("Detected dev license, initializing mock")
-		mock.InitMock(clientset, store.GetStore())
+		mock.InitMock(clientset, store.GetStore().GetNamespace())
 	}
 
 	r := mux.NewRouter()
