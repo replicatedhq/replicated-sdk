@@ -14,6 +14,8 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
@@ -72,6 +74,11 @@ func Start(params APIServerParams) {
 
 	if err := heartbeat.Start(); err != nil {
 		log.Println("Failed to start heartbeat:", err)
+	}
+
+	if store.GetStore().IsDevLicense() {
+		logger.Info("Detected dev license, initializing mock")
+		mock.InitMock(clientset, store.GetStore())
 	}
 
 	r := mux.NewRouter()
