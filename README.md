@@ -127,3 +127,5 @@ replicated:
     enabled: true
     mockData: '{"/api/v1/app/history": { "releases": [] }}'
 ```
+
+**Note**: `dev` mode can be enabled for `"Development"` license type only.

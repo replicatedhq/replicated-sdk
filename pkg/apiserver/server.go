@@ -13,6 +13,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
@@ -82,6 +83,15 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/healthz", handlers.Healthz)
 
 	if util.IsDevModeEnabled() {
+		licenseData, err := sdklicense.GetLatestLicense(params.License)
+		if err != nil || licenseData == nil {
+			log.Fatal("failed to get latest license data")
+		}
+
+		if licenseData.License.Spec.LicenseType != "dev" {
+			log.Fatal("dev mode can be enabled only for development licenses")
+		}
+
 		logger.Info("dev mode enabled")
 		handlers.RegisterDevModeRoutes(r)
 	} else {
