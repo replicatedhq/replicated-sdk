@@ -14,37 +14,42 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func RegisterDevModeRoutes(r *mux.Router) error {
-	devModeData, err := getDevModeSecretData()
-	if err != nil {
-		return errors.Wrap(err, "failed to get dev mode secret data")
-	}
-
-	mockData := devModeData["REPLICATED_MOCK_DATA"]
-	if len(mockData) == 0 {
-		return nil
-	}
-
-	var mockResponseMap map[string]interface{}
-	if err := json.Unmarshal(mockData, &mockResponseMap); err != nil {
-		return errors.Wrap(err, "failed to unmarshal replicated mock data")
-	}
-
-	for urlPath, response := range mockResponseMap {
-		r.HandleFunc(urlPath, func(w http.ResponseWriter, r *http.Request) {
-			resp, err := json.Marshal(response)
+func RegisterDevModeRoutes(r *mux.Router) {
+	for _, route := range routeMap {
+		r.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
+			devModeData, err := getDevModeSecretData()
 			if err != nil {
-				logger.Errorf("failed to marshal dev mode mock response: %v", err)
+				logger.Errorf("failed to get dev mode secret data: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write(resp)
+			mockData := devModeData["REPLICATED_MOCK_DATA"]
+			if len(mockData) == 0 {
+				// no mock data return 200
+				logger.Debug("failed to get dev mode secret data")
+				JSON(w, http.StatusOK, nil)
+				return
+			}
+
+			var mockResponseMap map[string]interface{}
+			if err := json.Unmarshal(mockData, &mockResponseMap); err != nil {
+				logger.Errorf("failed to unmarshal replicated mock data: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			response := mockResponseMap[route]
+			if response == nil {
+				// no mock data return 200
+				logger.Debug("failed to get dev mode mock response")
+				JSON(w, http.StatusOK, nil)
+				return
+			}
+
+			JSON(w, http.StatusOK, response)
 		})
 	}
-	return nil
 }
 
 func getDevModeSecretData() (map[string][]byte, error) {
