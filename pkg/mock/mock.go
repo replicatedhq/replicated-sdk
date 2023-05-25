@@ -104,7 +104,7 @@ func (m *Mock) GetAllReleases() ([]MockRelease, error) {
 	return releases, nil
 }
 
-func (m *Mock) InsertMockData(mockData MockData) error {
+func (m *Mock) SetMockData(mockData MockData) error {
 	b, err := json.Marshal(mockData)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal mock data")
