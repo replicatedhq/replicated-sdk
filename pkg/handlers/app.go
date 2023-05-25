@@ -64,11 +64,13 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			appRelease := mockReleaseToAppRelease(*mockCurrentRelease)
 			response := GetCurrentAppInfoResponse{
-				AppSlug:        store.GetStore().GetAppSlug(),
-				AppName:        store.GetStore().GetAppName(),
-				CurrentRelease: appRelease,
+				AppSlug: store.GetStore().GetAppSlug(),
+				AppName: store.GetStore().GetAppName(),
+			}
+
+			if mockCurrentRelease != nil {
+				response.CurrentRelease = mockReleaseToAppRelease(*mockCurrentRelease)
 			}
 
 			JSON(w, http.StatusOK, response)
@@ -126,7 +128,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 					ReleaseNotes:    mockRelease.ReleaseNotes,
 				})
 			}
-			
+
 			JSON(w, http.StatusOK, response)
 			return
 		}

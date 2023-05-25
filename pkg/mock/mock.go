@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 	"encoding/json"
+	"sync"
 
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +16,8 @@ const (
 )
 
 var (
-	mock *Mock
+	mock                 *Mock
+	replicatedSecretLock = sync.Mutex{}
 )
 
 type Mock struct {
@@ -105,6 +107,9 @@ func (m *Mock) GetAllReleases() ([]MockRelease, error) {
 }
 
 func (m *Mock) SetMockData(mockData MockData) error {
+	replicatedSecretLock.Lock()
+	defer replicatedSecretLock.Unlock()
+
 	b, err := json.Marshal(mockData)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal mock data")
@@ -129,6 +134,9 @@ func (m *Mock) SetMockData(mockData MockData) error {
 }
 
 func (m *Mock) GetMockData() (*MockData, error) {
+	replicatedSecretLock.Lock()
+	defer replicatedSecretLock.Unlock()
+
 	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get secret replicated-dev")
@@ -148,6 +156,9 @@ func (m *Mock) GetMockData() (*MockData, error) {
 }
 
 func (m *Mock) DeleteMockData() error {
+	replicatedSecretLock.Lock()
+	defer replicatedSecretLock.Unlock()
+
 	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to get secret replicated-dev")

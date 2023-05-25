@@ -17,7 +17,7 @@ func PostMockData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := mock.MustGetMock().InsertMockData(mockDataRequest); err != nil {
+	if err := mock.MustGetMock().SetMockData(mockDataRequest); err != nil {
 		logger.Errorf("failed to update mock data: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
