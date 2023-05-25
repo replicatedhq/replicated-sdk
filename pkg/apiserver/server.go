@@ -96,6 +96,11 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
 
+	// mock-api
+	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.PostMockData)).Methods("POST")
+	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.GetMockData)).Methods("GET")
+	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.DeleteMockData)).Methods("DELETE")
+
 	srv := &http.Server{
 		Handler: r,
 		Addr:    ":3000",

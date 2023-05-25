@@ -57,7 +57,7 @@ type MockRelease struct {
 }
 
 func (m *Mock) GetCurrentRelease() (bool, *MockRelease, error) {
-	mockData, err := m.getMockData()
+	mockData, err := m.GetMockData()
 	if err != nil {
 		return false, nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
@@ -68,7 +68,7 @@ func (m *Mock) GetCurrentRelease() (bool, *MockRelease, error) {
 }
 
 func (m *Mock) GetAvailableReleases() (bool, []MockRelease, error) {
-	mockData, err := m.getMockData()
+	mockData, err := m.GetMockData()
 	if err != nil {
 		return false, nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
@@ -79,7 +79,7 @@ func (m *Mock) GetAvailableReleases() (bool, []MockRelease, error) {
 }
 
 func (m *Mock) GetAllReleases() (bool, []MockRelease, error) {
-	mockData, err := m.getMockData()
+	mockData, err := m.GetMockData()
 	if err != nil {
 		return false, nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
@@ -93,7 +93,31 @@ func (m *Mock) GetAllReleases() (bool, []MockRelease, error) {
 	return true, releases, nil
 }
 
-func (m *Mock) getMockData() (*MockData, error) {
+func (m *Mock) InsertMockData(mockData MockData) error {
+	b, err := json.Marshal(mockData)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal mock data")
+	}
+
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to get secret replicated-dev")
+	}
+
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
+
+	secret.Data[replicatedMockDataKey] = b
+	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to update secret replicated-dev")
+	}
+
+	return nil
+}
+
+func (m *Mock) GetMockData() (*MockData, error) {
 	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get secret replicated-dev")
@@ -110,4 +134,18 @@ func (m *Mock) getMockData() (*MockData, error) {
 	}
 
 	return &mockData, nil
+}
+
+func (m *Mock) DeleteMockData() error {
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to get secret replicated-dev")
+	}
+
+	delete(secret.Data, replicatedMockDataKey)
+	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to update secret replicated-dev")
+	}
+	return nil
 }
