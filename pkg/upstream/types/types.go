@@ -14,10 +14,8 @@ func (rc1 ReplicatedCursor) Equal(rc2 ReplicatedCursor) bool {
 }
 
 type ChannelRelease struct {
-	ChannelSequence int    `json:"channelSequence"`
-	ReleaseSequence int    `json:"releaseSequence"`
-	VersionLabel    string `json:"versionLabel"`
-	IsRequired      bool   `json:"isRequired"`
-	CreatedAt       string `json:"createdAt"`
-	ReleaseNotes    string `json:"releaseNotes"`
+	VersionLabel string `json:"versionLabel"`
+	IsRequired   bool   `json:"isRequired"`
+	CreatedAt    string `json:"createdAt"`
+	ReleaseNotes string `json:"releaseNotes"`
 }

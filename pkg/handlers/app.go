@@ -34,8 +34,6 @@ type AppRelease struct {
 	VersionLabel         string `json:"versionLabel"`
 	ChannelID            string `json:"channelID"`
 	ChannelName          string `json:"channelName"`
-	ChannelSequence      int64  `json:"channelSequence"`
-	ReleaseSequence      int64  `json:"releaseSequence"`
 	IsRequired           bool   `json:"isRequired"`
 	CreatedAt            string `json:"createdAt"`
 	ReleaseNotes         string `json:"releaseNotes"`
@@ -53,8 +51,6 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			VersionLabel:         store.GetStore().GetVersionLabel(),
 			ChannelID:            store.GetStore().GetChannelID(),
 			ChannelName:          store.GetStore().GetChannelName(),
-			ChannelSequence:      store.GetStore().GetChannelSequence(),
-			ReleaseSequence:      store.GetStore().GetReleaseSequence(),
 			IsRequired:           store.GetStore().GetReleaseIsRequired(),
 			CreatedAt:            store.GetStore().GetReleaseCreatedAt(),
 			ReleaseNotes:         store.GetStore().GetReleaseNotes(),
@@ -165,8 +161,6 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 
 		appRelease.ChannelID = data["REPLICATED_CHANNEL_ID"].(string)
 		appRelease.ChannelName = data["REPLICATED_CHANNEL_NAME"].(string)
-		appRelease.ChannelSequence, _ = strconv.ParseInt(data["REPLICATED_CHANNEL_SEQUENCE"].(string), 10, 64)
-		appRelease.ReleaseSequence, _ = strconv.ParseInt(data["REPLICATED_RELEASE_SEQUENCE"].(string), 10, 64)
 		appRelease.IsRequired, _ = strconv.ParseBool(data["REPLICATED_RELEASE_IS_REQUIRED"].(string))
 		appRelease.CreatedAt = data["REPLICATED_RELEASE_CREATED_AT"].(string)
 		appRelease.ReleaseNotes = data["REPLICATED_RELEASE_NOTES"].(string)
