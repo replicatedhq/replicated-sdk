@@ -148,6 +148,11 @@ An example of mock data is shown below:
 }
 ```
 
+When the above mock data is configured:
+- `GET /api/v1/app/info` will retrieve the application details along with the information about the `currentRelease`.
+- `GET /api/v1/app/updates` will provide a list of `availableReleases`
+- `GET /api/v1/app/history` will return a collection of releases, with `deployedReleases` appearing first followed by the `availableReleases`.
+
 While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the parent chart YAML:
 ```yaml
 replicated:
