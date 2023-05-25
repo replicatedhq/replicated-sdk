@@ -49,13 +49,14 @@ type AppRelease struct {
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		mockCurrentRelease, err := mock.GetMock().GetCurrentRelease()
+		hasMocks, mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease()
 		if err != nil {
 			logger.Errorf("failed to get mock current release: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
+		}
 
-		} else if mockCurrentRelease != nil {
+		if hasMocks {
 			appRelease := mockReleaseToAppRelease(*mockCurrentRelease)
 			response := GetCurrentAppInfoResponse{
 				AppSlug:        store.GetStore().GetAppSlug(),
@@ -91,13 +92,14 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		mockAvailableReleases, err := mock.GetMock().GetAvailableReleases()
+		hasMocks, mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases()
 		if err != nil {
 			logger.Errorf("failed to get available mock releases: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
+		}
 
-		} else if len(mockAvailableReleases) > 0 {
+		if hasMocks {
 			response := []types.ChannelRelease{}
 			for _, mockRelease := range mockAvailableReleases {
 				response = append(response, types.ChannelRelease{
@@ -147,13 +149,14 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 
 func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		mockReleases, err := mock.GetMock().GetAllReleases()
+		hasMocks, mockReleases, err := mock.MustGetMock().GetAllReleases()
 		if err != nil {
 			logger.Errorf("failed to get mock releases: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
+		}
 
-		} else if len(mockReleases) > 0 {
+		if hasMocks {
 			response := GetAppHistoryResponse{
 				Releases: []AppRelease{},
 			}

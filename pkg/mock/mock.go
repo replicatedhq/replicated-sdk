@@ -30,7 +30,7 @@ func InitMock(clientset kubernetes.Interface, namespace string) {
 	}
 }
 
-func GetMock() *Mock {
+func MustGetMock() *Mock {
 	if mock == nil {
 		panic("mock not initialized")
 	}
@@ -56,44 +56,41 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
 }
 
-func (m *Mock) GetCurrentRelease() (*MockRelease, error) {
+func (m *Mock) GetCurrentRelease() (bool, *MockRelease, error) {
 	mockData, err := m.getMockData()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get mock data")
+		return false, nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
-		return nil, nil
+		return false, nil, nil
 	}
 
-	return mockData.CurrentRelease, nil
+	return true, mockData.CurrentRelease, nil
 }
 
-func (m *Mock) GetAvailableReleases() ([]MockRelease, error) {
+func (m *Mock) GetAvailableReleases() (bool, []MockRelease, error) {
 	mockData, err := m.getMockData()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get mock data")
+		return false, nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
-		return nil, nil
+		return false, nil, nil
 	}
 
-	return mockData.AvailableReleases, nil
+	return true, mockData.AvailableReleases, nil
 }
 
-func (m *Mock) GetAllReleases() ([]MockRelease, error) {
+func (m *Mock) GetAllReleases() (bool, []MockRelease, error) {
 	mockData, err := m.getMockData()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get mock data")
+		return false, nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
-		return nil, nil
+		return false, nil, nil
 	}
 
 	releases := []MockRelease{}
-	if mockData.CurrentRelease != nil {
-		releases = append(releases, *mockData.CurrentRelease)
-	}
 	releases = append(releases, mockData.DeployedReleases...)
 	releases = append(releases, mockData.AvailableReleases...)
 
-	return releases, nil
+	return true, releases, nil
 }
 
 func (m *Mock) getMockData() (*MockData, error) {
