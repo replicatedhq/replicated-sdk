@@ -116,12 +116,10 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 			response := []types.ChannelRelease{}
 			for _, mockRelease := range mockAvailableReleases {
 				response = append(response, types.ChannelRelease{
-					ChannelSequence: mockRelease.ChannelSequence,
-					ReleaseSequence: mockRelease.ReleaseSequence,
-					VersionLabel:    mockRelease.VersionLabel,
-					IsRequired:      mockRelease.IsRequired,
-					CreatedAt:       time.Now().Format(time.RFC3339),
-					ReleaseNotes:    mockRelease.ReleaseNotes,
+					VersionLabel: mockRelease.VersionLabel,
+					IsRequired:   mockRelease.IsRequired,
+					CreatedAt:    time.Now().Format(time.RFC3339),
+					ReleaseNotes: mockRelease.ReleaseNotes,
 				})
 			}
 
@@ -170,7 +168,7 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if hasMocks {
-			mockReleases, err := mock.MustGetMock().GetAllReleases()
+			mockReleases, err := mock.MustGetMock().GetDeployedReleases()
 			if err != nil {
 				logger.Errorf("failed to get mock releases: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -271,14 +269,12 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 
 func mockReleaseToAppRelease(mockRelease mock.MockRelease) AppRelease {
 	appRelease := AppRelease{
-		VersionLabel:    mockRelease.VersionLabel,
-		ChannelID:       mockRelease.ChannelID,
-		ChannelName:     mockRelease.ChannelName,
-		ChannelSequence: int64(mockRelease.ChannelSequence),
-		ReleaseSequence: int64(mockRelease.ReleaseSequence),
-		IsRequired:      mockRelease.IsRequired,
-		CreatedAt:       time.Now().Format(time.RFC3339),
-		ReleaseNotes:    mockRelease.ReleaseNotes,
+		VersionLabel: mockRelease.VersionLabel,
+		ChannelID:    mockRelease.ChannelID,
+		ChannelName:  mockRelease.ChannelName,
+		IsRequired:   mockRelease.IsRequired,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+		ReleaseNotes: mockRelease.ReleaseNotes,
 	}
 
 	if helm.IsHelmManaged() {

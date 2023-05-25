@@ -161,7 +161,7 @@ replicated:
 ```
 ### mock data endpoints
 The mock data endpoints provide functionality to manage mock data. The following endpoints are available:
-- *POST* `/api/v1/mock-data` endpoint accepts a JSON request body to insert mock data.
+- *POST* `/api/v1/mock-data` endpoint accepts a JSON request body to set the mock data.
 - *GET* `/api/v1/mock-data` endpoint returns the entire mock data.
 - *DELETE* `/api/v1/mock-data` endpoint deletes the mock data.
 
