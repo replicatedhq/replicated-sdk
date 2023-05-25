@@ -14,6 +14,8 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
@@ -74,6 +76,11 @@ func Start(params APIServerParams) {
 		log.Println("Failed to start heartbeat:", err)
 	}
 
+	if store.GetStore().IsDevLicense() {
+		logger.Info("Detected dev license, initializing mock")
+		mock.InitMock(clientset, store.GetStore().GetNamespace())
+	}
+
 	r := mux.NewRouter()
 	r.Use(handlers.CorsMiddleware)
 
@@ -88,6 +95,11 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
+
+	// mock-data
+	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.PostMockData)).Methods("POST")
+	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.GetMockData)).Methods("GET")
+	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.DeleteMockData)).Methods("DELETE")
 
 	srv := &http.Server{
 		Handler: r,

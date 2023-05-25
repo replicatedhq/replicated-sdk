@@ -5,13 +5,16 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
+	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	helmrelease "helm.sh/helm/v3/pkg/release"
@@ -43,6 +46,36 @@ type AppRelease struct {
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().IsDevLicense() {
+		hasMocks, err := mock.MustGetMock().HasMocks()
+		if err != nil {
+			logger.Errorf("failed to check if mocks exist: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if hasMocks {
+			mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease()
+			if err != nil {
+				logger.Errorf("failed to get mock current release: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			response := GetCurrentAppInfoResponse{
+				AppSlug: store.GetStore().GetAppSlug(),
+				AppName: store.GetStore().GetAppName(),
+			}
+
+			if mockCurrentRelease != nil {
+				response.CurrentRelease = mockReleaseToAppRelease(*mockCurrentRelease)
+			}
+
+			JSON(w, http.StatusOK, response)
+			return
+		}
+	}
+
 	response := GetCurrentAppInfoResponse{
 		AppSlug:      store.GetStore().GetAppSlug(),
 		AppName:      store.GetStore().GetAppName(),
@@ -64,6 +97,39 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().IsDevLicense() {
+		hasMocks, err := mock.MustGetMock().HasMocks()
+		if err != nil {
+			logger.Errorf("failed to check if mocks exist: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if hasMocks {
+			mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases()
+			if err != nil {
+				logger.Errorf("failed to get available mock releases: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			response := []types.ChannelRelease{}
+			for _, mockRelease := range mockAvailableReleases {
+				response = append(response, types.ChannelRelease{
+					ChannelSequence: mockRelease.ChannelSequence,
+					ReleaseSequence: mockRelease.ReleaseSequence,
+					VersionLabel:    mockRelease.VersionLabel,
+					IsRequired:      mockRelease.IsRequired,
+					CreatedAt:       time.Now().Format(time.RFC3339),
+					ReleaseNotes:    mockRelease.ReleaseNotes,
+				})
+			}
+
+			JSON(w, http.StatusOK, response)
+			return
+		}
+	}
+
 	license := store.GetStore().GetLicense()
 
 	if !util.IsAirgap() {
@@ -95,6 +161,35 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppHistory(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().IsDevLicense() {
+		hasMocks, err := mock.MustGetMock().HasMocks()
+		if err != nil {
+			logger.Errorf("failed to check if mocks exist: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if hasMocks {
+			mockReleases, err := mock.MustGetMock().GetAllReleases()
+			if err != nil {
+				logger.Errorf("failed to get mock releases: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			response := GetAppHistoryResponse{
+				Releases: []AppRelease{},
+			}
+			for _, mockRelease := range mockReleases {
+				appRelease := mockReleaseToAppRelease(mockRelease)
+				response.Releases = append(response.Releases, appRelease)
+			}
+
+			JSON(w, http.StatusOK, response)
+			return
+		}
+	}
+
 	if !helm.IsHelmManaged() {
 		err := errors.New("app history is only available in Helm mode")
 		logger.Error(err)
@@ -172,4 +267,25 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 	logger.Debugf("replicated secret not found in helm release %s revision %d", helmRelease.Name, helmRelease.Version)
 
 	return nil
+}
+
+func mockReleaseToAppRelease(mockRelease mock.MockRelease) AppRelease {
+	appRelease := AppRelease{
+		VersionLabel:    mockRelease.VersionLabel,
+		ChannelID:       mockRelease.ChannelID,
+		ChannelName:     mockRelease.ChannelName,
+		ChannelSequence: int64(mockRelease.ChannelSequence),
+		ReleaseSequence: int64(mockRelease.ReleaseSequence),
+		IsRequired:      mockRelease.IsRequired,
+		CreatedAt:       time.Now().Format(time.RFC3339),
+		ReleaseNotes:    mockRelease.ReleaseNotes,
+	}
+
+	if helm.IsHelmManaged() {
+		appRelease.HelmReleaseName = helm.GetReleaseName()
+		appRelease.HelmReleaseRevision = helm.GetReleaseRevision()
+		appRelease.HelmReleaseNamespace = helm.GetReleaseNamespace()
+	}
+
+	return appRelease
 }

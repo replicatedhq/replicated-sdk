@@ -91,3 +91,78 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 ```
 
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.
+
+## Enabling Replicated SDK "dev" mode
+The Replicated SDK will start in `dev` mode when `"Development"` license is used.
+The `dev` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data.
+Mock data can be provided to the dev mode by setting `--set-file dev.mockData=mock_data.json`.
+The mock data accepts a json format of `currentRelease`, `deployedReleases` and `availableReleases`
+An example of mock data is shown below:
+```json
+{
+  "currentRelease": {
+    "versionLabel": "0.1.7",
+    "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
+    "channelName": "Stable",
+    "isRequired": false,
+    "releaseNotes": "",
+    "helmReleaseName": "nginx-chart",
+    "helmReleaseRevision": 2,
+    "helmReleaseNamespace": "default"
+  },
+  "deployedReleases": [
+    {
+      "versionLabel": "0.1.7",
+      "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
+      "channelName": "Stable",
+      "releaseNotes": "",
+      "helmReleaseName": "nginx-chart",
+      "helmReleaseRevision": 1,
+      "helmReleaseNamespace": "default"
+    }
+  ],
+  "availableReleases": [
+    {
+      "versionLabel": "0.1.7",
+      "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
+      "channelName": "Stable",
+      "createdAt": "2023-05-23T21:10:57Z",
+      "releaseNotes": "",
+      "isRequired": true,
+      "helmReleaseName": "nginx-chart",
+      "helmReleaseRevision": 4,
+      "helmReleaseNamespace": "default"
+    },
+    {
+      "versionLabel": "0.1.7",
+      "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
+      "channelName": "Stable",
+      "createdAt": "2023-05-23T21:10:57Z",
+      "releaseNotes": "",
+      "isRequired": false,
+      "helmReleaseName": "nginx-chart",
+      "helmReleaseRevision": 5,
+      "helmReleaseNamespace": "default"
+    }
+  ]
+}
+```
+
+When the above mock data is configured:
+- *GET* `/api/v1/app/info` will retrieve the application details along with the information about the `currentRelease`.
+- *GET* `/api/v1/app/updates` will provide a list of `availableReleases`
+- *GET* `/api/v1/app/history` will return a collection of releases, with `deployedReleases` appearing first followed by the `availableReleases`.
+
+While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the parent chart YAML:
+```yaml
+replicated:
+  dev:
+    mockData: '{ "currentRelease": { "versionLabel": "0.1.7", "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb", "channelName": "Stable", "isRequired": false, "releaseNotes": "", "helmReleaseName": "nginx-chart", "helmReleaseRevision": 2, "helmReleaseNamespace": "default" } }'
+```
+### mock data endpoints
+The mock data endpoints provide functionality to manage mock data. The following endpoints are available:
+- *POST* `/api/v1/mock-data` endpoint accepts a JSON request body to insert mock data.
+- *GET* `/api/v1/mock-data` endpoint returns the entire mock data.
+- *DELETE* `/api/v1/mock-data` endpoint deletes the mock data.
+
+**Note**: `dev` mode can be enabled for `"Development"` license type only.

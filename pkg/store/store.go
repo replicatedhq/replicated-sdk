@@ -153,6 +153,10 @@ func (s *Store) SetLicenseFields(licenseFields sdklicensetypes.LicenseFields) {
 	}
 }
 
+func (s *Store) IsDevLicense() bool {
+	return s.license.Spec.LicenseType == "dev"
+}
+
 func (s *Store) GetAppSlug() string {
 	return s.appSlug
 }
