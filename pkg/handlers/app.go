@@ -47,14 +47,14 @@ type AppRelease struct {
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		hasMocks, err := mock.MustGetMock().HasMocks()
+		hasMockData, err := mock.MustGetMock().HasMockData(mock.CurrentReleaseMockKey)
 		if err != nil {
 			logger.Errorf("failed to check if mocks exist: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if hasMocks {
+		if hasMockData {
 			mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease()
 			if err != nil {
 				logger.Errorf("failed to get mock current release: %v", err)
@@ -98,14 +98,14 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		hasMocks, err := mock.MustGetMock().HasMocks()
+		hasMockData, err := mock.MustGetMock().HasMockData(mock.AvailableReleasesMockKey)
 		if err != nil {
 			logger.Errorf("failed to check if mocks exist: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if hasMocks {
+		if hasMockData {
 			mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases()
 			if err != nil {
 				logger.Errorf("failed to get available mock releases: %v", err)
@@ -160,14 +160,14 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 
 func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		hasMocks, err := mock.MustGetMock().HasMocks()
+		hasMockData, err := mock.MustGetMock().HasMockData(mock.DeployedReleasesMockKey)
 		if err != nil {
 			logger.Errorf("failed to check if mocks exist: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if hasMocks {
+		if hasMockData {
 			mockReleases, err := mock.MustGetMock().GetDeployedReleases()
 			if err != nil {
 				logger.Errorf("failed to get mock releases: %v", err)

@@ -15,6 +15,10 @@ import (
 const (
 	replicatedSecretName  = "replicated"
 	replicatedMockDataKey = "REPLICATED_MOCK_DATA"
+
+	CurrentReleaseMockKey    = "currentRelease"
+	DeployedReleasesMockKey  = "deployedReleases"
+	AvailableReleasesMockKey = "availableReleases"
 )
 
 var (
@@ -42,9 +46,9 @@ func MustGetMock() *Mock {
 }
 
 type MockData struct {
-	CurrentRelease    *MockRelease  `json:"currentRelease"`
-	DeployedReleases  []MockRelease `json:"deployedReleases"`
-	AvailableReleases []MockRelease `json:"availableReleases"`
+	CurrentRelease    *MockRelease  `json:"currentRelease,omitempty"`
+	DeployedReleases  []MockRelease `json:"deployedReleases,omitempty"`
+	AvailableReleases []MockRelease `json:"availableReleases,omitempty"`
 }
 
 type MockRelease struct {
@@ -58,13 +62,30 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
 }
 
-func (m *Mock) HasMocks() (bool, error) {
-	mockData, err := m.GetMockData()
+func (m *Mock) HasMockData(mockType string) (bool, error) {
+	replicatedSecretLock.Lock()
+	defer replicatedSecretLock.Unlock()
+
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to get mock data")
+		if kuberneteserrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrap(err, "failed to get secret replicated-dev")
 	}
 
-	return mockData != nil, nil
+	b := secret.Data[replicatedMockDataKey]
+	if len(b) == 0 {
+		return false, nil
+	}
+
+	mockDataMap := make(map[string]interface{})
+	if err := json.Unmarshal(b, &mockDataMap); err != nil {
+		return false, errors.Wrap(err, "failed to unmarshal mock data")
+	}
+
+	_, exists := mockDataMap[mockType]
+	return exists, nil
 }
 
 func (m *Mock) GetCurrentRelease() (*MockRelease, error) {
