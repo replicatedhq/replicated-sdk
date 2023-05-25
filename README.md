@@ -149,9 +149,9 @@ An example of mock data is shown below:
 ```
 
 When the above mock data is configured:
-- `GET /api/v1/app/info` will retrieve the application details along with the information about the `currentRelease`.
-- `GET /api/v1/app/updates` will provide a list of `availableReleases`
-- `GET /api/v1/app/history` will return a collection of releases, with `deployedReleases` appearing first followed by the `availableReleases`.
+- *GET* `/api/v1/app/info` will retrieve the application details along with the information about the `currentRelease`.
+- *GET* `/api/v1/app/updates` will provide a list of `availableReleases`
+- *GET* `/api/v1/app/history` will return a collection of releases, with `deployedReleases` appearing first followed by the `availableReleases`.
 
 While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the parent chart YAML:
 ```yaml
@@ -159,5 +159,10 @@ replicated:
   dev:
     mockData: '{ "currentRelease": { "versionLabel": "0.1.7", "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb", "channelName": "Stable", "isRequired": false, "releaseNotes": "", "helmReleaseName": "nginx-chart", "helmReleaseRevision": 2, "helmReleaseNamespace": "default" } }'
 ```
+### mock data endpoints
+The mock data endpoints provide functionality to manage mock data. The following endpoints are available:
+- *POST* `/api/v1/mock-data` endpoint accepts a JSON request body to insert mock data.
+- *GET* `/api/v1/mock-data` endpoint returns the entire mock data.
+- *DELETE* `/api/v1/mock-data` endpoint deletes the mock data.
 
 **Note**: `dev` mode can be enabled for `"Development"` license type only.

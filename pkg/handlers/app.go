@@ -49,20 +49,28 @@ type AppRelease struct {
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		hasMocks, mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease()
+		hasMocks, err := mock.MustGetMock().HasMocks()
 		if err != nil {
-			logger.Errorf("failed to get mock current release: %v", err)
+			logger.Errorf("failed to check if mocks exist: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		if hasMocks {
+			mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease()
+			if err != nil {
+				logger.Errorf("failed to get mock current release: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
 			appRelease := mockReleaseToAppRelease(*mockCurrentRelease)
 			response := GetCurrentAppInfoResponse{
 				AppSlug:        store.GetStore().GetAppSlug(),
 				AppName:        store.GetStore().GetAppName(),
 				CurrentRelease: appRelease,
 			}
+
 			JSON(w, http.StatusOK, response)
 			return
 		}
@@ -92,14 +100,21 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		hasMocks, mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases()
+		hasMocks, err := mock.MustGetMock().HasMocks()
 		if err != nil {
-			logger.Errorf("failed to get available mock releases: %v", err)
+			logger.Errorf("failed to check if mocks exist: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		if hasMocks {
+			mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases()
+			if err != nil {
+				logger.Errorf("failed to get available mock releases: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
 			response := []types.ChannelRelease{}
 			for _, mockRelease := range mockAvailableReleases {
 				response = append(response, types.ChannelRelease{
@@ -111,7 +126,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 					ReleaseNotes:    mockRelease.ReleaseNotes,
 				})
 			}
-
+			
 			JSON(w, http.StatusOK, response)
 			return
 		}
@@ -149,14 +164,21 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 
 func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
-		hasMocks, mockReleases, err := mock.MustGetMock().GetAllReleases()
+		hasMocks, err := mock.MustGetMock().HasMocks()
 		if err != nil {
-			logger.Errorf("failed to get mock releases: %v", err)
+			logger.Errorf("failed to check if mocks exist: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		if hasMocks {
+			mockReleases, err := mock.MustGetMock().GetAllReleases()
+			if err != nil {
+				logger.Errorf("failed to get mock releases: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
 			response := GetAppHistoryResponse{
 				Releases: []AppRelease{},
 			}
@@ -164,6 +186,7 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 				appRelease := mockReleaseToAppRelease(mockRelease)
 				response.Releases = append(response.Releases, appRelease)
 			}
+
 			JSON(w, http.StatusOK, response)
 			return
 		}

@@ -56,41 +56,52 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
 }
 
-func (m *Mock) GetCurrentRelease() (bool, *MockRelease, error) {
+func (m *Mock) HasMocks() (bool, error) {
 	mockData, err := m.GetMockData()
 	if err != nil {
-		return false, nil, errors.Wrap(err, "failed to get mock data")
+		return false, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
-		return false, nil, nil
+		return false, nil
 	}
 
-	return true, mockData.CurrentRelease, nil
+	return true, nil
 }
 
-func (m *Mock) GetAvailableReleases() (bool, []MockRelease, error) {
+func (m *Mock) GetCurrentRelease() (*MockRelease, error) {
 	mockData, err := m.GetMockData()
 	if err != nil {
-		return false, nil, errors.Wrap(err, "failed to get mock data")
+		return nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
-		return false, nil, nil
+		return nil, nil
 	}
 
-	return true, mockData.AvailableReleases, nil
+	return mockData.CurrentRelease, nil
 }
 
-func (m *Mock) GetAllReleases() (bool, []MockRelease, error) {
+func (m *Mock) GetAvailableReleases() ([]MockRelease, error) {
 	mockData, err := m.GetMockData()
 	if err != nil {
-		return false, nil, errors.Wrap(err, "failed to get mock data")
+		return nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
-		return false, nil, nil
+		return nil, nil
+	}
+
+	return mockData.AvailableReleases, nil
+}
+
+func (m *Mock) GetAllReleases() ([]MockRelease, error) {
+	mockData, err := m.GetMockData()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get mock data")
+	} else if mockData == nil {
+		return nil, nil
 	}
 
 	releases := []MockRelease{}
 	releases = append(releases, mockData.DeployedReleases...)
 	releases = append(releases, mockData.AvailableReleases...)
 
-	return true, releases, nil
+	return releases, nil
 }
 
 func (m *Mock) InsertMockData(mockData MockData) error {
