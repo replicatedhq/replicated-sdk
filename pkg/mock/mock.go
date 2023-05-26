@@ -62,7 +62,7 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
 }
 
-func (m *Mock) HasMockData(mockType string) (bool, error) {
+func (m *Mock) HasMockData(dataKey string) (bool, error) {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
@@ -84,7 +84,7 @@ func (m *Mock) HasMockData(mockType string) (bool, error) {
 		return false, errors.Wrap(err, "failed to unmarshal mock data")
 	}
 
-	_, exists := mockDataMap[mockType]
+	_, exists := mockDataMap[dataKey]
 	return exists, nil
 }
 
