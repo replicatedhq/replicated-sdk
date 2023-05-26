@@ -62,11 +62,11 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
 }
 
-func (m *Mock) HasMockData(dataKey string) (bool, error) {
+func (m *Mock) HasMockData(ctx context.Context, dataKey string) (bool, error) {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		if kuberneteserrors.IsNotFound(err) {
 			return false, nil
@@ -88,8 +88,8 @@ func (m *Mock) HasMockData(dataKey string) (bool, error) {
 	return exists, nil
 }
 
-func (m *Mock) GetCurrentRelease() (*MockRelease, error) {
-	mockData, err := m.GetMockData()
+func (m *Mock) GetCurrentRelease(ctx context.Context) (*MockRelease, error) {
+	mockData, err := m.GetMockData(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
@@ -99,8 +99,8 @@ func (m *Mock) GetCurrentRelease() (*MockRelease, error) {
 	return mockData.CurrentRelease, nil
 }
 
-func (m *Mock) GetAvailableReleases() ([]MockRelease, error) {
-	mockData, err := m.GetMockData()
+func (m *Mock) GetAvailableReleases(ctx context.Context) ([]MockRelease, error) {
+	mockData, err := m.GetMockData(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
@@ -110,8 +110,8 @@ func (m *Mock) GetAvailableReleases() ([]MockRelease, error) {
 	return mockData.AvailableReleases, nil
 }
 
-func (m *Mock) GetDeployedReleases() ([]MockRelease, error) {
-	mockData, err := m.GetMockData()
+func (m *Mock) GetDeployedReleases(ctx context.Context) ([]MockRelease, error) {
+	mockData, err := m.GetMockData(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mock data")
 	} else if mockData == nil {
@@ -121,7 +121,7 @@ func (m *Mock) GetDeployedReleases() ([]MockRelease, error) {
 	return mockData.DeployedReleases, nil
 }
 
-func (m *Mock) SetMockData(mockData MockData) error {
+func (m *Mock) SetMockData(ctx context.Context, mockData MockData) error {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
@@ -130,13 +130,13 @@ func (m *Mock) SetMockData(mockData MockData) error {
 		return errors.Wrap(err, "failed to marshal mock data")
 	}
 
-	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		if kuberneteserrors.IsNotFound(err) {
 			data := map[string][]byte{
 				replicatedMockDataKey: b,
 			}
-			err = m.createReplicatedSecret(data)
+			err = m.createReplicatedSecret(ctx, data)
 			if err != nil {
 				return errors.Wrap(err, "failed to create secret replicated")
 			}
@@ -151,7 +151,7 @@ func (m *Mock) SetMockData(mockData MockData) error {
 	}
 
 	secret.Data[replicatedMockDataKey] = b
-	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to update secret replicated-dev")
 	}
@@ -159,11 +159,11 @@ func (m *Mock) SetMockData(mockData MockData) error {
 	return nil
 }
 
-func (m *Mock) GetMockData() (*MockData, error) {
+func (m *Mock) GetMockData(ctx context.Context) (*MockData, error) {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		if kuberneteserrors.IsNotFound(err) {
 			return nil, nil
@@ -184,11 +184,11 @@ func (m *Mock) GetMockData() (*MockData, error) {
 	return &mockData, nil
 }
 
-func (m *Mock) DeleteMockData() error {
+func (m *Mock) DeleteMockData(ctx context.Context) error {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(context.TODO(), replicatedSecretName, metav1.GetOptions{})
+	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
 		if kuberneteserrors.IsNotFound(err) {
 			return nil
@@ -197,14 +197,14 @@ func (m *Mock) DeleteMockData() error {
 	}
 
 	delete(secret.Data, replicatedMockDataKey)
-	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to update secret replicated-dev")
 	}
 	return nil
 }
 
-func (m *Mock) createReplicatedSecret(data map[string][]byte) error {
+func (m *Mock) createReplicatedSecret(ctx context.Context, data map[string][]byte) error {
 	secret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -217,7 +217,7 @@ func (m *Mock) createReplicatedSecret(data map[string][]byte) error {
 		Data: data,
 	}
 
-	_, err := m.clientset.CoreV1().Secrets(m.namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	_, err := m.clientset.CoreV1().Secrets(m.namespace).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to create secret replicated")
 	}

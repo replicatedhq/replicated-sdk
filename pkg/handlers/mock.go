@@ -17,7 +17,7 @@ func PostMockData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := mock.MustGetMock().SetMockData(mockDataRequest); err != nil {
+	if err := mock.MustGetMock().SetMockData(r.Context(), mockDataRequest); err != nil {
 		logger.Errorf("failed to update mock data: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -32,7 +32,7 @@ func GetMockData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mockData, err := mock.MustGetMock().GetMockData()
+	mockData, err := mock.MustGetMock().GetMockData(r.Context())
 	if err != nil {
 		logger.Errorf("failed to get mock data: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -48,7 +48,7 @@ func GetMockData(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteMockData(w http.ResponseWriter, r *http.Request) {
-	if err := mock.MustGetMock().DeleteMockData(); err != nil {
+	if err := mock.MustGetMock().DeleteMockData(r.Context()); err != nil {
 		logger.Errorf("failed to delete mock data: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
