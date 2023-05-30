@@ -102,9 +102,8 @@ An example of mock data is shown below:
 {
   "currentRelease": {
     "versionLabel": "0.1.7",
-    "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
-    "channelName": "Stable",
     "isRequired": false,
+    "createdAt": "2023-05-23T21:10:57Z",
     "releaseNotes": "",
     "helmReleaseName": "nginx-chart",
     "helmReleaseRevision": 2,
@@ -113,8 +112,8 @@ An example of mock data is shown below:
   "deployedReleases": [
     {
       "versionLabel": "0.1.7",
-      "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
-      "channelName": "Stable",
+      "isRequired": false,
+      "createdAt": "2023-05-23T21:10:57Z",
       "releaseNotes": "",
       "helmReleaseName": "nginx-chart",
       "helmReleaseRevision": 1,
@@ -124,25 +123,15 @@ An example of mock data is shown below:
   "availableReleases": [
     {
       "versionLabel": "0.1.7",
-      "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
-      "channelName": "Stable",
       "createdAt": "2023-05-23T21:10:57Z",
       "releaseNotes": "",
-      "isRequired": true,
-      "helmReleaseName": "nginx-chart",
-      "helmReleaseRevision": 4,
-      "helmReleaseNamespace": "default"
+      "isRequired": true
     },
     {
       "versionLabel": "0.1.7",
-      "channelID": "2QAamn9Otghbke2fhvrz0XyFoyb",
-      "channelName": "Stable",
       "createdAt": "2023-05-23T21:10:57Z",
       "releaseNotes": "",
-      "isRequired": false,
-      "helmReleaseName": "nginx-chart",
-      "helmReleaseRevision": 5,
-      "helmReleaseNamespace": "default"
+      "isRequired": false
     }
   ]
 }
