@@ -53,10 +53,9 @@ type MockData struct {
 
 type MockRelease struct {
 	VersionLabel         string `json:"versionLabel"`
-	ChannelID            string `json:"channelID"`
-	ChannelName          string `json:"channelName"`
 	IsRequired           bool   `json:"isRequired"`
 	ReleaseNotes         string `json:"releaseNotes"`
+	CreatedAt            string `json:"createdAt"`
 	HelmReleaseName      string `json:"helmReleaseName,omitempty"`
 	HelmReleaseRevision  int    `json:"helmReleaseRevision,omitempty"`
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
