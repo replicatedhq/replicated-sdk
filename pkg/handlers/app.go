@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
@@ -35,8 +34,6 @@ type GetAppHistoryResponse struct {
 
 type AppRelease struct {
 	VersionLabel         string `json:"versionLabel"`
-	ChannelID            string `json:"channelID"`
-	ChannelName          string `json:"channelName"`
 	IsRequired           bool   `json:"isRequired"`
 	CreatedAt            string `json:"createdAt"`
 	ReleaseNotes         string `json:"releaseNotes"`
@@ -63,8 +60,9 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			}
 
 			response := GetCurrentAppInfoResponse{
-				AppSlug: store.GetStore().GetAppSlug(),
-				AppName: store.GetStore().GetAppName(),
+				AppSlug:      store.GetStore().GetAppSlug(),
+				AppName:      store.GetStore().GetAppName(),
+				HelmChartURL: helm.GetParentChartURL(),
 			}
 
 			if mockCurrentRelease != nil {
@@ -82,8 +80,6 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 		HelmChartURL: helm.GetParentChartURL(),
 		CurrentRelease: AppRelease{
 			VersionLabel:         store.GetStore().GetVersionLabel(),
-			ChannelID:            store.GetStore().GetChannelID(),
-			ChannelName:          store.GetStore().GetChannelName(),
 			IsRequired:           store.GetStore().GetReleaseIsRequired(),
 			CreatedAt:            store.GetStore().GetReleaseCreatedAt(),
 			ReleaseNotes:         store.GetStore().GetReleaseNotes(),
@@ -118,7 +114,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 				response = append(response, types.ChannelRelease{
 					VersionLabel: mockRelease.VersionLabel,
 					IsRequired:   mockRelease.IsRequired,
-					CreatedAt:    time.Now().Format(time.RFC3339),
+					CreatedAt:    mockRelease.CreatedAt,
 					ReleaseNotes: mockRelease.ReleaseNotes,
 				})
 			}
@@ -252,8 +248,6 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 			HelmReleaseNamespace: helmRelease.Namespace,
 		}
 
-		appRelease.ChannelID = data["REPLICATED_CHANNEL_ID"].(string)
-		appRelease.ChannelName = data["REPLICATED_CHANNEL_NAME"].(string)
 		appRelease.IsRequired, _ = strconv.ParseBool(data["REPLICATED_RELEASE_IS_REQUIRED"].(string))
 		appRelease.CreatedAt = data["REPLICATED_RELEASE_CREATED_AT"].(string)
 		appRelease.ReleaseNotes = data["REPLICATED_RELEASE_NOTES"].(string)
@@ -270,10 +264,8 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 func mockReleaseToAppRelease(mockRelease mock.MockRelease) AppRelease {
 	appRelease := AppRelease{
 		VersionLabel: mockRelease.VersionLabel,
-		ChannelID:    mockRelease.ChannelID,
-		ChannelName:  mockRelease.ChannelName,
 		IsRequired:   mockRelease.IsRequired,
-		CreatedAt:    time.Now().Format(time.RFC3339),
+		CreatedAt:    mockRelease.CreatedAt,
 		ReleaseNotes: mockRelease.ReleaseNotes,
 	}
 
