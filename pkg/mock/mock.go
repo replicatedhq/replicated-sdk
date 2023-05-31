@@ -46,6 +46,7 @@ func MustGetMock() *Mock {
 }
 
 type MockData struct {
+	HelmChartURL      *string       `json:"helmChartURL,omitempty"`
 	CurrentRelease    *MockRelease  `json:"currentRelease,omitempty"`
 	DeployedReleases  []MockRelease `json:"deployedReleases,omitempty"`
 	AvailableReleases []MockRelease `json:"availableReleases,omitempty"`
@@ -85,6 +86,17 @@ func (m *Mock) HasMockData(ctx context.Context, dataKey string) (bool, error) {
 
 	_, exists := mockDataMap[dataKey]
 	return exists, nil
+}
+
+func (m *Mock) GetHelmChartURL(ctx context.Context) (*string, error) {
+	mockData, err := m.GetMockData(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get mock data")
+	} else if mockData == nil {
+		return nil, nil
+	}
+
+	return mockData.HelmChartURL, nil
 }
 
 func (m *Mock) GetCurrentRelease(ctx context.Context) (*MockRelease, error) {
