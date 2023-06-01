@@ -2,10 +2,10 @@ package mock
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	replicatedSecretName  = "replicated"
-	replicatedMockDataKey = "REPLICATED_MOCK_DATA"
+	replicatedSecretName      = "replicated"
+	replicatedMockDataYamlKey = "REPLICATED_MOCK_DATA_YAML"
 
 	CurrentReleaseMockKey    = "currentRelease"
 	DeployedReleasesMockKey  = "deployedReleases"
@@ -46,20 +46,20 @@ func MustGetMock() *Mock {
 }
 
 type MockData struct {
-	HelmChartURL      *string       `json:"helmChartURL,omitempty"`
-	CurrentRelease    *MockRelease  `json:"currentRelease,omitempty"`
-	DeployedReleases  []MockRelease `json:"deployedReleases,omitempty"`
-	AvailableReleases []MockRelease `json:"availableReleases,omitempty"`
+	HelmChartURL      *string       `json:"helmChartURL,omitempty" yaml:"helmChartURL,omitempty"`
+	CurrentRelease    *MockRelease  `json:"currentRelease,omitempty" yaml:"currentRelease,omitempty"`
+	DeployedReleases  []MockRelease `json:"deployedReleases,omitempty" yaml:"deployedReleases,omitempty"`
+	AvailableReleases []MockRelease `json:"availableReleases,omitempty" yaml:"availableReleases,omitempty"`
 }
 
 type MockRelease struct {
-	VersionLabel         string `json:"versionLabel"`
-	IsRequired           bool   `json:"isRequired"`
-	ReleaseNotes         string `json:"releaseNotes"`
-	CreatedAt            string `json:"createdAt"`
-	HelmReleaseName      string `json:"helmReleaseName,omitempty"`
-	HelmReleaseRevision  int    `json:"helmReleaseRevision,omitempty"`
-	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
+	VersionLabel         string `json:"versionLabel" yaml:"versionLabel"`
+	IsRequired           bool   `json:"isRequired" yaml:"isRequired"`
+	ReleaseNotes         string `json:"releaseNotes" yaml:"releaseNotes"`
+	CreatedAt            string `json:"createdAt" yaml:"createdAt"`
+	HelmReleaseName      string `json:"helmReleaseName" yaml:"helmReleaseName"`
+	HelmReleaseRevision  int    `json:"helmReleaseRevision" yaml:"helmReleaseRevision"`
+	HelmReleaseNamespace string `json:"helmReleaseNamespace" yaml:"helmReleaseNamespace"`
 }
 
 func (m *Mock) HasMockData(ctx context.Context, dataKey string) (bool, error) {
@@ -74,13 +74,13 @@ func (m *Mock) HasMockData(ctx context.Context, dataKey string) (bool, error) {
 		return false, errors.Wrap(err, "failed to get secret replicated-dev")
 	}
 
-	b := secret.Data[replicatedMockDataKey]
+	b := secret.Data[replicatedMockDataYamlKey]
 	if len(b) == 0 {
 		return false, nil
 	}
 
 	mockDataMap := make(map[string]interface{})
-	if err := json.Unmarshal(b, &mockDataMap); err != nil {
+	if err := yaml.Unmarshal(b, &mockDataMap); err != nil {
 		return false, errors.Wrap(err, "failed to unmarshal mock data")
 	}
 
@@ -136,7 +136,7 @@ func (m *Mock) SetMockData(ctx context.Context, mockData MockData) error {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	b, err := json.Marshal(mockData)
+	b, err := yaml.Marshal(mockData)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal mock data")
 	}
@@ -145,7 +145,7 @@ func (m *Mock) SetMockData(ctx context.Context, mockData MockData) error {
 	if err != nil {
 		if kuberneteserrors.IsNotFound(err) {
 			data := map[string][]byte{
-				replicatedMockDataKey: b,
+				replicatedMockDataYamlKey: b,
 			}
 			err = m.createReplicatedSecret(ctx, data)
 			if err != nil {
@@ -161,7 +161,7 @@ func (m *Mock) SetMockData(ctx context.Context, mockData MockData) error {
 		secret.Data = map[string][]byte{}
 	}
 
-	secret.Data[replicatedMockDataKey] = b
+	secret.Data[replicatedMockDataYamlKey] = b
 	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to update secret replicated-dev")
@@ -182,13 +182,13 @@ func (m *Mock) GetMockData(ctx context.Context) (*MockData, error) {
 		return nil, errors.Wrap(err, "failed to get secret replicated-dev")
 	}
 
-	b := secret.Data[replicatedMockDataKey]
+	b := secret.Data[replicatedMockDataYamlKey]
 	if len(b) == 0 {
 		return nil, nil
 	}
 
 	var mockData MockData
-	if err := json.Unmarshal(b, &mockData); err != nil {
+	if err := yaml.Unmarshal(b, &mockData); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal mock data")
 	}
 
@@ -207,7 +207,7 @@ func (m *Mock) DeleteMockData(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get secret replicated-dev")
 	}
 
-	delete(secret.Data, replicatedMockDataKey)
+	delete(secret.Data, replicatedMockDataYamlKey)
 	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to update secret replicated-dev")
