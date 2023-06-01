@@ -29,3 +29,6 @@ vendor
 
 sbom/
 cosign.key
+
+# debug binaries
+cmd/replicated/__debug_bin

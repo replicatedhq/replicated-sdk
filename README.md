@@ -152,20 +152,19 @@ When the above mock data is configured:
 - *GET* `/api/v1/app/updates` will provide a list of `availableReleases`.
 - *GET* `/api/v1/app/history` will provide a list of `deployedReleases`.
 
-While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the parent chart YAML:
+While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the subchart YAML:
 ```yaml
-replicated:
-  dev:
-    mockDataYaml: |
-      helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
-      currentRelease:
-        versionLabel: 0.1.7
-        isRequired: false
-        releaseNotes: "test"
-        createdAt: "2012-09-09"
-        helmReleaseName: dev-parent-chart
-        helmReleaseRevision: 2
-        helmReleaseNamespace: default
+dev:
+  mockDataYaml: |
+    helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
+    currentRelease:
+      versionLabel: 0.1.7
+      isRequired: false
+      releaseNotes: "test"
+      createdAt: "2012-09-09"
+      helmReleaseName: dev-parent-chart
+      helmReleaseRevision: 2
+      helmReleaseNamespace: default
 ```
 ### mock data endpoints
 The mock data endpoints provide functionality to manage mock data. The following endpoints are available:
