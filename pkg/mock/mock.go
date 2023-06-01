@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	replicatedSecretName      = "replicated"
+	replicatedSecretName  = "replicated"
 	replicatedMockDataKey = "REPLICATED_MOCK_DATA"
 
 	CurrentReleaseMockKey    = "currentRelease"
