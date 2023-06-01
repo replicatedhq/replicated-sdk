@@ -152,7 +152,7 @@ When the above mock data is configured:
 - *GET* `/api/v1/app/updates` will provide a list of `availableReleases`.
 - *GET* `/api/v1/app/history` will provide a list of `deployedReleases`.
 
-While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the subchart YAML:
+While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the chart YAML:
 ```yaml
 dev:
   mockDataYaml: |
