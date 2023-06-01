@@ -58,10 +58,6 @@ func APICmd() *cobra.Command {
 				license = l
 			}
 
-			if v.GetString("license-fields-file") == "" && v.GetString("license-fields-base64") == "" {
-				return errors.New("--license-fields-file or --license-fields-base64 is required")
-			}
-
 			if v.GetString("license-fields-file") != "" && v.GetString("license-fields-base64") != "" {
 				return errors.New("only one of --license-fields-file and --license-fields-base64 can be specified")
 			}
