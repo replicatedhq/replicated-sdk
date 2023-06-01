@@ -52,23 +52,29 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if hasMockData {
+			response := GetCurrentAppInfoResponse{
+				AppSlug: store.GetStore().GetAppSlug(),
+				AppName: store.GetStore().GetAppName(),
+			}
+
 			mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease(r.Context())
 			if err != nil {
 				logger.Errorf("failed to get mock current release: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-
-			response := GetCurrentAppInfoResponse{
-				AppSlug:      store.GetStore().GetAppSlug(),
-				AppName:      store.GetStore().GetAppName(),
-				HelmChartURL: helm.GetParentChartURL(),
-			}
-
 			if mockCurrentRelease != nil {
 				response.CurrentRelease = mockReleaseToAppRelease(*mockCurrentRelease)
 			}
 
+			mockHelmChartURL, err := mock.MustGetMock().GetHelmChartURL(r.Context())
+			if err != nil {
+				logger.Errorf("failed to get mock helm chart url: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			response.HelmChartURL = mockHelmChartURL
 			JSON(w, http.StatusOK, response)
 			return
 		}
@@ -263,16 +269,13 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 
 func mockReleaseToAppRelease(mockRelease mock.MockRelease) AppRelease {
 	appRelease := AppRelease{
-		VersionLabel: mockRelease.VersionLabel,
-		IsRequired:   mockRelease.IsRequired,
-		CreatedAt:    mockRelease.CreatedAt,
-		ReleaseNotes: mockRelease.ReleaseNotes,
-	}
-
-	if helm.IsHelmManaged() {
-		appRelease.HelmReleaseName = helm.GetReleaseName()
-		appRelease.HelmReleaseRevision = helm.GetReleaseRevision()
-		appRelease.HelmReleaseNamespace = helm.GetReleaseNamespace()
+		VersionLabel:         mockRelease.VersionLabel,
+		IsRequired:           mockRelease.IsRequired,
+		CreatedAt:            mockRelease.CreatedAt,
+		ReleaseNotes:         mockRelease.ReleaseNotes,
+		HelmReleaseName:      mockRelease.HelmReleaseName,
+		HelmReleaseRevision:  mockRelease.HelmReleaseRevision,
+		HelmReleaseNamespace: mockRelease.HelmReleaseNamespace,
 	}
 
 	return appRelease

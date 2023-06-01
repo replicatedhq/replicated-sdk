@@ -14,7 +14,6 @@ import (
 
 type LicenseInfo struct {
 	LicenseID     string `json:"licenseID"`
-	ChannelID     string `json:"channelID"`
 	ChannelName   string `json:"channelName"`
 	CustomerName  string `json:"customerName"`
 	CustomerEmail string `json:"customerEmail"`
@@ -39,7 +38,6 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 
 	licenseInfo := LicenseInfo{
 		LicenseID:     license.Spec.LicenseID,
-		ChannelID:     license.Spec.ChannelID,
 		ChannelName:   license.Spec.ChannelName,
 		CustomerName:  license.Spec.CustomerName,
 		CustomerEmail: license.Spec.CustomerEmail,

@@ -95,46 +95,56 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 ## Enabling Replicated SDK "dev" mode
 The Replicated SDK will start in `dev` mode when `"Development"` license is used.
 The `dev` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data.
-Mock data can be provided to the dev mode by setting `--set-file dev.mockData=mock_data.json`.
-The mock data accepts a json format of `currentRelease`, `deployedReleases` and `availableReleases`
+Mock data can be provided to the dev mode by setting `--set-file dev.mockData=mock_data.yaml`.
+The mock data accepts a yaml format of `helmChartURL`, `currentRelease`, `deployedReleases` and `availableReleases`
 An example of mock data is shown below:
-```json
-{
-  "currentRelease": {
-    "versionLabel": "0.1.7",
-    "isRequired": false,
-    "createdAt": "2023-05-23T21:10:57Z",
-    "releaseNotes": "",
-    "helmReleaseName": "nginx-chart",
-    "helmReleaseRevision": 2,
-    "helmReleaseNamespace": "default"
-  },
-  "deployedReleases": [
-    {
-      "versionLabel": "0.1.7",
-      "isRequired": false,
-      "createdAt": "2023-05-23T21:10:57Z",
-      "releaseNotes": "",
-      "helmReleaseName": "nginx-chart",
-      "helmReleaseRevision": 1,
-      "helmReleaseNamespace": "default"
-    }
-  ],
-  "availableReleases": [
-    {
-      "versionLabel": "0.1.7",
-      "createdAt": "2023-05-23T21:10:57Z",
-      "releaseNotes": "",
-      "isRequired": true
-    },
-    {
-      "versionLabel": "0.1.7",
-      "createdAt": "2023-05-23T21:10:57Z",
-      "releaseNotes": "",
-      "isRequired": false
-    }
-  ]
-}
+```yaml
+helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
+currentRelease:
+  versionLabel: 0.1.7
+  isRequired: false
+  releaseNotes: "test"
+  createdAt: "2012-09-09"
+  helmReleaseName: dev-parent-chart
+  helmReleaseRevision: 2
+  helmReleaseNamespace: default
+deployedReleases:
+- versionLabel: 0.1.7
+  isRequired: false
+  releaseNotes: ""
+  createdAt: ""
+  helmReleaseName: dev-parent-chart
+  helmReleaseRevision: 1
+  helmReleaseNamespace: default
+- versionLabel: 0.1.7
+  isRequired: false
+  releaseNotes: ""
+  createdAt: ""
+  helmReleaseName: dev-parent-chart
+  helmReleaseRevision: 1
+  helmReleaseNamespace: default
+- versionLabel: 0.1.7
+  isRequired: false
+  releaseNotes: ""
+  createdAt: ""
+  helmReleaseName: dev-parent-chart
+  helmReleaseRevision: 1
+  helmReleaseNamespace: default
+availableReleases:
+- versionLabel: 0.1.7
+  isRequired: true
+  releaseNotes: ""
+  createdAt: ""
+  helmReleaseName: ""
+  helmReleaseRevision: 0
+  helmReleaseNamespace: ""
+- versionLabel: 0.1.7
+  isRequired: false
+  releaseNotes: ""
+  createdAt: ""
+  helmReleaseName: ""
+  helmReleaseRevision: 0
+  helmReleaseNamespace: ""
 ```
 
 When the above mock data is configured:
@@ -142,11 +152,19 @@ When the above mock data is configured:
 - *GET* `/api/v1/app/updates` will provide a list of `availableReleases`.
 - *GET* `/api/v1/app/history` will provide a list of `deployedReleases`.
 
-While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the parent chart YAML:
+While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the chart YAML:
 ```yaml
-replicated:
-  dev:
-    mockData: '{ "currentRelease": { "versionLabel": "0.1.7", "isRequired": false, "createdAt": "2023-05-23T21:10:57Z", "releaseNotes": "", "helmReleaseName": "nginx-chart", "helmReleaseRevision": 2, "helmReleaseNamespace": "default" } }'
+dev:
+  mockData: |
+    helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
+    currentRelease:
+      versionLabel: 0.1.7
+      isRequired: false
+      releaseNotes: "test"
+      createdAt: "2012-09-09"
+      helmReleaseName: dev-parent-chart
+      helmReleaseRevision: 2
+      helmReleaseNamespace: default
 ```
 ### mock data endpoints
 The mock data endpoints provide functionality to manage mock data. The following endpoints are available:
