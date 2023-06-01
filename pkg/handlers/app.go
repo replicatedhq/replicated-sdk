@@ -73,10 +73,8 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			if mockHelmChartURL != nil {
-				response.HelmChartURL = *mockHelmChartURL
-			}
 
+			response.HelmChartURL = mockHelmChartURL
 			JSON(w, http.StatusOK, response)
 			return
 		}
