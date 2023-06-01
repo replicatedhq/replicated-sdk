@@ -14,7 +14,7 @@ import (
 
 const (
 	replicatedSecretName      = "replicated"
-	replicatedMockDataYamlKey = "REPLICATED_MOCK_DATA_YAML"
+	replicatedMockDataKey = "REPLICATED_MOCK_DATA"
 
 	CurrentReleaseMockKey    = "currentRelease"
 	DeployedReleasesMockKey  = "deployedReleases"
@@ -74,7 +74,7 @@ func (m *Mock) HasMockData(ctx context.Context, dataKey string) (bool, error) {
 		return false, errors.Wrap(err, "failed to get secret replicated-dev")
 	}
 
-	b := secret.Data[replicatedMockDataYamlKey]
+	b := secret.Data[replicatedMockDataKey]
 	if len(b) == 0 {
 		return false, nil
 	}
@@ -145,7 +145,7 @@ func (m *Mock) SetMockData(ctx context.Context, mockData MockData) error {
 	if err != nil {
 		if kuberneteserrors.IsNotFound(err) {
 			data := map[string][]byte{
-				replicatedMockDataYamlKey: b,
+				replicatedMockDataKey: b,
 			}
 			err = m.createReplicatedSecret(ctx, data)
 			if err != nil {
@@ -161,7 +161,7 @@ func (m *Mock) SetMockData(ctx context.Context, mockData MockData) error {
 		secret.Data = map[string][]byte{}
 	}
 
-	secret.Data[replicatedMockDataYamlKey] = b
+	secret.Data[replicatedMockDataKey] = b
 	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to update secret replicated-dev")
@@ -182,7 +182,7 @@ func (m *Mock) GetMockData(ctx context.Context) (*MockData, error) {
 		return nil, errors.Wrap(err, "failed to get secret replicated-dev")
 	}
 
-	b := secret.Data[replicatedMockDataYamlKey]
+	b := secret.Data[replicatedMockDataKey]
 	if len(b) == 0 {
 		return nil, nil
 	}
@@ -207,7 +207,7 @@ func (m *Mock) DeleteMockData(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get secret replicated-dev")
 	}
 
-	delete(secret.Data, replicatedMockDataYamlKey)
+	delete(secret.Data, replicatedMockDataKey)
 	_, err = m.clientset.CoreV1().Secrets(m.namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to update secret replicated-dev")

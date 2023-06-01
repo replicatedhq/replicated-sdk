@@ -95,7 +95,7 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 ## Enabling Replicated SDK "dev" mode
 The Replicated SDK will start in `dev` mode when `"Development"` license is used.
 The `dev` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data.
-Mock data can be provided to the dev mode by setting `--set-file dev.mockDataYaml=mock_data.yaml`.
+Mock data can be provided to the dev mode by setting `--set-file dev.mockData=mock_data.yaml`.
 The mock data accepts a yaml format of `helmChartURL`, `currentRelease`, `deployedReleases` and `availableReleases`
 An example of mock data is shown below:
 ```yaml
@@ -155,7 +155,7 @@ When the above mock data is configured:
 While running a Helm install/upgrade with `replicated` as a subchart, the following values can be used in the chart YAML:
 ```yaml
 dev:
-  mockDataYaml: |
+  mockData: |
     helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
     currentRelease:
       versionLabel: 0.1.7

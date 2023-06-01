@@ -23,7 +23,7 @@ spec:
       containers:
       - name: replicated
         image: {{ .Values.images.replicated }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         envFrom:
         - secretRef:
             name: replicated
