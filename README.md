@@ -101,50 +101,50 @@ An example of mock data is shown below:
 ```yaml
 helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
 currentRelease:
-  versionLabel: 0.1.7
+  versionLabel: 0.1.3
   isRequired: false
-  releaseNotes: "test"
-  createdAt: "2012-09-09"
+  releaseNotes: "release notes 0.1.3"
+  createdAt: 2023-05-23T20:58:07Z
+  deployedAt: 2023-05-23T21:58:07Z
+  helmReleaseName: dev-parent-chart
+  helmReleaseRevision: 3
+  helmReleaseNamespace: default
+deployedReleases:
+- versionLabel: 0.1.1
+  isRequired: false
+  releaseNotes: "release notes 0.1.1"
+  createdAt: 2023-05-21T20:58:07Z
+  deployedAt: 2023-05-21T21:58:07Z
+  helmReleaseName: dev-parent-chart
+  helmReleaseRevision: 1
+  helmReleaseNamespace: default
+- versionLabel: 0.1.2
+  isRequired: false
+  releaseNotes: "release notes 0.1.2"
+  createdAt: 2023-05-22T20:58:07Z
+  deployedAt: 2023-05-22T21:58:07Z
   helmReleaseName: dev-parent-chart
   helmReleaseRevision: 2
   helmReleaseNamespace: default
-deployedReleases:
-- versionLabel: 0.1.7
+- versionLabel: 0.1.3
   isRequired: false
-  releaseNotes: ""
-  createdAt: ""
+  releaseNotes: "release notes 0.1.3"
+  createdAt: 2023-05-23T20:58:07Z
+  deployedAt: 2023-05-23T21:58:07Z
   helmReleaseName: dev-parent-chart
-  helmReleaseRevision: 1
-  helmReleaseNamespace: default
-- versionLabel: 0.1.7
-  isRequired: false
-  releaseNotes: ""
-  createdAt: ""
-  helmReleaseName: dev-parent-chart
-  helmReleaseRevision: 1
-  helmReleaseNamespace: default
-- versionLabel: 0.1.7
-  isRequired: false
-  releaseNotes: ""
-  createdAt: ""
-  helmReleaseName: dev-parent-chart
-  helmReleaseRevision: 1
+  helmReleaseRevision: 3
   helmReleaseNamespace: default
 availableReleases:
-- versionLabel: 0.1.7
+- versionLabel: 0.1.4
   isRequired: true
-  releaseNotes: ""
-  createdAt: ""
-  helmReleaseName: ""
-  helmReleaseRevision: 0
-  helmReleaseNamespace: ""
-- versionLabel: 0.1.7
+  releaseNotes: "release notes 0.1.4"
+  createdAt: 2023-05-24T20:58:07Z
+  deployedAt: 2023-05-24T21:58:07Z
+- versionLabel: 0.1.5
   isRequired: false
-  releaseNotes: ""
-  createdAt: ""
-  helmReleaseName: ""
-  helmReleaseRevision: 0
-  helmReleaseNamespace: ""
+  releaseNotes: "release notes 0.1.5"
+  createdAt: 2023-06-01T20:58:07Z
+  deployedAt: 2023-06-01T21:58:07Z
 ```
 
 When the above mock data is configured:
@@ -171,5 +171,7 @@ The mock data endpoints provide functionality to manage mock data. The following
 - *POST* `/api/v1/mock-data` endpoint accepts a JSON request body to set the mock data.
 - *GET* `/api/v1/mock-data` endpoint returns the entire mock data.
 - *DELETE* `/api/v1/mock-data` endpoint deletes the mock data.
+
+**Note** The endpoint *POST* `/api/v1/mock-data` exclusively supports full data posts, meaning that if any updates are required for the mock data, the entire dataset must be sent to the endpoint via the `POST` method.
 
 **Note**: `dev` mode can be enabled for `"Development"` license type only.
