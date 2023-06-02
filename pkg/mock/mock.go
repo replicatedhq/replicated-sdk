@@ -57,6 +57,7 @@ type MockRelease struct {
 	IsRequired           bool   `json:"isRequired" yaml:"isRequired"`
 	ReleaseNotes         string `json:"releaseNotes" yaml:"releaseNotes"`
 	CreatedAt            string `json:"createdAt" yaml:"createdAt"`
+	DeployedAt           string `json:"deployedAt" yaml:"deployedAt"`
 	HelmReleaseName      string `json:"helmReleaseName" yaml:"helmReleaseName"`
 	HelmReleaseRevision  int    `json:"helmReleaseRevision" yaml:"helmReleaseRevision"`
 	HelmReleaseNamespace string `json:"helmReleaseNamespace" yaml:"helmReleaseNamespace"`

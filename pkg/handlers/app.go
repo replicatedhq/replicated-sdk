@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
@@ -35,8 +36,9 @@ type GetAppHistoryResponse struct {
 type AppRelease struct {
 	VersionLabel         string `json:"versionLabel"`
 	IsRequired           bool   `json:"isRequired"`
-	CreatedAt            string `json:"createdAt"`
 	ReleaseNotes         string `json:"releaseNotes"`
+	CreatedAt            string `json:"createdAt"`
+	DeployedAt           string `json:"deployedAt"`
 	HelmReleaseName      string `json:"helmReleaseName,omitempty"`
 	HelmReleaseRevision  int    `json:"helmReleaseRevision,omitempty"`
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
@@ -85,14 +87,25 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 		AppName:      store.GetStore().GetAppName(),
 		HelmChartURL: helm.GetParentChartURL(),
 		CurrentRelease: AppRelease{
-			VersionLabel:         store.GetStore().GetVersionLabel(),
-			IsRequired:           store.GetStore().GetReleaseIsRequired(),
-			CreatedAt:            store.GetStore().GetReleaseCreatedAt(),
-			ReleaseNotes:         store.GetStore().GetReleaseNotes(),
-			HelmReleaseName:      helm.GetReleaseName(),
-			HelmReleaseRevision:  helm.GetReleaseRevision(),
-			HelmReleaseNamespace: helm.GetReleaseNamespace(),
+			VersionLabel: store.GetStore().GetVersionLabel(),
+			IsRequired:   store.GetStore().GetReleaseIsRequired(),
+			CreatedAt:    store.GetStore().GetReleaseCreatedAt(),
+			ReleaseNotes: store.GetStore().GetReleaseNotes(),
 		},
+	}
+
+	if helm.IsHelmManaged() {
+		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get helm release"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		response.CurrentRelease.HelmReleaseName = helmRelease.Name
+		response.CurrentRelease.HelmReleaseRevision = helmRelease.Version
+		response.CurrentRelease.HelmReleaseNamespace = helmRelease.Namespace
+		response.CurrentRelease.DeployedAt = helmRelease.Info.LastDeployed.Format(time.RFC3339)
 	}
 
 	JSON(w, http.StatusOK, response)
@@ -249,6 +262,7 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 		}
 
 		appRelease := &AppRelease{
+			DeployedAt:           helmRelease.Info.LastDeployed.Format(time.RFC3339),
 			HelmReleaseName:      helmRelease.Name,
 			HelmReleaseRevision:  helmRelease.Version,
 			HelmReleaseNamespace: helmRelease.Namespace,
@@ -271,8 +285,9 @@ func mockReleaseToAppRelease(mockRelease mock.MockRelease) AppRelease {
 	appRelease := AppRelease{
 		VersionLabel:         mockRelease.VersionLabel,
 		IsRequired:           mockRelease.IsRequired,
-		CreatedAt:            mockRelease.CreatedAt,
 		ReleaseNotes:         mockRelease.ReleaseNotes,
+		CreatedAt:            mockRelease.CreatedAt,
+		DeployedAt:           mockRelease.DeployedAt,
 		HelmReleaseName:      mockRelease.HelmReleaseName,
 		HelmReleaseRevision:  mockRelease.HelmReleaseRevision,
 		HelmReleaseNamespace: mockRelease.HelmReleaseNamespace,
