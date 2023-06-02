@@ -54,10 +54,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 License Fields
 */}}
 {{- define "replicated.licenseFields" -}}
-{{- if .Values.global -}}
-{{- if .Values.global.licenseFields -}}
-{{- .Values.global.licenseFields | toYaml -}}
-{{- end -}}
+{{- if (((.Values.global).replicated).licenseFields) -}}
+{{- .Values.global.replicated.licenseFields | toYaml -}}
 {{- else if .Values.licenseFields -}}
 {{- .Values.licenseFields | toYaml -}}
 {{- else -}}
