@@ -46,10 +46,10 @@ func GetReleaseHistory() ([]*release.Release, error) {
 
 func GetRelease(releaseName string) (*release.Release, error) {
 	client := action.NewGet(cfg)
-	releases, err := client.Run(releaseName)
+	release, err := client.Run(releaseName)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get release")
 	}
 
-	return releases, nil
+	return release, nil
 }
