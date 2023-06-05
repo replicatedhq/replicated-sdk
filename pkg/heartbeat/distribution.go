@@ -93,25 +93,18 @@ func distributionFromLabels(clientset kubernetes.Interface) types.Distribution {
 }
 
 func distributionFromVersion(k8sVersion string) types.Distribution {
-	if strings.Contains(k8sVersion, "-gke.") {
+	switch {
+	case strings.Contains(k8sVersion, "-gke."):
 		return types.GKE
-	}
-
-	if strings.Contains(k8sVersion, "-eks-") {
+	case strings.Contains(k8sVersion, "-eks-"):
 		return types.EKS
-	}
-
-	if strings.Contains(k8sVersion, "+k3s") {
-		return types.K3s
-	}
-
-	if strings.Contains(k8sVersion, "+k0s") {
-		return types.K0s
-	}
-
-	if strings.Contains(k8sVersion, "+rke2") {
+	case strings.Contains(k8sVersion, "+rke2"):
 		return types.RKE2
+	case strings.Contains(k8sVersion, "+k3s"):
+		return types.K3s
+	case strings.Contains(k8sVersion, "+k0s"):
+		return types.K0s
+	default:
+		return types.UnknownDistribution
 	}
-
-	return types.UnknownDistribution
 }
