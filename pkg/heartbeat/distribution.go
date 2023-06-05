@@ -44,13 +44,12 @@ if err == nil {
 func distributionFromServerGroupAndResources(clientset kubernetes.Interface) types.Distribution {
 	_, resources, _ := clientset.Discovery().ServerGroupsAndResources()
 	for _, resource := range resources {
-		if strings.HasPrefix(resource.GroupVersion, "auto.gke.io/") {
+		switch {
+		case strings.HasPrefix(resource.GroupVersion, "auto.gke.io/"):
 			return types.GKEAutoPilot
-		}
-		if strings.HasPrefix(resource.GroupVersion, "apps.openshift.io/") {
+		case strings.HasPrefix(resource.GroupVersion, "apps.openshift.io/"):
 			return types.OpenShift
-		}
-		if strings.HasPrefix(resource.GroupVersion, "run.tanzu.vmware.com/") {
+		case strings.HasPrefix(resource.GroupVersion, "run.tanzu.vmware.com/"):
 			return types.Tanzu
 		}
 	}
