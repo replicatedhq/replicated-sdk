@@ -26,6 +26,10 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 	}
 
 	req.Header.Set("X-Replicated-DownstreamChannelSequence", strconv.FormatInt(heartbeatInfo.ChannelSequence, 10))
+
+	if heartbeatInfo.K8sDistribution != "" {
+		req.Header.Set("X-Replicated-K8sDistribution", heartbeatInfo.K8sDistribution)
+	}
 }
 
 func canReport(license *kotsv1beta1.License) bool {
