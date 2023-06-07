@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	replicatedEnpoint = "https://replicated.app"
+	defaultReplicatedEndpoint = "https://replicated.app"
 )
 
 type LicenseData struct {
@@ -24,7 +24,7 @@ type LicenseData struct {
 
 func GetLicenseByID(licenseID string, endpoint string) (*kotsv1beta1.License, error) {
 	if endpoint == "" {
-		endpoint = replicatedEnpoint
+		endpoint = defaultReplicatedEndpoint
 	}
 
 	url := fmt.Sprintf("%s/license", endpoint)
