@@ -31,48 +31,61 @@ func APICmd() *cobra.Command {
 				logger.SetDebug()
 			}
 
-			if v.GetString("license-file") == "" && v.GetString("license-base64") == "" {
-				return errors.New("--license-file or --license-base64 is required")
+			licenseID := v.GetString("license-id")
+			licenseFile := v.GetString("license-file")
+			licenseBase64 := v.GetString("license-base64")
+
+			if licenseID == "" && licenseFile == "" && licenseBase64 == "" {
+				return errors.New("--license-file or --license-base64 or --license-id is required")
 			}
 
-			if v.GetString("license-file") != "" && v.GetString("license-base64") != "" {
-				return errors.New("only one of --license-file and --license-base64 can be specified")
+			if (licenseFile != "" && (licenseBase64 != "" || licenseID != "")) ||
+				(licenseBase64 != "" && (licenseID != "" || licenseFile != "")) ||
+				(licenseID != "" && (licenseBase64 != "" || licenseFile != "")) {
+				return errors.New("only one of --license-file, --license-base64 or --license-id can be specified")
 			}
 
+			var err error
 			var license *kotsv1beta1.License
-			if v.GetString("license-file") != "" {
-				l, err := sdklicense.LoadLicenseFromPath(v.GetString("license-file"))
+			switch {
+			case licenseID != "":
+				license, err = sdklicense.GetLicenseByID(licenseID, v.GetString("endpoint"))
+				if err != nil {
+					return errors.Wrap(err, "failed to get license by id")
+				}
+			case licenseFile != "":
+				license, err = sdklicense.LoadLicenseFromPath(licenseFile)
 				if err != nil {
 					return errors.Wrap(err, "failed to parse license from file")
 				}
-				license = l
-			} else {
-				decoded, err := base64.StdEncoding.DecodeString(v.GetString("license-base64"))
+			case licenseBase64 != "":
+				decoded, err := base64.StdEncoding.DecodeString(licenseBase64)
 				if err != nil {
 					return errors.Wrap(err, "failed to base64 decode license")
 				}
-				l, err := sdklicense.LoadLicenseFromBytes(decoded)
+				license, err = sdklicense.LoadLicenseFromBytes(decoded)
 				if err != nil {
 					return errors.Wrap(err, "failed to parse license from base64")
 				}
-				license = l
 			}
 
-			if v.GetString("license-fields-file") != "" && v.GetString("license-fields-base64") != "" {
-				return errors.New("only one of --license-fields-file and --license-fields-base64 can be specified")
+			licenseFieldsFile := v.GetString("license-fields-file")
+			licenseFieldsBase64 := v.GetString("license-fields-base64")
+			if licenseFieldsFile != "" && licenseFieldsBase64 != "" {
+				return errors.New("only one of --license-fields-file or --license-fields-base64 can be specified")
 			}
 
 			var licenseFields sdklicensetypes.LicenseFields
-			if v.GetString("license-fields-file") != "" {
-				b, err := os.ReadFile(v.GetString("license-fields-file"))
+			if licenseFieldsFile != "" {
+				b, err := os.ReadFile(licenseFieldsFile)
 				if err != nil {
 					return errors.Wrap(err, "failed to read license file")
 				}
 				if err := yaml.Unmarshal(b, &licenseFields); err != nil {
 					return errors.Wrap(err, "failed to unmarshal license fields from file")
 				}
-			} else if v.GetString("license-fields-base64") != "" {
-				decoded, err := base64.StdEncoding.DecodeString(v.GetString("license-fields-base64"))
+			} else if licenseFieldsBase64 != "" {
+				decoded, err := base64.StdEncoding.DecodeString(licenseFieldsBase64)
 				if err != nil {
 					return errors.Wrap(err, "failed to base64 decode license fields")
 				}
@@ -102,6 +115,7 @@ func APICmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().String("license-id", "", "the application license id")
 	cmd.Flags().String("license-file", "", "path to the application license file")
 	cmd.Flags().String("license-base64", "", "base64 encoded application license")
 	cmd.Flags().String("license-fields-file", "", "path to the application license fields file")
@@ -117,6 +131,7 @@ func APICmd() *cobra.Command {
 	cmd.Flags().String("version-label", "", "the application version label")
 	cmd.Flags().String("informers-label-selector", "", "the label selector to use for status informers to detect application resources")
 	cmd.Flags().String("namespace", "", "the namespace where the sdk/application is installed")
+	cmd.Flags().String("endpoint", "", "the replicated api endpoint")
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
