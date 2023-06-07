@@ -113,8 +113,8 @@ To enable the Replicated SDK's `dev` mode, you can use the following values in t
 - `licenseID`: This should be set to the development license ID obtained from the vendor portal.
 - `mockData`: This field allows you to provide the necessary data for the Replicated SDK to return mock responses.
 
-The `dev` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data.
-The mock data accepts a yaml format of `helmChartURL`, `currentRelease`, `deployedReleases` and `availableReleases`
+The `dev` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data. The mock data accepts a yaml format of `helmChartURL`, `currentRelease`, `deployedReleases` and `availableReleases`.
+
 Below is an example demonstrating all the supported values for the `mockData` field:
 ```yaml
 helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
@@ -178,7 +178,7 @@ The mock data endpoints provide functionality to manage mock data. The following
 
 **Note** The endpoint *POST* `/api/v1/mock-data` exclusively supports full data posts, meaning that if any updates are required for the mock data, the entire dataset must be sent to the endpoint via the `POST` method.
 
-**Note**: When using custom domains for replicated app, the first license pull with license ID would be through replicated app endpoint. Once the license information is available and Replicated SDK is running, subsequent api calls to replicated app would be via custom domain url of replicated app.
+**Note**: [_when we start supporting custom domains for replicated app endpoint_] When using custom domains for replicated app, the first license pull with license ID would be through replicated app endpoint. Once the license information is available and Replicated SDK is running, subsequent api calls to replicated app would be via custom domain url of replicated app.
 
 ### Replicated SDK "dev" mode for staging/okteto environments
 **Note**: Please don't document this in customer facing docs.
