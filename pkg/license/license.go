@@ -13,9 +13,28 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
+const (
+	replicatedEnpoint = "https://replicated.app"
+)
+
 type LicenseData struct {
 	LicenseBytes []byte
 	License      *kotsv1beta1.License
+}
+
+func GetLicenseByID(licenseID string, endpoint string) (*kotsv1beta1.License, error) {
+	if endpoint == "" {
+		endpoint = replicatedEnpoint
+	}
+
+	url := fmt.Sprintf("%s/license", endpoint)
+	licenseData, err := getLicenseFromAPI(url, licenseID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get license from api")
+	}
+
+	return licenseData.License, nil
+
 }
 
 func GetLatestLicense(license *kotsv1beta1.License) (*LicenseData, error) {
