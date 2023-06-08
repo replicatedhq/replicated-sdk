@@ -76,5 +76,9 @@ func GetHeartbeatInfo() *types.HeartbeatInfo {
 		r.K8sVersion = k8sVersion
 	}
 
+	if distribution := GetDistribution(); distribution != types.UnknownDistribution {
+		r.K8sDistribution = distribution.String()
+	}
+
 	return &r
 }

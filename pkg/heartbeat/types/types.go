@@ -4,6 +4,26 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 )
 
+type Distribution int64
+
+const (
+	UnknownDistribution Distribution = iota
+	AKS
+	DigitalOcean
+	EKS
+	GKE
+	GKEAutoPilot
+	K0s
+	K3s
+	Kind
+	Kurl
+	MicroK8s
+	Minikube
+	OpenShift
+	RKE2
+	Tanzu
+)
+
 type HeartbeatInfo struct {
 	InstanceID      string                       `json:"instance_id"`
 	ClusterID       string                       `json:"cluster_id"`
@@ -14,4 +34,39 @@ type HeartbeatInfo struct {
 	AppStatus       string                       `json:"app_status"`
 	ResourceStates  appstatetypes.ResourceStates `json:"resource_states"`
 	K8sVersion      string                       `json:"k8s_version"`
+	K8sDistribution string                       `json:"k8s_distribution"`
+}
+
+func (d Distribution) String() string {
+	switch d {
+	case AKS:
+		return "aks"
+	case DigitalOcean:
+		return "digital-ocean"
+	case EKS:
+		return "eks"
+	case GKE:
+		return "gke"
+	case GKEAutoPilot:
+		return "gke-autopilot"
+	case K0s:
+		return "k0s"
+	case K3s:
+		return "k3s"
+	case Kind:
+		return "kind"
+	case Kurl:
+		return "kurl"
+	case MicroK8s:
+		return "microk8s"
+	case Minikube:
+		return "minikube"
+	case OpenShift:
+		return "openshift"
+	case RKE2:
+		return "rke2"
+	case Tanzu:
+		return "tanzu"
+	}
+	return "unknown"
 }
