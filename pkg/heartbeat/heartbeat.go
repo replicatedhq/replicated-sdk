@@ -63,7 +63,12 @@ func Start() error {
 			store.GetStore().SetLicense(licenseData.License)
 		}
 
-		go SendAppHeartbeat()
+		go func() {
+			err := SendAppHeartbeat()
+			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
+			}
+		}()
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to add func")
