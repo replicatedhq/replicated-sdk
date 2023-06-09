@@ -202,3 +202,18 @@ and then add the below content to replicated-secret.yaml
   {{- end }}
 ```
 
+
+## Release process
+1. Compare the commits between the previous tag and the current commit on the main branch.
+2. Share the details of the commit differences by posting a note on the Slack channels [#production-system](https://replicated.slack.com/archives/C0HFCF4JE) and [#wg-builders-plan](https://replicated.slack.com/archives/C0522NKK988).
+3. Generate a new tag for the commits and proceed to push the tag to the repository using the following commands:
+eg:
+```bash
+  SDK_TAG="v0.0.1-alpha.16"
+  git checkout main && git pull
+  git tag $SDK_TAG
+  git push -u origin $SDK_TAG
+```
+4. Ensure that the GitHub actions associated with the newly created tag are executed, and verify that the updated Helm charts are successfully published to both the staging and production replicated registry.
+5. Make sure to update the [Replicated SDK Documentation](https://docs.google.com/document/d/1KJo9MfwS9sfu13p-Lyf3W4KRDBxNcAQPuOOYoHnQVis/edit#heading=h.pmlj79z5v9zk) by replacing all instances of the Replicated SDK version with the latest tag.
+
