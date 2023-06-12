@@ -53,6 +53,9 @@ func APICmd() *cobra.Command {
 				if err != nil {
 					return errors.Wrap(err, "failed to get license by id")
 				}
+				if license.Spec.LicenseType != "dev" {
+					return errors.New("--license-id must be a development license")
+				}
 			case licenseFile != "":
 				license, err = sdklicense.LoadLicenseFromPath(licenseFile)
 				if err != nil {
@@ -115,7 +118,7 @@ func APICmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("license-id", "", "the application license id")
+	cmd.Flags().String("license-id", "", "the application development license id")
 	cmd.Flags().String("license-file", "", "path to the application license file")
 	cmd.Flags().String("license-base64", "", "base64 encoded application license")
 	cmd.Flags().String("license-fields-file", "", "path to the application license fields file")

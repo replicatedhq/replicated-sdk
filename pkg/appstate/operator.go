@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
@@ -101,7 +102,12 @@ func (o *Operator) setAppStatus(newAppStatus types.AppStatus) error {
 
 	if newAppStatus.State != currentAppStatus.State {
 		log.Printf("app state changed from %s to %s", currentAppStatus.State, newAppStatus.State)
-		go heartbeat.SendAppHeartbeat()
+		go func() {
+			err := heartbeat.SendAppHeartbeat()
+			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
+			}
+		}()
 	}
 
 	return nil
