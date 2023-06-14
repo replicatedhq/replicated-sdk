@@ -203,10 +203,11 @@ func (s *Store) GetNamespace() string {
 
 func (s *Store) GetAppStatus() appstatetypes.AppStatus {
 	if s.appStatus.State == "" {
+		// initialize with none state so that subsequent changes will trigger reporting
 		return appstatetypes.AppStatus{
 			AppSlug:  s.appSlug,
 			Sequence: s.releaseSequence,
-			State:    appstatetypes.StateMissing,
+			State:    appstatetypes.StateNone,
 		}
 	}
 	return s.appStatus
