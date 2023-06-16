@@ -10,6 +10,8 @@ var (
 	StateDegraded    State = "degraded"
 	StateUnavailable State = "unavailable"
 	StateMissing     State = "missing"
+	StateUnknown     State = "unknown"
+	StateNone        State = "none"
 )
 
 type AppInformersArgs struct {
@@ -39,7 +41,7 @@ type State string
 
 func GetState(resourceStates []ResourceState) State {
 	if len(resourceStates) == 0 {
-		return StateMissing
+		return StateUnknown
 	}
 	max := StateReady
 	for _, resourceState := range resourceStates {
@@ -50,7 +52,7 @@ func GetState(resourceStates []ResourceState) State {
 
 func MinState(ss ...State) (min State) {
 	if len(ss) == 0 {
-		return StateMissing
+		return StateUnknown
 	}
 	for _, s := range ss {
 		if s == StateMissing || min == StateMissing {
