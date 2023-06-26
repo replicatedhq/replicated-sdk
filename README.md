@@ -88,10 +88,10 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.
 
-## Enabling Replicated SDK "dev" mode
-When using a `Development` license, the Replicated SDK will initiate in dev mode. If you are performing a Helm install/upgrade using the replicated helm chart, you can utilize the following values in the chart YAML for the Replicated SDK's dev mode:
+## Enabling Replicated SDK "integration" mode
+When using a `Development` license, the Replicated SDK will initiate in integration mode. If you are performing a Helm install/upgrade using the replicated helm chart, you can utilize the following values in the chart YAML for the Replicated SDK's integration mode:
 ```yaml
-dev:
+integration:
   licenseID: "development-license-id"
   mockData: |
     helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
@@ -104,11 +104,11 @@ dev:
       helmReleaseNamespace: default   
 ```
 
-To enable the Replicated SDK's `dev` mode, you can use the following values in the chart YAML:
+To enable the Replicated SDK's `integration` mode, you can use the following values in the chart YAML:
 - `licenseID`: This should be set to the development license ID obtained from the vendor portal.
 - `mockData`: This field allows you to provide the necessary data for the Replicated SDK to return mock responses.
 
-The `dev` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data. The mock data accepts a yaml format of `helmChartURL`, `currentRelease`, `deployedReleases` and `availableReleases`.
+The `integration` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data. The mock data accepts a yaml format of `helmChartURL`, `currentRelease`, `deployedReleases` and `availableReleases`.
 
 Below is an example demonstrating all the supported values for the `mockData` field:
 ```yaml
@@ -169,25 +169,25 @@ The mock data endpoints provide functionality to manage mock data. The following
 
 **Note**: [_when we start supporting custom domains for replicated app endpoint_] When using custom domains for replicated app, the first license pull with license ID would be through replicated app endpoint. Once the license information is available and Replicated SDK is running, subsequent api calls to replicated app would be via custom domain url of replicated app.
 
-### Replicated SDK "dev" mode for staging/okteto environments
+### Replicated SDK "integration" mode for staging/okteto environments
 **Note**: Please don't document this in customer facing docs.
 
-Replicated SDK supports `dev`.`replicatedEndpoint` helm value which can be used to provide alternate replicated app endpoints.
+Replicated SDK supports `integration`.`replicatedEndpoint` helm value which can be used to provide alternate replicated app endpoints.
 This helm value will be handy for replicants when working with staging/okteto environment deployments
 
-In order to use staging/okteto license IDs in `dev` mode, you would have to provide the replicated app endpoint.
+In order to use staging/okteto license IDs in `integration` mode, you would have to provide the replicated app endpoint.
 You can do so by providing the `replicatedEndpoint` value with the staging/okteto replicated app url
 eg: for staging licenses you can set the replicated app endpoint as below in `values.yaml`:
 ```yaml
-dev:
+integration:
   licenseID: "development-license-id"
   replicatedEndpoint: "staging.replicated.app"
   mockData: ""
 ```
 and then add the below content to replicated-secret.yaml
 ```yaml
-  {{- if .Values.dev.replicatedEndpoint }}
-  REPLICATED_ENDPOINT: {{ .Values.dev.replicatedEndpoint }}
+  {{- if .Values.integration.replicatedEndpoint }}
+  REPLICATED_ENDPOINT: {{ .Values.integration.replicatedEndpoint }}
   {{- end }}
 ```
 
