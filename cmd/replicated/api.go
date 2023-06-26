@@ -127,7 +127,6 @@ func APICmd() *cobra.Command {
 	cmd.Flags().String("channel-name", "", "the application channel name")
 	cmd.Flags().Int64("channel-sequence", -1, "the application upstream channel sequence")
 	cmd.Flags().Int64("release-sequence", -1, "the application upstream release sequence")
-	cmd.Flags().Bool("release-is-required", false, "if the application release is required")
 	cmd.Flags().String("release-created-at", "", "when the application release was created")
 	cmd.Flags().String("release-notes", "", "the application release notes")
 	cmd.Flags().String("version-label", "", "the application version label")

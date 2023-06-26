@@ -21,7 +21,6 @@ Run the Replicated API:
     --channel-name=[CHANNEL_NAME] \
     --channel-sequence=[CHANNEL_SEQUENCE] \
     --release-sequence=[RELEASE_SEQUENCE] \
-    --release-is-required=[RELEASE_IS_REQUIRED] \
     --release-created-at=[RELEASE_CREATED_AT] \
     --release-notes=[RELEASE_NOTES] \
     --version-label=[VERSION_LABEL] \
@@ -38,7 +37,6 @@ Example:
     --channel-name=Beta \
     --channel-sequence=1 \
     --release-sequence=1 \
-    --release-is-required=false \
     --release-created-at="2023-05-09T16:41:35.000Z" \
     --release-notes="my release notes" \
     --version-label="v1.0.0" \
