@@ -10,6 +10,7 @@ import (
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
@@ -36,6 +37,8 @@ type APIServerParams struct {
 }
 
 func Start(params APIServerParams) {
+	log.Println("Replicated version:", buildversion.Version())
+
 	storeOptions := store.InitStoreOptions{
 		License:           params.License,
 		LicenseFields:     params.LicenseFields,
