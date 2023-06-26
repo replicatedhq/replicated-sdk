@@ -54,7 +54,6 @@ type MockData struct {
 
 type MockRelease struct {
 	VersionLabel         string `json:"versionLabel" yaml:"versionLabel"`
-	IsRequired           bool   `json:"isRequired" yaml:"isRequired"`
 	ReleaseNotes         string `json:"releaseNotes" yaml:"releaseNotes"`
 	CreatedAt            string `json:"createdAt" yaml:"createdAt"`
 	DeployedAt           string `json:"deployedAt" yaml:"deployedAt"`

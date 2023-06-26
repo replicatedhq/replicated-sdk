@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -35,7 +34,6 @@ type GetAppHistoryResponse struct {
 
 type AppRelease struct {
 	VersionLabel         string `json:"versionLabel"`
-	IsRequired           bool   `json:"isRequired"`
 	ReleaseNotes         string `json:"releaseNotes"`
 	CreatedAt            string `json:"createdAt"`
 	DeployedAt           string `json:"deployedAt"`
@@ -88,7 +86,6 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 		HelmChartURL: helm.GetParentChartURL(),
 		CurrentRelease: AppRelease{
 			VersionLabel: store.GetStore().GetVersionLabel(),
-			IsRequired:   store.GetStore().GetReleaseIsRequired(),
 			CreatedAt:    store.GetStore().GetReleaseCreatedAt(),
 			ReleaseNotes: store.GetStore().GetReleaseNotes(),
 		},
@@ -132,7 +129,6 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 			for _, mockRelease := range mockAvailableReleases {
 				response = append(response, types.ChannelRelease{
 					VersionLabel: mockRelease.VersionLabel,
-					IsRequired:   mockRelease.IsRequired,
 					CreatedAt:    mockRelease.CreatedAt,
 					ReleaseNotes: mockRelease.ReleaseNotes,
 				})
@@ -268,7 +264,6 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 			HelmReleaseNamespace: helmRelease.Namespace,
 		}
 
-		appRelease.IsRequired, _ = strconv.ParseBool(data["REPLICATED_RELEASE_IS_REQUIRED"].(string))
 		appRelease.CreatedAt = data["REPLICATED_RELEASE_CREATED_AT"].(string)
 		appRelease.ReleaseNotes = data["REPLICATED_RELEASE_NOTES"].(string)
 		appRelease.VersionLabel = data["REPLICATED_VERSION_LABEL"].(string)
@@ -284,7 +279,6 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 func mockReleaseToAppRelease(mockRelease mock.MockRelease) AppRelease {
 	appRelease := AppRelease{
 		VersionLabel:         mockRelease.VersionLabel,
-		IsRequired:           mockRelease.IsRequired,
 		ReleaseNotes:         mockRelease.ReleaseNotes,
 		CreatedAt:            mockRelease.CreatedAt,
 		DeployedAt:           mockRelease.DeployedAt,

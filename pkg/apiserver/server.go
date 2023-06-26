@@ -10,6 +10,7 @@ import (
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
@@ -27,7 +28,6 @@ type APIServerParams struct {
 	ChannelName            string
 	ChannelSequence        int64
 	ReleaseSequence        int64
-	ReleaseIsRequired      bool
 	ReleaseCreatedAt       string
 	ReleaseNotes           string
 	VersionLabel           string
@@ -36,19 +36,20 @@ type APIServerParams struct {
 }
 
 func Start(params APIServerParams) {
+	log.Println("Replicated version:", buildversion.Version())
+
 	storeOptions := store.InitStoreOptions{
-		License:           params.License,
-		LicenseFields:     params.LicenseFields,
-		AppName:           params.AppName,
-		ChannelID:         params.ChannelID,
-		ChannelName:       params.ChannelName,
-		ChannelSequence:   params.ChannelSequence,
-		ReleaseSequence:   params.ReleaseSequence,
-		ReleaseIsRequired: params.ReleaseIsRequired,
-		ReleaseCreatedAt:  params.ReleaseCreatedAt,
-		ReleaseNotes:      params.ReleaseNotes,
-		VersionLabel:      params.VersionLabel,
-		Namespace:         params.Namespace,
+		License:          params.License,
+		LicenseFields:    params.LicenseFields,
+		AppName:          params.AppName,
+		ChannelID:        params.ChannelID,
+		ChannelName:      params.ChannelName,
+		ChannelSequence:  params.ChannelSequence,
+		ReleaseSequence:  params.ReleaseSequence,
+		ReleaseCreatedAt: params.ReleaseCreatedAt,
+		ReleaseNotes:     params.ReleaseNotes,
+		VersionLabel:     params.VersionLabel,
+		Namespace:        params.Namespace,
 	}
 	if err := store.Init(storeOptions); err != nil {
 		log.Fatalf("Failed to init store: %v", err)
