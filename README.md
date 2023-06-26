@@ -99,7 +99,6 @@ dev:
     helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
     currentRelease:
       versionLabel: 0.1.7
-      isRequired: false
       releaseNotes: "test"
       createdAt: "2012-09-09"
       helmReleaseName: dev-parent-chart
@@ -118,7 +117,6 @@ Below is an example demonstrating all the supported values for the `mockData` fi
 helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
 currentRelease:
   versionLabel: 0.1.3
-  isRequired: false
   releaseNotes: "release notes 0.1.3"
   createdAt: 2023-05-23T20:58:07Z
   deployedAt: 2023-05-23T21:58:07Z
@@ -127,7 +125,6 @@ currentRelease:
   helmReleaseNamespace: default
 deployedReleases:
 - versionLabel: 0.1.1
-  isRequired: false
   releaseNotes: "release notes 0.1.1"
   createdAt: 2023-05-21T20:58:07Z
   deployedAt: 2023-05-21T21:58:07Z
@@ -135,7 +132,6 @@ deployedReleases:
   helmReleaseRevision: 1
   helmReleaseNamespace: default
 - versionLabel: 0.1.2
-  isRequired: false
   releaseNotes: "release notes 0.1.2"
   createdAt: 2023-05-22T20:58:07Z
   deployedAt: 2023-05-22T21:58:07Z
@@ -143,7 +139,6 @@ deployedReleases:
   helmReleaseRevision: 2
   helmReleaseNamespace: default
 - versionLabel: 0.1.3
-  isRequired: false
   releaseNotes: "release notes 0.1.3"
   createdAt: 2023-05-23T20:58:07Z
   deployedAt: 2023-05-23T21:58:07Z
@@ -152,12 +147,10 @@ deployedReleases:
   helmReleaseNamespace: default
 availableReleases:
 - versionLabel: 0.1.4
-  isRequired: true
   releaseNotes: "release notes 0.1.4"
   createdAt: 2023-05-24T20:58:07Z
   deployedAt: 2023-05-24T21:58:07Z
 - versionLabel: 0.1.5
-  isRequired: false
   releaseNotes: "release notes 0.1.5"
   createdAt: 2023-06-01T20:58:07Z
   deployedAt: 2023-06-01T21:58:07Z
