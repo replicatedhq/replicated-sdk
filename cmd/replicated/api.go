@@ -105,7 +105,6 @@ func APICmd() *cobra.Command {
 				ChannelName:            v.GetString("channel-name"),
 				ChannelSequence:        v.GetInt64("channel-sequence"),
 				ReleaseSequence:        v.GetInt64("release-sequence"),
-				ReleaseIsRequired:      v.GetBool("release-is-required"),
 				ReleaseCreatedAt:       v.GetString("release-created-at"),
 				ReleaseNotes:           v.GetString("release-notes"),
 				VersionLabel:           v.GetString("version-label"),

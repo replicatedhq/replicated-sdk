@@ -88,7 +88,6 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 		HelmChartURL: helm.GetParentChartURL(),
 		CurrentRelease: AppRelease{
 			VersionLabel: store.GetStore().GetVersionLabel(),
-			IsRequired:   store.GetStore().GetReleaseIsRequired(),
 			CreatedAt:    store.GetStore().GetReleaseCreatedAt(),
 			ReleaseNotes: store.GetStore().GetReleaseNotes(),
 		},
