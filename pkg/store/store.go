@@ -93,9 +93,9 @@ func Init(options InitStoreOptions) error {
 	store = &Store{
 		replicatedID:          replicatedID,
 		appID:                 appID,
-		license:               options.License,
+		license:               verifiedLicense,
 		licenseFields:         options.LicenseFields,
-		appSlug:               options.License.Spec.AppSlug,
+		appSlug:               verifiedLicense.Spec.AppSlug,
 		appName:               options.AppName,
 		channelID:             options.ChannelID,
 		channelName:           options.ChannelName,
