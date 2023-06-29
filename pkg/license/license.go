@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultReplicatedEndpoint = "https://replicated.app"
+	defaultReplicatedAppEndpoint = "https://replicated.app"
 )
 
 type LicenseData struct {
@@ -24,21 +24,23 @@ type LicenseData struct {
 
 func GetLicenseByID(licenseID string, endpoint string) (*kotsv1beta1.License, error) {
 	if endpoint == "" {
-		endpoint = defaultReplicatedEndpoint
+		endpoint = defaultReplicatedAppEndpoint
 	}
-
 	url := fmt.Sprintf("%s/license", endpoint)
+
 	licenseData, err := getLicenseFromAPI(url, licenseID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get license from api")
 	}
 
 	return licenseData.License, nil
-
 }
 
-func GetLatestLicense(license *kotsv1beta1.License) (*LicenseData, error) {
-	url := fmt.Sprintf("%s/license/%s", license.Spec.Endpoint, license.Spec.AppSlug)
+func GetLatestLicense(license *kotsv1beta1.License, endpoint string) (*LicenseData, error) {
+	if endpoint == "" {
+		endpoint = license.Spec.Endpoint
+	}
+	url := fmt.Sprintf("%s/license/%s", endpoint, license.Spec.AppSlug)
 
 	licenseData, err := getLicenseFromAPI(url, license.Spec.LicenseID)
 	if err != nil {
@@ -102,8 +104,11 @@ func LicenseIsExpired(license *kotsv1beta1.License) (bool, error) {
 	return partsed.Before(time.Now()), nil
 }
 
-func GetLatestLicenseFields(license *kotsv1beta1.License) (types.LicenseFields, error) {
-	url := fmt.Sprintf("%s/license/fields", license.Spec.Endpoint)
+func GetLatestLicenseFields(license *kotsv1beta1.License, endpoint string) (types.LicenseFields, error) {
+	if endpoint == "" {
+		endpoint = license.Spec.Endpoint
+	}
+	url := fmt.Sprintf("%s/license/fields", endpoint)
 
 	req, err := util.NewRequest("GET", url, nil)
 	if err != nil {
@@ -135,8 +140,11 @@ func GetLatestLicenseFields(license *kotsv1beta1.License) (types.LicenseFields, 
 	return licenseFields, nil
 }
 
-func GetLatestLicenseField(license *kotsv1beta1.License, fieldName string) (*types.LicenseField, error) {
-	url := fmt.Sprintf("%s/license/field/%s", license.Spec.Endpoint, fieldName)
+func GetLatestLicenseField(license *kotsv1beta1.License, endpoint string, fieldName string) (*types.LicenseField, error) {
+	if endpoint == "" {
+		endpoint = license.Spec.Endpoint
+	}
+	url := fmt.Sprintf("%s/license/field/%s", endpoint, fieldName)
 
 	req, err := util.NewRequest("GET", url, nil)
 	if err != nil {
