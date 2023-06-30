@@ -66,5 +66,5 @@ spec:
       securityContext:
         fsGroup: 1001
         runAsUser: 1001
-      serviceAccountName: replicated
+      serviceAccountName: {{ .Values.serviceAccountName | default "replicated" }}
 status: {}
