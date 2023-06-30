@@ -59,7 +59,7 @@ License Fields
 {{- else if .Values.licenseFields -}}
 {{- .Values.licenseFields | toYaml -}}
 {{- else -}}
-{}
+""
 {{- end -}}
 {{- end -}}
 

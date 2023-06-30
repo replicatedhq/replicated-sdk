@@ -21,5 +21,5 @@ func IsDevLicense(license *kotsv1beta1.License) bool {
 }
 
 func IsMockedEnv() bool {
-	return os.Getenv("REPLICATED_LICENSE_ID") != ""
+	return os.Getenv("REPLICATED_INTEGRATION_LICENSE_ID") != ""
 }
