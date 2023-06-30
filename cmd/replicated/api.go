@@ -65,16 +65,9 @@ func APICmd() *cobra.Command {
 				}
 			}
 
-			var licenseFields sdklicensetypes.LicenseFields
-			if replicatedConfig.LicenseFields != "" {
-				if err := yaml.Unmarshal([]byte(replicatedConfig.LicenseFields), &licenseFields); err != nil {
-					return errors.Wrap(err, "failed to unmarshal decoded license fields")
-				}
-			}
-
 			params := apiserver.APIServerParams{
 				License:                license,
-				LicenseFields:          licenseFields,
+				LicenseFields:          replicatedConfig.LicenseFields,
 				AppName:                replicatedConfig.AppName,
 				ChannelID:              replicatedConfig.ChannelID,
 				ChannelName:            replicatedConfig.ChannelName,
@@ -102,15 +95,15 @@ func APICmd() *cobra.Command {
 }
 
 type ReplicatedConfig struct {
-	License                string `yaml:"license"`
-	LicenseFields          string `yaml:"licenseFields"`
-	AppName                string `yaml:"appName"`
-	ChannelID              string `yaml:"channelID"`
-	ChannelName            string `yaml:"channelName"`
-	ChannelSequence        int64  `yaml:"channelSequence"`
-	ReleaseSequence        int64  `yaml:"releaseSequence"`
-	ReleaseCreatedAt       string `yaml:"releaseCreatedAt"`
-	ReleaseNotes           string `yaml:"releaseNotes"`
-	VersionLabel           string `yaml:"versionLabel"`
-	InformersLabelSelector string `yaml:"informersLabelSelector"`
+	License                string                        `yaml:"license"`
+	LicenseFields          sdklicensetypes.LicenseFields `yaml:"licenseFields"`
+	AppName                string                        `yaml:"appName"`
+	ChannelID              string                        `yaml:"channelID"`
+	ChannelName            string                        `yaml:"channelName"`
+	ChannelSequence        int64                         `yaml:"channelSequence"`
+	ReleaseSequence        int64                         `yaml:"releaseSequence"`
+	ReleaseCreatedAt       string                        `yaml:"releaseCreatedAt"`
+	ReleaseNotes           string                        `yaml:"releaseNotes"`
+	VersionLabel           string                        `yaml:"versionLabel"`
+	InformersLabelSelector string                        `yaml:"informersLabelSelector"`
 }
