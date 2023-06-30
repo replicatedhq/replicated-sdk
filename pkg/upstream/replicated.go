@@ -12,14 +12,20 @@ import (
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
-	u, err := url.Parse(license.Spec.Endpoint)
+	endpoint := store.GetStore().GetReplicatedAppEndpoint()
+	if endpoint == "" {
+		endpoint = license.Spec.Endpoint
+	}
+
+	u, err := url.Parse(endpoint)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse endpoint from license")
+		return nil, errors.Wrap(err, "failed to parse endpoint")
 	}
 
 	hostname := u.Hostname()

@@ -31,6 +31,7 @@ type APIServerParams struct {
 	ReleaseCreatedAt       string
 	ReleaseNotes           string
 	VersionLabel           string
+	ReplicatedAppEndpoint  string
 	InformersLabelSelector string
 	Namespace              string
 }
@@ -39,17 +40,18 @@ func Start(params APIServerParams) {
 	log.Println("Replicated version:", buildversion.Version())
 
 	storeOptions := store.InitStoreOptions{
-		License:          params.License,
-		LicenseFields:    params.LicenseFields,
-		AppName:          params.AppName,
-		ChannelID:        params.ChannelID,
-		ChannelName:      params.ChannelName,
-		ChannelSequence:  params.ChannelSequence,
-		ReleaseSequence:  params.ReleaseSequence,
-		ReleaseCreatedAt: params.ReleaseCreatedAt,
-		ReleaseNotes:     params.ReleaseNotes,
-		VersionLabel:     params.VersionLabel,
-		Namespace:        params.Namespace,
+		License:               params.License,
+		LicenseFields:         params.LicenseFields,
+		AppName:               params.AppName,
+		ChannelID:             params.ChannelID,
+		ChannelName:           params.ChannelName,
+		ChannelSequence:       params.ChannelSequence,
+		ReleaseSequence:       params.ReleaseSequence,
+		ReleaseCreatedAt:      params.ReleaseCreatedAt,
+		ReleaseNotes:          params.ReleaseNotes,
+		VersionLabel:          params.VersionLabel,
+		ReplicatedAppEndpoint: params.ReplicatedAppEndpoint,
+		Namespace:             params.Namespace,
 	}
 	if err := store.Init(storeOptions); err != nil {
 		log.Fatalf("Failed to init store: %v", err)

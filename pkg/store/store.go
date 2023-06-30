@@ -26,35 +26,37 @@ var (
 )
 
 type Store struct {
-	replicatedID     string
-	appID            string
-	license          *kotsv1beta1.License
-	licenseFields    sdklicensetypes.LicenseFields
-	appSlug          string
-	appName          string
-	channelID        string
-	channelName      string
-	channelSequence  int64
-	releaseSequence  int64
-	releaseCreatedAt string
-	releaseNotes     string
-	versionLabel     string
-	namespace        string
-	appStatus        appstatetypes.AppStatus
+	replicatedID          string
+	appID                 string
+	license               *kotsv1beta1.License
+	licenseFields         sdklicensetypes.LicenseFields
+	appSlug               string
+	appName               string
+	channelID             string
+	channelName           string
+	channelSequence       int64
+	releaseSequence       int64
+	releaseCreatedAt      string
+	releaseNotes          string
+	versionLabel          string
+	replicatedAppEndpoint string
+	namespace             string
+	appStatus             appstatetypes.AppStatus
 }
 
 type InitStoreOptions struct {
-	License          *kotsv1beta1.License
-	LicenseFields    sdklicensetypes.LicenseFields
-	AppName          string
-	ChannelID        string
-	ChannelName      string
-	ChannelSequence  int64
-	ReleaseSequence  int64
-	ReleaseCreatedAt string
-	ReleaseNotes     string
-	VersionLabel     string
-	Namespace        string
+	License               *kotsv1beta1.License
+	LicenseFields         sdklicensetypes.LicenseFields
+	AppName               string
+	ChannelID             string
+	ChannelName           string
+	ChannelSequence       int64
+	ReleaseSequence       int64
+	ReleaseCreatedAt      string
+	ReleaseNotes          string
+	VersionLabel          string
+	ReplicatedAppEndpoint string
+	Namespace             string
 }
 
 func Init(options InitStoreOptions) error {
@@ -66,7 +68,7 @@ func Init(options InitStoreOptions) error {
 	if !util.IsAirgap() {
 		// sync license
 		logger.Info("syncing license with server to retrieve latest version")
-		licenseData, err := sdklicense.GetLatestLicense(verifiedLicense)
+		licenseData, err := sdklicense.GetLatestLicense(verifiedLicense, options.ReplicatedAppEndpoint)
 		if err != nil {
 			return errors.Wrap(err, "failed to get latest license")
 		}
@@ -89,20 +91,21 @@ func Init(options InitStoreOptions) error {
 	}
 
 	store = &Store{
-		replicatedID:     replicatedID,
-		appID:            appID,
-		license:          verifiedLicense,
-		licenseFields:    options.LicenseFields,
-		appSlug:          verifiedLicense.Spec.AppSlug,
-		appName:          options.AppName,
-		channelID:        options.ChannelID,
-		channelName:      options.ChannelName,
-		channelSequence:  options.ChannelSequence,
-		releaseSequence:  options.ReleaseSequence,
-		releaseCreatedAt: options.ReleaseCreatedAt,
-		releaseNotes:     options.ReleaseNotes,
-		versionLabel:     options.VersionLabel,
-		namespace:        options.Namespace,
+		replicatedID:          replicatedID,
+		appID:                 appID,
+		license:               verifiedLicense,
+		licenseFields:         options.LicenseFields,
+		appSlug:               verifiedLicense.Spec.AppSlug,
+		appName:               options.AppName,
+		channelID:             options.ChannelID,
+		channelName:           options.ChannelName,
+		channelSequence:       options.ChannelSequence,
+		releaseSequence:       options.ReleaseSequence,
+		releaseCreatedAt:      options.ReleaseCreatedAt,
+		releaseNotes:          options.ReleaseNotes,
+		versionLabel:          options.VersionLabel,
+		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
+		namespace:             options.Namespace,
 	}
 
 	return nil
@@ -188,6 +191,10 @@ func (s *Store) GetReleaseNotes() string {
 
 func (s *Store) GetVersionLabel() string {
 	return s.versionLabel
+}
+
+func (s *Store) GetReplicatedAppEndpoint() string {
+	return s.replicatedAppEndpoint
 }
 
 func (s *Store) GetNamespace() string {

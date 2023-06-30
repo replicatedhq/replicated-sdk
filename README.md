@@ -66,7 +66,8 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set releaseCreatedAt=[VERSION_LABEL] \
     --set releaseNotes=[RELEASE_NOTES] \
     --set versionLabel=[VERSION_LABEL] \
-    --set parentChartURL=[PARENT_CHART_URL]
+    --set parentChartURL=[PARENT_CHART_URL] \
+    --set replicatedAppEndpoint=[REPLICATED_APP_ENDPOINT]
 ```
 
 Example:
@@ -83,7 +84,8 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set releaseCreatedAt="2023-05-09T16:41:35.000Z" \
     --set releaseNotes="my release notes" \
     --set versionLabel="v1.0.0" \
-    --set parentChartURL="oci://registry.replicated.com/my-app/my-channel/my-parent-chart"
+    --set parentChartURL="oci://registry.replicated.com/my-app/my-channel/my-parent-chart" \
+    --set replicatedAppEndpoint="https://enterprise.slackernews.app"
 ```
 
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.
@@ -167,30 +169,21 @@ The mock data endpoints provide functionality to manage mock data. The following
 
 **Note** The endpoint *POST* `/api/v1/mock-data` exclusively supports full data posts, meaning that if any updates are required for the mock data, the entire dataset must be sent to the endpoint via the `POST` method.
 
-**Note**: [_when we start supporting custom domains for replicated app endpoint_] When using custom domains for replicated app, the first license pull with license ID would be through replicated app endpoint. Once the license information is available and Replicated SDK is running, subsequent api calls to replicated app would be via custom domain url of replicated app.
-
 ### Replicated SDK "integration" mode for staging/okteto environments
 **Note**: Please don't document this in customer facing docs.
 
-Replicated SDK supports `integration`.`replicatedEndpoint` helm value which can be used to provide alternate replicated app endpoints.
-This helm value will be handy for replicants when working with staging/okteto environment deployments
+Replicated SDK supports `replicatedAppEndpoint` helm value which can be used to provide a custom replicated app endpoint.
+This helm value will be handy for replicants when working with staging/okteto environment deployments.
 
 In order to use staging/okteto license IDs in `integration` mode, you would have to provide the replicated app endpoint.
-You can do so by providing the `replicatedEndpoint` value with the staging/okteto replicated app url
-eg: for staging licenses you can set the replicated app endpoint as below in `values.yaml`:
+You can do so by providing the `replicatedAppEndpoint` value with the staging/okteto replicated app url.
+e.g.: for staging licenses you can set the replicated app endpoint as below in `values.yaml`:
 ```yaml
+replicatedAppEndpoint: "https://staging.replicated.app"
 integration:
   licenseID: "development-license-id"
-  replicatedEndpoint: "staging.replicated.app"
   mockData: ""
 ```
-and then add the below content to replicated-secret.yaml
-```yaml
-  {{- if .Values.integration.replicatedEndpoint }}
-  REPLICATED_ENDPOINT: {{ .Values.integration.replicatedEndpoint }}
-  {{- end }}
-```
-
 
 ## Release process
 1. Compare the commits between the previous tag and the current commit on the main branch.

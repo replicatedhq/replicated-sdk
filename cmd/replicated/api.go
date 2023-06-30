@@ -49,7 +49,7 @@ func APICmd() *cobra.Command {
 			var license *kotsv1beta1.License
 			switch {
 			case licenseID != "":
-				license, err = sdklicense.GetLicenseByID(licenseID, v.GetString("endpoint"))
+				license, err = sdklicense.GetLicenseByID(licenseID, v.GetString("replicated-app-endpoint"))
 				if err != nil {
 					return errors.Wrap(err, "failed to get license by id")
 				}
@@ -108,6 +108,7 @@ func APICmd() *cobra.Command {
 				ReleaseCreatedAt:       v.GetString("release-created-at"),
 				ReleaseNotes:           v.GetString("release-notes"),
 				VersionLabel:           v.GetString("version-label"),
+				ReplicatedAppEndpoint:  v.GetString("replicated-app-endpoint"),
 				InformersLabelSelector: v.GetString("informers-label-selector"),
 				Namespace:              v.GetString("namespace"),
 			}
@@ -130,9 +131,9 @@ func APICmd() *cobra.Command {
 	cmd.Flags().String("release-created-at", "", "when the application release was created")
 	cmd.Flags().String("release-notes", "", "the application release notes")
 	cmd.Flags().String("version-label", "", "the application version label")
+	cmd.Flags().String("replicated-app-endpoint", "", "the endpoint used to access the Replicated App service")
 	cmd.Flags().String("informers-label-selector", "", "the label selector to use for status informers to detect application resources")
 	cmd.Flags().String("namespace", "", "the namespace where the sdk/application is installed")
-	cmd.Flags().String("endpoint", "", "the replicated api endpoint")
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 

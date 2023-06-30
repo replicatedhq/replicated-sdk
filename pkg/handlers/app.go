@@ -142,7 +142,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 
 	if !util.IsAirgap() {
-		licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense())
+		licenseData, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 			w.WriteHeader(http.StatusInternalServerError)
