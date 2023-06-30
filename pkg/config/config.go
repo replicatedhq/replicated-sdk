@@ -17,6 +17,7 @@ type ReplicatedConfig struct {
 	ReleaseCreatedAt       string                        `yaml:"releaseCreatedAt"`
 	ReleaseNotes           string                        `yaml:"releaseNotes"`
 	VersionLabel           string                        `yaml:"versionLabel"`
+	ReplicatedAppEndpoint  string                        `yaml:"replicatedAppEndpoint"`
 	InformersLabelSelector string                        `yaml:"informersLabelSelector"`
 }
 

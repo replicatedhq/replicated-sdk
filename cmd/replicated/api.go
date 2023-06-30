@@ -56,7 +56,7 @@ func APICmd() *cobra.Command {
 					return errors.Wrap(err, "failed to parse license from base64")
 				}
 			} else if integrationLicenseID != "" {
-				if license, err = sdklicense.GetLicenseByID(integrationLicenseID, v.GetString("endpoint")); err != nil {
+				if license, err = sdklicense.GetLicenseByID(integrationLicenseID, replicatedConfig.ReplicatedAppEndpoint); err != nil {
 					return errors.Wrap(err, "failed to get license by id")
 				}
 				if license.Spec.LicenseType != "dev" {
@@ -75,6 +75,7 @@ func APICmd() *cobra.Command {
 				ReleaseCreatedAt:       replicatedConfig.ReleaseCreatedAt,
 				ReleaseNotes:           replicatedConfig.ReleaseCreatedAt,
 				VersionLabel:           replicatedConfig.VersionLabel,
+				ReplicatedAppEndpoint:  replicatedConfig.ReplicatedAppEndpoint,
 				InformersLabelSelector: replicatedConfig.InformersLabelSelector,
 				Namespace:              v.GetString("namespace"),
 			}
