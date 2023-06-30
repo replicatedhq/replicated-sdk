@@ -7,12 +7,11 @@ import (
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/apiserver"
+	"github.com/replicatedhq/replicated-sdk/pkg/config"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
-	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
 )
 
 func APICmd() *cobra.Command {
@@ -38,9 +37,9 @@ func APICmd() *cobra.Command {
 				return errors.Wrap(err, "failed to read config file")
 			}
 
-			var replicatedConfig ReplicatedConfig
-			if err := yaml.Unmarshal(configFile, &replicatedConfig); err != nil {
-				return errors.Wrap(err, "failed to unmarshal config file")
+			replicatedConfig, err := config.ParseReplicatedConfig(configFile)
+			if err != nil {
+				return errors.Wrap(err, "failed to parse config file")
 			}
 
 			if replicatedConfig.License == "" && integrationLicenseID == "" {
@@ -92,18 +91,4 @@ func APICmd() *cobra.Command {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
 	return cmd
-}
-
-type ReplicatedConfig struct {
-	License                string                        `yaml:"license"`
-	LicenseFields          sdklicensetypes.LicenseFields `yaml:"licenseFields"`
-	AppName                string                        `yaml:"appName"`
-	ChannelID              string                        `yaml:"channelID"`
-	ChannelName            string                        `yaml:"channelName"`
-	ChannelSequence        int64                         `yaml:"channelSequence"`
-	ReleaseSequence        int64                         `yaml:"releaseSequence"`
-	ReleaseCreatedAt       string                        `yaml:"releaseCreatedAt"`
-	ReleaseNotes           string                        `yaml:"releaseNotes"`
-	VersionLabel           string                        `yaml:"versionLabel"`
-	InformersLabelSelector string                        `yaml:"informersLabelSelector"`
 }
