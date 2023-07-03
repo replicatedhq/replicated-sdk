@@ -269,7 +269,7 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 		if ok {
 			replicatedConfig, err := config.ParseReplicatedConfig([]byte(configFile.(string)))
 			if err != nil {
-				logger.Infof("failed to parse replicated config: %v", err)
+				logger.Infof("failed to parse config file: %v", err)
 				continue
 			}
 			appRelease.VersionLabel = replicatedConfig.VersionLabel

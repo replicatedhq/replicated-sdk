@@ -30,8 +30,9 @@ spec:
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: replicated
-          mountPath: /etc/replicated
+          mountPath: /etc/replicated/config.yaml
           readOnly: true
+          subPath: config.yaml
         env:
         - name: REPLICATED_NAMESPACE
           valueFrom:

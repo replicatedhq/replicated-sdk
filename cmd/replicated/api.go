@@ -29,6 +29,7 @@ func APICmd() *cobra.Command {
 				logger.SetDebug()
 			}
 
+			namespace := v.GetString("namespace")
 			configFilePath := v.GetString("config-file")
 			integrationLicenseID := v.GetString("integration-license-id")
 
@@ -43,11 +44,12 @@ func APICmd() *cobra.Command {
 			}
 
 			if replicatedConfig.License == "" && integrationLicenseID == "" {
-				return errors.New("either a license or integrationLicenseID must be specified in the config file")
+				//  return err if config file license is empty and env  integration license id is empty
+				return errors.New("either license in the config file or integration license id env must be specified")
 			}
 
 			if replicatedConfig.License != "" && integrationLicenseID != "" {
-				return errors.New("only one of license or integrationLicenseID should be specified in the config file")
+				return errors.New("only one of license in the config file or integration license id env must be specified")
 			}
 
 			var license *kotsv1beta1.License
@@ -57,10 +59,10 @@ func APICmd() *cobra.Command {
 				}
 			} else if integrationLicenseID != "" {
 				if license, err = sdklicense.GetLicenseByID(integrationLicenseID, replicatedConfig.ReplicatedAppEndpoint); err != nil {
-					return errors.Wrap(err, "failed to get license by id")
+					return errors.Wrap(err, "failed to get license by id for integration license id")
 				}
 				if license.Spec.LicenseType != "dev" {
-					return errors.New("--license-id must be a development license")
+					return errors.New("integration license must be a dev license")
 				}
 			}
 
@@ -77,7 +79,7 @@ func APICmd() *cobra.Command {
 				VersionLabel:           replicatedConfig.VersionLabel,
 				ReplicatedAppEndpoint:  replicatedConfig.ReplicatedAppEndpoint,
 				InformersLabelSelector: replicatedConfig.InformersLabelSelector,
-				Namespace:              v.GetString("namespace"),
+				Namespace:              namespace,
 			}
 			apiserver.Start(params)
 
