@@ -78,7 +78,7 @@ func APICmd() *cobra.Command {
 				ChannelSequence:        replicatedConfig.ChannelSequence,
 				ReleaseSequence:        replicatedConfig.ReleaseSequence,
 				ReleaseCreatedAt:       replicatedConfig.ReleaseCreatedAt,
-				ReleaseNotes:           replicatedConfig.ReleaseCreatedAt,
+				ReleaseNotes:           replicatedConfig.ReleaseNotes,
 				VersionLabel:           replicatedConfig.VersionLabel,
 				ReplicatedAppEndpoint:  replicatedConfig.ReplicatedAppEndpoint,
 				InformersLabelSelector: replicatedConfig.InformersLabelSelector,
