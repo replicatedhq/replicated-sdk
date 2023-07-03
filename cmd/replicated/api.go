@@ -33,6 +33,10 @@ func APICmd() *cobra.Command {
 			configFilePath := v.GetString("config-file")
 			integrationLicenseID := v.GetString("integration-license-id")
 
+			if configFilePath == "" && integrationLicenseID == "" {
+				return errors.New("either config file or integration license id must be specified")
+			}
+
 			configFile, err := os.ReadFile(configFilePath)
 			if err != nil {
 				return errors.Wrap(err, "failed to read config file")
