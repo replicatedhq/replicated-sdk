@@ -276,6 +276,7 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 			appRelease.ReleaseNotes = replicatedConfig.ReleaseNotes
 			appRelease.CreatedAt = replicatedConfig.ReleaseCreatedAt
 		}
+		
 		return appRelease
 	}
 

@@ -44,12 +44,11 @@ func APICmd() *cobra.Command {
 			}
 
 			if replicatedConfig.License == "" && integrationLicenseID == "" {
-				//  return err if config file license is empty and env  integration license id is empty
-				return errors.New("either license in the config file or integration license id env must be specified")
+				return errors.New("either license in the config file or integration license id must be specified")
 			}
 
 			if replicatedConfig.License != "" && integrationLicenseID != "" {
-				return errors.New("only one of license in the config file or integration license id env must be specified")
+				return errors.New("only one of license in the config file or integration license id can be specified")
 			}
 
 			var license *kotsv1beta1.License
