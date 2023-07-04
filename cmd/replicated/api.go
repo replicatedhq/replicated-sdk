@@ -37,14 +37,17 @@ func APICmd() *cobra.Command {
 				return errors.New("either config file or integration license id must be specified")
 			}
 
-			configFile, err := os.ReadFile(configFilePath)
-			if err != nil {
-				return errors.Wrap(err, "failed to read config file")
-			}
+			var err error
+			var replicatedConfig = new(config.ReplicatedConfig)
+			if configFilePath != "" {
+				configFile, err := os.ReadFile(configFilePath)
+				if err != nil {
+					return errors.Wrap(err, "failed to read config file")
+				}
 
-			replicatedConfig, err := config.ParseReplicatedConfig(configFile)
-			if err != nil {
-				return errors.Wrap(err, "failed to parse config file")
+				if replicatedConfig, err = config.ParseReplicatedConfig(configFile); err != nil {
+					return errors.Wrap(err, "failed to parse config file")
+				}
 			}
 
 			if replicatedConfig.License == "" && integrationLicenseID == "" {
