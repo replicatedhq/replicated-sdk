@@ -10,10 +10,14 @@ on:
 
 jobs:
   make-tests:
-    runs-on: ubuntu-20.04
+    env:
+      PACT_VERSION: ${{ github.sha }}
+      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version: '^1.20'
       - uses: replicatedhq/action-install-pact@v1
@@ -21,14 +25,17 @@ jobs:
       - run: make publish-pact
 
   make-build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '^1.20'
       - name: make build
         run: make build
 
   package-and-publish:
-    runs-on: 'ubuntu-20.04'
+    runs-on: 'ubuntu-22.04'
     steps:
     - name: Get tag
       id: tag
