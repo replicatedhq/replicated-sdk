@@ -15,13 +15,13 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
-func SendAppHeartbeat() error {
-	license := store.GetStore().GetLicense()
+func SendAppHeartbeat(sdkStore store.Store) error {
+	license := sdkStore.GetLicense()
 	if !canReport(license) {
 		return nil
 	}
 
-	heartbeatInfo := GetHeartbeatInfo()
+	heartbeatInfo := GetHeartbeatInfo(sdkStore)
 
 	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 	if err != nil {
@@ -57,15 +57,15 @@ func SendAppHeartbeat() error {
 	return nil
 }
 
-func GetHeartbeatInfo() *types.HeartbeatInfo {
+func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 	r := types.HeartbeatInfo{
-		ClusterID:       store.GetStore().GetReplicatedID(),
-		InstanceID:      store.GetStore().GetAppID(),
-		ChannelID:       store.GetStore().GetChannelID(),
-		ChannelName:     store.GetStore().GetChannelName(),
-		ChannelSequence: store.GetStore().GetChannelSequence(),
-		AppStatus:       string(store.GetStore().GetAppStatus().State),
-		ResourceStates:  store.GetStore().GetAppStatus().ResourceStates,
+		ClusterID:       sdkStore.GetReplicatedID(),
+		InstanceID:      sdkStore.GetAppID(),
+		ChannelID:       sdkStore.GetChannelID(),
+		ChannelName:     sdkStore.GetChannelName(),
+		ChannelSequence: sdkStore.GetChannelSequence(),
+		AppStatus:       string(sdkStore.GetAppStatus().State),
+		ResourceStates:  sdkStore.GetAppStatus().ResourceStates,
 	}
 
 	// get kubernetes cluster version

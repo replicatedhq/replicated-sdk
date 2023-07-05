@@ -22,3 +22,8 @@ build-ttl.sh:
 	docker push ttl.sh/${USER}/replicated:24h
 
 	make -C chart build-ttl.sh
+
+.PHONY: mock
+mock:
+	go install github.com/golang/mock/mockgen@v1.6.0
+	mockgen -source=pkg/store/store_interface.go -destination=pkg/store/mock/mock_store.go

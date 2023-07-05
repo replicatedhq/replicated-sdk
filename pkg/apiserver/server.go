@@ -39,7 +39,7 @@ type APIServerParams struct {
 func Start(params APIServerParams) {
 	log.Println("Replicated version:", buildversion.Version())
 
-	storeOptions := store.InitStoreOptions{
+	storeOptions := store.InitInMemoryStoreOptions{
 		License:               params.License,
 		LicenseFields:         params.LicenseFields,
 		AppName:               params.AppName,
@@ -53,7 +53,7 @@ func Start(params APIServerParams) {
 		ReplicatedAppEndpoint: params.ReplicatedAppEndpoint,
 		Namespace:             params.Namespace,
 	}
-	if err := store.Init(storeOptions); err != nil {
+	if err := store.InitInMemory(storeOptions); err != nil {
 		log.Fatalf("Failed to init store: %v", err)
 	}
 

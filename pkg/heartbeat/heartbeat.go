@@ -64,7 +64,7 @@ func Start() error {
 		}
 
 		go func() {
-			err := SendAppHeartbeat()
+			err := SendAppHeartbeat(store.GetStore())
 			if err != nil {
 				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
 			}
