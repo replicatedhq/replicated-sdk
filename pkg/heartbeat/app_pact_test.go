@@ -38,12 +38,11 @@ func createPact() dsl.Pact {
 	logDir := path.Join(dir, "../..", "pact_logs")
 
 	return dsl.Pact{
-		Consumer:                 "replicated-sdk",
-		Provider:                 "replicated-app",
-		LogDir:                   logDir,
-		PactDir:                  pactDir,
-		LogLevel:                 "debug",
-		DisableToolValidityCheck: true, // TODO: why is this needed?
+		Consumer: "replicated-sdk",
+		Provider: "replicated-app",
+		LogDir:   logDir,
+		PactDir:  pactDir,
+		LogLevel: "debug",
 	}
 }
 
