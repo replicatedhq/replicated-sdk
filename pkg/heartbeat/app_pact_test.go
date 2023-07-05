@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 func createPact() dsl.Pact {
 	dir, _ := os.Getwd()
 
-	pactDir := path.Join(dir, "../..", "pacts", "consumer")
+	pactDir := path.Join(dir, "../..", "pacts")
 	logDir := path.Join(dir, "../..", "pact_logs")
 
 	return dsl.Pact{
