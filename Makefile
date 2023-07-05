@@ -19,6 +19,14 @@ can-i-deploy:
 		--to-environment production \
 		--verbose
 
+.PHONY: record-release
+record-release:
+	pact-broker record-release \
+		--pacticipant replicated-sdk \
+		--version ${PACT_VERSION} \
+		--environment production \
+		--verbose
+
 .PHONY: build
 build:
 	go build ${LDFLAGS} ${GCFLAGS} -v -o bin/replicated $(BUILDFLAGS) ./cmd/replicated
