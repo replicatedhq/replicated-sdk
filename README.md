@@ -11,35 +11,81 @@ Build the binary:
 make build
 ```
 
+Setup a `config.yaml` file with the below values
+```yaml
+license: |
+  << license.yaml >>
+licenseFields:
+  << license-fields.yaml >>
+appName: "APP_NAME"
+channelID: "CHANNEL_ID"
+channelName: "CHANNEL_NAME"
+channelSequence: "CHANNEL_SEQUENCE"
+releaseSequence: "CHANNEL_SEQUENCE"
+releaseCreatedAt: "RELEASE_CREATED_AT"
+releaseNotes: "RELEASE_NOTES"
+versionLabel: "VERSION_LABEL"
+replicatedAppEndpoint: "REPLICATED_APP_ENDPOINT"
+informersLabelSelector: 'INFORMER_LABEL_SELECTOR'
+```
+
 Run the Replicated API:
 ```shell
 ./bin/replicated api \
-    --license-file=[path/to/license.yaml] \
-    --license-fields-file=[path/to/license-fields.yaml] \
-    --app-name=[APP_NAME] \
-    --channel-id=[CHANNEL_ID] \
-    --channel-name=[CHANNEL_NAME] \
-    --channel-sequence=[CHANNEL_SEQUENCE] \
-    --release-sequence=[RELEASE_SEQUENCE] \
-    --release-created-at=[RELEASE_CREATED_AT] \
-    --release-notes=[RELEASE_NOTES] \
-    --version-label=[VERSION_LABEL] \
+    --config-file=[path/to/config.yaml]
     --namespace=[NAMESPACE]
 ```
 
 Example:
+**config.yaml**
+```yaml
+license: |
+  apiVersion: kots.io/v1beta1
+  kind: License
+  metadata:
+    name: replicated-sdk-test
+  spec:
+    appSlug: replicated-sdk-test
+    channelID: channeID
+    channelName: Stable
+    customerEmail: repl@replicated.com
+    customerName: replicated-sdk-test
+    endpoint: https://replicated.app
+    entitlements:
+      expires_at:
+        description: License Expiration
+        signature: {}
+        title: Expiration
+        value: ""
+        valueType: String
+    licenseID: licenseID
+    licenseSequence: 2
+    licenseType: dev
+    signature: eyJsa9PSJ9
+licenseFields:
+  expires_at:
+    description: License Expiration
+    name: expires_at
+    signature:
+      v1: eZrWHA==
+    title: Expiration
+    value: ""
+    valueType: String
+appName: "replicated-sdk-test"
+channelID: "channelID"
+channelName: "Stable"
+channelSequence: 1
+releaseSequence: 1
+releaseCreatedAt: "2023-07-03T12:48:26Z"
+releaseNotes: "replicated-sdk-test"
+versionLabel: "0.0.1"
+replicatedAppEndpoint: ""
+informersLabelSelector: 'app.kubernetes.io/managed-by=Helm,app.kubernetes.io/name!=replicated,app.kubernetes.io/instance=replicated-sdk-test'
+```
+
 ```shell
 ./bin/replicated api \
-    --license-file=license.yaml \
-    --license-fields-file=license-fields.yaml \
-    --app-name="My App" \
-    --channel-id=1YGSYsmJEjIj2XlyK1vqjCwuyb1 \
-    --channel-name=Beta \
-    --channel-sequence=1 \
-    --release-sequence=1 \
-    --release-created-at="2023-05-09T16:41:35.000Z" \
-    --release-notes="my release notes" \
-    --version-label="v1.0.0" \
+    --config-file=config.yaml
     --namespace=default
 ```
 

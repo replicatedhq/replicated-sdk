@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/config"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -264,9 +265,17 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 			HelmReleaseNamespace: helmRelease.Namespace,
 		}
 
-		appRelease.CreatedAt = data["REPLICATED_RELEASE_CREATED_AT"].(string)
-		appRelease.ReleaseNotes = data["REPLICATED_RELEASE_NOTES"].(string)
-		appRelease.VersionLabel = data["REPLICATED_VERSION_LABEL"].(string)
+		configFile, ok := data["config.yaml"]
+		if ok {
+			replicatedConfig, err := config.ParseReplicatedConfig([]byte(configFile.(string)))
+			if err != nil {
+				logger.Infof("failed to parse config file: %v", err)
+				continue
+			}
+			appRelease.VersionLabel = replicatedConfig.VersionLabel
+			appRelease.ReleaseNotes = replicatedConfig.ReleaseNotes
+			appRelease.CreatedAt = replicatedConfig.ReleaseCreatedAt
+		}
 
 		return appRelease
 	}

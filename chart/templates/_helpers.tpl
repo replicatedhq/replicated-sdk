@@ -58,8 +58,6 @@ License Fields
 {{- .Values.global.replicated.licenseFields | toYaml -}}
 {{- else if .Values.licenseFields -}}
 {{- .Values.licenseFields | toYaml -}}
-{{- else -}}
-{}
 {{- end -}}
 {{- end -}}
 

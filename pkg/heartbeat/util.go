@@ -33,14 +33,12 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 }
 
 func canReport(license *kotsv1beta1.License) bool {
-	if util.IsAirgap() {
+	if util.IsAirgap() || util.IsIntegrationEnv() {
 		return false
 	}
+
 	if util.IsDevEnv() && !util.IsDevLicense(license) {
 		// don't send reports from our dev env to our production services even if this is a production license
-		return false
-	}
-	if util.IsMockedEnv() {
 		return false
 	}
 
