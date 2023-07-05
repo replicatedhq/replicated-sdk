@@ -4,6 +4,21 @@ include Makefile.build.mk
 test:
 	go test $(TEST_BUILDFLAGS) ./pkg/... ./cmd/... -coverprofile cover.out
 
+.PHONY: publish-pact
+publish-pact:
+	pact-broker publish ./pacts \
+		--auto-detect-version-properties \
+		--consumer-app-version ${PACT_VERSION} \
+		--verbose
+
+.PHONY: can-i-deploy
+can-i-deploy:
+	pact-broker can-i-deploy \
+		--pacticipant replicated-sdk \
+		--version ${PACT_VERSION} \
+		--to-environment production \
+		--verbose
+
 .PHONY: build
 build:
 	go build ${LDFLAGS} ${GCFLAGS} -v -o bin/replicated $(BUILDFLAGS) ./cmd/replicated
