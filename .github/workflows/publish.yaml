@@ -8,6 +8,11 @@ on:
     - 'v[0-9]+.[0-9]+.[0-9]+\-alpha'
     - 'v[0-9]+.[0-9]+.[0-9]+\-alpha\.[0-9]+'
 
+env:
+  PACT_VERSION: ${{ github.ref_name }}
+  PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+  PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+
 jobs:
   make-tests:
     runs-on: ubuntu-22.04
@@ -17,6 +22,7 @@ jobs:
         with:
           go-version: '^1.20'
       - run: make test
+      - run: make publish-pact
 
   make-build:
     runs-on: ubuntu-22.04
@@ -29,10 +35,6 @@ jobs:
         run: make build
 
   package-and-publish:
-    env:
-      PACT_VERSION: ${{ github.sha }}
-      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
-      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
     runs-on: 'ubuntu-22.04'
     needs:
       - make-tests
