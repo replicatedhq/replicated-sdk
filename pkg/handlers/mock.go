@@ -46,13 +46,3 @@ func GetMockData(w http.ResponseWriter, r *http.Request) {
 
 	JSON(w, http.StatusOK, mockData)
 }
-
-func DeleteMockData(w http.ResponseWriter, r *http.Request) {
-	if err := mock.MustGetMock().DeleteMockData(r.Context()); err != nil {
-		logger.Errorf("failed to delete mock data: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-}

@@ -137,28 +137,29 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.
 
 ## Enabling Replicated SDK "integration" mode
-When using a `Development` license, the Replicated SDK will initiate in integration mode. If you are performing a Helm install/upgrade using the replicated helm chart, you can utilize the following values in the chart YAML for the Replicated SDK's integration mode:
+When using a `Development` license, the Replicated SDK will initiate in integration mode. If you are performing a Helm install/upgrade using the replicated Helm chart, you can utilize the following values in the chart YAML for the Replicated SDK's integration mode:
 ```yaml
 integration:
   licenseID: "development-license-id"
-  mockData: |
-    helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
-    currentRelease:
-      versionLabel: 0.1.7
-      releaseNotes: "test"
-      createdAt: "2012-09-09"
-      helmReleaseName: dev-parent-chart
-      helmReleaseRevision: 2
-      helmReleaseNamespace: default   
+  mock:
+    enabled: true
+    data: |
+      helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
+      currentRelease:
+        versionLabel: 0.1.7
+        releaseNotes: "test"
+        createdAt: "2012-09-09"
+        helmReleaseName: dev-parent-chart
+        helmReleaseRevision: 2
+        helmReleaseNamespace: default   
 ```
 
 To enable the Replicated SDK's `integration` mode, you can use the following values in the chart YAML:
 - `licenseID`: This should be set to the development license ID obtained from the vendor portal.
-- `mockData`: This field allows you to provide the necessary data for the Replicated SDK to return mock responses.
+- `mock.enabled`: When this field is set to `true`, the SDK will return mocked data.
+- `mock.data`: This field allows you to override the default mock data the Replicated SDK returns when `mock.enabled` is set to `true`.
 
-The `integration` mode will return mock responses for SDK APIs when mock data is provided else SDK will return actual data. The mock data accepts a yaml format of `helmChartURL`, `currentRelease`, `deployedReleases` and `availableReleases`.
-
-Below is an example demonstrating all the supported values for the `mockData` field:
+Below is an example demonstrating all the supported values for the `mock.data` field:
 ```yaml
 helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
 currentRelease:
@@ -211,7 +212,6 @@ When the above mock data is configured:
 The mock data endpoints provide functionality to manage mock data. The following endpoints are available:
 - *POST* `/api/v1/mock-data` endpoint accepts a JSON request body to set the mock data.
 - *GET* `/api/v1/mock-data` endpoint returns the entire mock data.
-- *DELETE* `/api/v1/mock-data` endpoint deletes the mock data.
 
 **Note** The endpoint *POST* `/api/v1/mock-data` exclusively supports full data posts, meaning that if any updates are required for the mock data, the entire dataset must be sent to the endpoint via the `POST` method.
 
@@ -228,7 +228,8 @@ e.g.: for staging licenses you can set the replicated app endpoint as below in `
 replicatedAppEndpoint: "https://staging.replicated.app"
 integration:
   licenseID: "development-license-id"
-  mockData: ""
+  mock:
+    enabled: true
 ```
 
 ## Release process
