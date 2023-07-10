@@ -14,7 +14,7 @@ stringData:
     apiVersion: troubleshoot.sh/v1beta2
     kind: SupportBundle
     metadata:
-      name: replicated-sdk-supportbundle
+      name: replicated-supportbundle
     spec:
       collectors:
         - logs:
