@@ -21,4 +21,4 @@ stringData:
             collectorName: replicated-logs
             selector:
               {{- include "replicated.labels" . | nindent 14 }}
-            name: replicated-sdk/logs
+            name: replicated/logs
