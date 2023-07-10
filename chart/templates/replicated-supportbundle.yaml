@@ -18,7 +18,7 @@ stringData:
     spec:
       collectors:
         - logs:
-            collectorName: replicated-sdk-logs
+            collectorName: replicated-logs
             selector:
               {{- include "replicated.labels" . | nindent 14 }}
             name: replicated-sdk/logs
