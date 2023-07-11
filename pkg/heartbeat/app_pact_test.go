@@ -74,7 +74,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
 					AppSlug:        "sdk-heartbeat-app",
 					Sequence:       1,
-					State:          appstatetypes.StateUnknown,
+					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
 			},
@@ -124,7 +124,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
 					AppSlug:        "sdk-heartbeat-app",
 					Sequence:       1,
-					State:          appstatetypes.StateUnknown,
+					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
 			},
@@ -174,7 +174,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
 					AppSlug:        "sdk-heartbeat-app",
 					Sequence:       1,
-					State:          appstatetypes.StateUnknown,
+					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
 			},
@@ -224,7 +224,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
 					AppSlug:        "sdk-heartbeat-app",
 					Sequence:       1,
-					State:          appstatetypes.StateUnknown,
+					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
 			},
