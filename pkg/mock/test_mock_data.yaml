@@ -1,0 +1,33 @@
+helmChartURL: oci://custom.registry.com/my-app
+currentRelease:
+  versionLabel: custom-label
+  releaseNotes: "custom release notes"
+  createdAt: 2023-05-23T20:58:07Z
+  deployedAt: 2023-05-23T21:58:07Z
+  helmReleaseName: custom-helm-release-name
+  helmReleaseRevision: 4
+  helmReleaseNamespace: default
+deployedReleases:
+- versionLabel: custom-version-label-1
+  releaseNotes: "custom release notes 1"
+  createdAt: 2023-05-21T20:58:07Z
+  deployedAt: 2023-05-21T21:58:07Z
+  helmReleaseName: custom-helm-release-name-1
+  helmReleaseRevision: 2
+  helmReleaseNamespace: default
+- versionLabel: custom-version-label-2
+  releaseNotes: "custom release notes 2"
+  createdAt: 2023-05-22T20:58:07Z
+  deployedAt: 2023-05-22T21:58:07Z
+  helmReleaseName: custom-helm-release-name-2
+  helmReleaseRevision: 3
+  helmReleaseNamespace: default
+availableReleases:
+- versionLabel: custom-label-1
+  releaseNotes: "custom release notes 1"
+  createdAt: 2023-05-24T20:58:07Z
+  deployedAt: 2023-05-24T21:58:07Z
+- versionLabel: custom-label-2
+  releaseNotes: "custom release notes 2"
+  createdAt: 2023-06-01T20:58:07Z
+  deployedAt: 2023-06-01T21:58:07Z

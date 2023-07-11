@@ -102,7 +102,6 @@ func Start(params APIServerParams) {
 	// mock-data
 	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.PostMockData)).Methods("POST")
 	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.GetMockData)).Methods("GET")
-	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.DeleteMockData)).Methods("DELETE")
 
 	srv := &http.Server{
 		Handler: r,
