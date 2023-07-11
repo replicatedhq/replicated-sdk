@@ -38,7 +38,7 @@ func TestMinState(t *testing.T) {
 		{
 			name: "none",
 			ss:   []State{},
-			want: StateUnknown,
+			want: StateMissing,
 		},
 	}
 	for _, tt := range tests {
@@ -185,7 +185,7 @@ func TestGetState(t *testing.T) {
 		{
 			name:           "none",
 			resourceStates: []ResourceState{},
-			want:           StateUnknown,
+			want:           StateMissing,
 		},
 	}
 	for _, tt := range tests {

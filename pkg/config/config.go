@@ -7,18 +7,17 @@ import (
 )
 
 type ReplicatedConfig struct {
-	License                string                        `yaml:"license"`
-	LicenseFields          sdklicensetypes.LicenseFields `yaml:"licenseFields"`
-	AppName                string                        `yaml:"appName"`
-	ChannelID              string                        `yaml:"channelID"`
-	ChannelName            string                        `yaml:"channelName"`
-	ChannelSequence        int64                         `yaml:"channelSequence"`
-	ReleaseSequence        int64                         `yaml:"releaseSequence"`
-	ReleaseCreatedAt       string                        `yaml:"releaseCreatedAt"`
-	ReleaseNotes           string                        `yaml:"releaseNotes"`
-	VersionLabel           string                        `yaml:"versionLabel"`
-	ReplicatedAppEndpoint  string                        `yaml:"replicatedAppEndpoint"`
-	InformersLabelSelector string                        `yaml:"informersLabelSelector"`
+	License               string                        `yaml:"license"`
+	LicenseFields         sdklicensetypes.LicenseFields `yaml:"licenseFields"`
+	AppName               string                        `yaml:"appName"`
+	ChannelID             string                        `yaml:"channelID"`
+	ChannelName           string                        `yaml:"channelName"`
+	ChannelSequence       int64                         `yaml:"channelSequence"`
+	ReleaseSequence       int64                         `yaml:"releaseSequence"`
+	ReleaseCreatedAt      string                        `yaml:"releaseCreatedAt"`
+	ReleaseNotes          string                        `yaml:"releaseNotes"`
+	VersionLabel          string                        `yaml:"versionLabel"`
+	ReplicatedAppEndpoint string                        `yaml:"replicatedAppEndpoint"`
 }
 
 func ParseReplicatedConfig(config []byte) (*ReplicatedConfig, error) {

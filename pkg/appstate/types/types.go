@@ -1,6 +1,8 @@
 package types
 
 import (
+	"errors"
+	"regexp"
 	"time"
 )
 
@@ -10,14 +12,34 @@ var (
 	StateDegraded    State = "degraded"
 	StateUnavailable State = "unavailable"
 	StateMissing     State = "missing"
-	StateUnknown     State = "unknown"
-	StateNone        State = "none"
+
+	StatusInformerRegexp = regexp.MustCompile(`^(?:([^\/]+)\/)?([^\/]+)\/([^\/]+)$`)
 )
 
 type AppInformersArgs struct {
-	AppSlug       string `json:"app_id"`
-	Sequence      int64  `json:"sequence"`
-	LabelSelector string `json:"label_selector"`
+	AppSlug   string
+	Sequence  int64
+	Informers []StatusInformerString
+}
+
+type StatusInformerString string
+
+type StatusInformer struct {
+	Kind      string
+	Name      string
+	Namespace string
+}
+
+func (s StatusInformerString) Parse() (i StatusInformer, err error) {
+	matches := StatusInformerRegexp.FindStringSubmatch(string(s))
+	if len(matches) != 4 {
+		err = errors.New("status informer format string incorrect")
+		return
+	}
+	i.Namespace = matches[1]
+	i.Kind = matches[2]
+	i.Name = matches[3]
+	return
 }
 
 type AppStatus struct {
@@ -41,7 +63,7 @@ type State string
 
 func GetState(resourceStates []ResourceState) State {
 	if len(resourceStates) == 0 {
-		return StateUnknown
+		return StateMissing
 	}
 	max := StateReady
 	for _, resourceState := range resourceStates {
@@ -52,7 +74,7 @@ func GetState(resourceStates []ResourceState) State {
 
 func MinState(ss ...State) (min State) {
 	if len(ss) == 0 {
-		return StateUnknown
+		return StateMissing
 	}
 	for _, s := range ss {
 		if s == StateMissing || min == StateMissing {

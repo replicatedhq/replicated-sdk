@@ -13,6 +13,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -21,19 +22,18 @@ import (
 )
 
 type APIServerParams struct {
-	License                *kotsv1beta1.License
-	LicenseFields          sdklicensetypes.LicenseFields
-	AppName                string
-	ChannelID              string
-	ChannelName            string
-	ChannelSequence        int64
-	ReleaseSequence        int64
-	ReleaseCreatedAt       string
-	ReleaseNotes           string
-	VersionLabel           string
-	ReplicatedAppEndpoint  string
-	InformersLabelSelector string
-	Namespace              string
+	License               *kotsv1beta1.License
+	LicenseFields         sdklicensetypes.LicenseFields
+	AppName               string
+	ChannelID             string
+	ChannelName           string
+	ChannelSequence       int64
+	ReleaseSequence       int64
+	ReleaseCreatedAt      string
+	ReleaseNotes          string
+	VersionLabel          string
+	ReplicatedAppEndpoint string
+	Namespace             string
 }
 
 func Start(params APIServerParams) {
@@ -69,11 +69,24 @@ func Start(params APIServerParams) {
 	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
 	appStateOperator.Start()
 
-	appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
-		AppSlug:       store.GetStore().GetAppSlug(),
-		Sequence:      store.GetStore().GetReleaseSequence(),
-		LabelSelector: params.InformersLabelSelector,
-	})
+	if helm.IsHelmManaged() {
+		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
+		if err != nil {
+			log.Fatalf("Failed to get helm release: %v", err)
+		}
+
+		// TODO: make status informers configurable and support them outside of Helm
+		informers, err := appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
+		if err != nil {
+			logger.Errorf("Failed to generate status informers: %v", err)
+		} else {
+			appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
+				AppSlug:   store.GetStore().GetAppSlug(),
+				Sequence:  store.GetStore().GetReleaseSequence(),
+				Informers: informers,
+			})
+		}
+	}
 
 	if err := heartbeat.Start(); err != nil {
 		log.Println("Failed to start heartbeat:", err)

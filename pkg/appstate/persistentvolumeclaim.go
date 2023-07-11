@@ -17,17 +17,19 @@ const (
 	PersistentVolumeClaimResourceKind = "persistentvolumeclaim"
 )
 
+func init() {
+	registerResourceKindNames(PersistentVolumeClaimResourceKind, "persistentvolumeclaims", "pvc")
+}
+
 func runPersistentVolumeClaimController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
-	labelSelector string, resourceStateCh chan<- types.ResourceState,
+	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.LabelSelector = labelSelector
 			return clientset.CoreV1().PersistentVolumeClaims(targetNamespace).List(context.TODO(), options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			options.LabelSelector = labelSelector
 			return clientset.CoreV1().PersistentVolumeClaims(targetNamespace).Watch(context.TODO(), options)
 		},
 	}
@@ -38,40 +40,64 @@ func runPersistentVolumeClaimController(
 	)
 
 	eventHandler := NewPersistentVolumeClaimEventHandler(
+		filterStatusInformersByResourceKind(informers, PersistentVolumeClaimResourceKind),
 		resourceStateCh,
 	)
 
 	runInformer(ctx, informer, eventHandler)
+	return
 }
 
 type persistentVolumeClaimEventHandler struct {
+	informers       []types.StatusInformer
 	resourceStateCh chan<- types.ResourceState
 }
 
-func NewPersistentVolumeClaimEventHandler(resourceStateCh chan<- types.ResourceState) *persistentVolumeClaimEventHandler {
+func NewPersistentVolumeClaimEventHandler(informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState) *persistentVolumeClaimEventHandler {
 	return &persistentVolumeClaimEventHandler{
+		informers:       informers,
 		resourceStateCh: resourceStateCh,
 	}
 }
 
 func (h *persistentVolumeClaimEventHandler) ObjectCreated(obj interface{}) {
 	r := h.cast(obj)
-	h.resourceStateCh <- makePersistentVolumeClaimResourceState(r, calculatePersistentVolumeClaimState(r))
+	if _, ok := h.getInformer(r); !ok {
+		return
+	}
+	h.resourceStateCh <- makePersistentVolumeClaimResourceState(r, CalculatePersistentVolumeClaimState(r))
 }
 
 func (h *persistentVolumeClaimEventHandler) ObjectUpdated(obj interface{}) {
 	r := h.cast(obj)
-	h.resourceStateCh <- makePersistentVolumeClaimResourceState(r, calculatePersistentVolumeClaimState(r))
+	if _, ok := h.getInformer(r); !ok {
+		return
+	}
+	h.resourceStateCh <- makePersistentVolumeClaimResourceState(r, CalculatePersistentVolumeClaimState(r))
 }
 
 func (h *persistentVolumeClaimEventHandler) ObjectDeleted(obj interface{}) {
 	r := h.cast(obj)
+	if _, ok := h.getInformer(r); !ok {
+		return
+	}
 	h.resourceStateCh <- makePersistentVolumeClaimResourceState(r, types.StateMissing)
 }
 
 func (h *persistentVolumeClaimEventHandler) cast(obj interface{}) *corev1.PersistentVolumeClaim {
 	r, _ := obj.(*corev1.PersistentVolumeClaim)
 	return r
+}
+
+func (h *persistentVolumeClaimEventHandler) getInformer(r *corev1.PersistentVolumeClaim) (types.StatusInformer, bool) {
+	if r != nil {
+		for _, informer := range h.informers {
+			if r.Namespace == informer.Namespace && r.Name == informer.Name {
+				return informer, true
+			}
+		}
+	}
+	return types.StatusInformer{}, false
 }
 
 func makePersistentVolumeClaimResourceState(r *corev1.PersistentVolumeClaim, state types.State) types.ResourceState {
@@ -83,7 +109,7 @@ func makePersistentVolumeClaimResourceState(r *corev1.PersistentVolumeClaim, sta
 	}
 }
 
-func calculatePersistentVolumeClaimState(r *corev1.PersistentVolumeClaim) types.State {
+func CalculatePersistentVolumeClaimState(r *corev1.PersistentVolumeClaim) types.State {
 	// https://github.com/kubernetes/kubernetes/blob/badcd4af3f592376ce891b7c1b7a43ed6a18a348/pkg/printers/internalversion/printers.go#L1403
 	switch r.Status.Phase {
 	case corev1.ClaimPending, corev1.ClaimLost:
