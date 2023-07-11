@@ -68,7 +68,7 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace" yaml:"helmReleaseNamespace"`
 }
 
-func (m *Mock) UseMockData(ctx context.Context) (bool, error) {
+func (m *Mock) IsMockEnabled(ctx context.Context) (bool, error) {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
@@ -175,8 +175,6 @@ func (m *Mock) GetMockData(ctx context.Context) (*MockData, error) {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	content := defaultMockDataYAML
-
 	secret, err := m.clientset.CoreV1().Secrets(m.namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return nil, errors.Wrap(err, "failed to get replicated secret")
@@ -184,15 +182,22 @@ func (m *Mock) GetMockData(ctx context.Context) (*MockData, error) {
 	if err == nil {
 		b := secret.Data[replicatedMockDataKey]
 		if len(b) != 0 {
-			content = b
+			var mockData MockData
+			if err := yaml.Unmarshal(b, &mockData); err != nil {
+				return nil, errors.Wrap(err, "failed to unmarshal mock data")
+			}
+			return &mockData, nil
 		}
 	}
 
-	var mockData MockData
-	if err := yaml.Unmarshal(content, &mockData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal mock data")
-	}
+	return GetDefaultMockData(ctx)
+}
 
+func GetDefaultMockData(ctx context.Context) (*MockData, error) {
+	var mockData MockData
+	if err := yaml.Unmarshal(defaultMockDataYAML, &mockData); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal default mock data")
+	}
 	return &mockData, nil
 }
 
