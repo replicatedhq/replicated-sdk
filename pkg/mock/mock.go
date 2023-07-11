@@ -68,7 +68,7 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace" yaml:"helmReleaseNamespace"`
 }
 
-func (m *Mock) UseMockData(ctx context.Context, dataKey string) (bool, error) {
+func (m *Mock) UseMockData(ctx context.Context) (bool, error) {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
