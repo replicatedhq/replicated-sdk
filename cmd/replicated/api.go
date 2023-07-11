@@ -84,6 +84,7 @@ func APICmd() *cobra.Command {
 				ReleaseNotes:          replicatedConfig.ReleaseNotes,
 				VersionLabel:          replicatedConfig.VersionLabel,
 				ReplicatedAppEndpoint: replicatedConfig.ReplicatedAppEndpoint,
+				StatusInformers:       replicatedConfig.StatusInformers,
 				Namespace:             namespace,
 			}
 			apiserver.Start(params)

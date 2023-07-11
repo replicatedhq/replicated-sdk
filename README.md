@@ -26,6 +26,7 @@ releaseCreatedAt: "RELEASE_CREATED_AT"
 releaseNotes: "RELEASE_NOTES"
 versionLabel: "VERSION_LABEL"
 replicatedAppEndpoint: "REPLICATED_APP_ENDPOINT"
+statusInformers: "STATUS_INFORMERS"
 ```
 
 Run the Replicated API:
@@ -79,6 +80,8 @@ releaseCreatedAt: "2023-07-03T12:48:26Z"
 releaseNotes: "replicated-sdk-test"
 versionLabel: "0.0.1"
 replicatedAppEndpoint: ""
+statusInformers:
+  - default/deployment/nginx
 ```
 
 ```shell
@@ -111,7 +114,8 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set releaseNotes=[RELEASE_NOTES] \
     --set versionLabel=[VERSION_LABEL] \
     --set parentChartURL=[PARENT_CHART_URL] \
-    --set replicatedAppEndpoint=[REPLICATED_APP_ENDPOINT]
+    --set replicatedAppEndpoint=[REPLICATED_APP_ENDPOINT] \
+    --set statusInformers=[STATUS_INFORMERS]
 ```
 
 Example:
@@ -129,7 +133,8 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
     --set releaseNotes="my release notes" \
     --set versionLabel="v1.0.0" \
     --set parentChartURL="oci://registry.replicated.com/my-app/my-channel/my-parent-chart" \
-    --set replicatedAppEndpoint="https://enterprise.slackernews.app"
+    --set replicatedAppEndpoint="https://enterprise.slackernews.app" \
+    --set statusInformers="{default/deployment/nginx,default/statefulset/rqlite}"
 ```
 
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.
