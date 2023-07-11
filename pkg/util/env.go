@@ -19,7 +19,3 @@ func IsDevLicense(license *kotsv1beta1.License) bool {
 	result, _ := regexp.MatchString(`replicated-app`, license.Spec.Endpoint)
 	return result
 }
-
-func IsIntegrationEnv() bool {
-	return os.Getenv("REPLICATED_INTEGRATION_LICENSE_ID") != ""
-}

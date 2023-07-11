@@ -33,7 +33,7 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 }
 
 func canReport(license *kotsv1beta1.License) bool {
-	if util.IsAirgap() || util.IsIntegrationEnv() {
+	if util.IsAirgap() {
 		return false
 	}
 
