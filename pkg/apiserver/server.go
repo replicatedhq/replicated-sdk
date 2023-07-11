@@ -33,6 +33,7 @@ type APIServerParams struct {
 	ReleaseNotes          string
 	VersionLabel          string
 	ReplicatedAppEndpoint string
+	StatusInformers       []appstatetypes.StatusInformerString
 	Namespace             string
 }
 
@@ -69,24 +70,27 @@ func Start(params APIServerParams) {
 	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
 	appStateOperator.Start()
 
-	if helm.IsHelmManaged() {
+	// if no status informers are provided, generate them from the helm release
+	informers := params.StatusInformers
+	if len(informers) == 0 && helm.IsHelmManaged() {
 		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
 		if err != nil {
 			log.Fatalf("Failed to get helm release: %v", err)
 		}
 
-		// TODO: make status informers configurable and support them outside of Helm
-		informers, err := appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
+		i, err := appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
 		if err != nil {
 			logger.Errorf("Failed to generate status informers: %v", err)
 		} else {
-			appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
-				AppSlug:   store.GetStore().GetAppSlug(),
-				Sequence:  store.GetStore().GetReleaseSequence(),
-				Informers: informers,
-			})
+			informers = i
 		}
 	}
+
+	appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
+		AppSlug:   store.GetStore().GetAppSlug(),
+		Sequence:  store.GetStore().GetReleaseSequence(),
+		Informers: informers,
+	})
 
 	if err := heartbeat.Start(); err != nil {
 		log.Println("Failed to start heartbeat:", err)
