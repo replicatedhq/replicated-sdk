@@ -26,7 +26,6 @@ releaseCreatedAt: "RELEASE_CREATED_AT"
 releaseNotes: "RELEASE_NOTES"
 versionLabel: "VERSION_LABEL"
 replicatedAppEndpoint: "REPLICATED_APP_ENDPOINT"
-informersLabelSelector: 'INFORMER_LABEL_SELECTOR'
 ```
 
 Run the Replicated API:
@@ -80,7 +79,6 @@ releaseCreatedAt: "2023-07-03T12:48:26Z"
 releaseNotes: "replicated-sdk-test"
 versionLabel: "0.0.1"
 replicatedAppEndpoint: ""
-informersLabelSelector: 'app.kubernetes.io/managed-by=Helm,app.kubernetes.io/name!=replicated,app.kubernetes.io/instance=replicated-sdk-test'
 ```
 
 ```shell

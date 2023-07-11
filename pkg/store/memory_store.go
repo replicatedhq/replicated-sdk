@@ -207,7 +207,7 @@ func (s *InMemoryStore) GetAppStatus() appstatetypes.AppStatus {
 		return appstatetypes.AppStatus{
 			AppSlug:  s.appSlug,
 			Sequence: s.releaseSequence,
-			State:    appstatetypes.StateNone,
+			State:    appstatetypes.StateMissing,
 		}
 	}
 	return s.appStatus

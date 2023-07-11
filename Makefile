@@ -2,7 +2,7 @@ include Makefile.build.mk
 
 .PHONY: test
 test:
-	go test $(TEST_BUILDFLAGS) ./pkg/... ./cmd/... -coverprofile cover.out
+	go test -v $(TEST_BUILDFLAGS) ./pkg/... ./cmd/... -coverprofile cover.out
 
 .PHONY: publish-pact
 publish-pact:

@@ -91,9 +91,19 @@ func (o *Operator) ApplyAppInformers(args types.AppInformersArgs) {
 
 	appSlug := args.AppSlug
 	sequence := args.Sequence
-	labelSelector := args.LabelSelector
+	informerStrings := args.Informers
 
-	o.appStateMonitor.Apply(appSlug, sequence, labelSelector)
+	var informers []types.StatusInformer
+	for _, str := range informerStrings {
+		informer, err := str.Parse()
+		if err != nil {
+			log.Printf("failed to parse informer %s: %s", str, err.Error())
+			continue // don't stop
+		}
+		informers = append(informers, informer)
+	}
+
+	o.appStateMonitor.Apply(appSlug, sequence, informers)
 }
 
 func (o *Operator) setAppStatus(newAppStatus types.AppStatus) error {

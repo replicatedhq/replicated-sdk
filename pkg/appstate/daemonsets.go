@@ -22,21 +22,24 @@ const (
 )
 
 type daemonSetEventHandler struct {
+	informers       []types.StatusInformer
 	resourceStateCh chan<- types.ResourceState
 	clientset       kubernetes.Interface
 	targetNamespace string
 }
 
+func init() {
+	registerResourceKindNames(DaemonSetResourceKind, "daemonsets", "ds")
+}
+
 func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
-	targetNamespace string, labelSelector string, resourceStateCh chan<- types.ResourceState,
+	targetNamespace string, informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.LabelSelector = labelSelector
 			return clientset.AppsV1().DaemonSets(targetNamespace).List(context.TODO(), options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			options.LabelSelector = labelSelector
 			return clientset.AppsV1().DaemonSets(targetNamespace).Watch(context.TODO(), options)
 		},
 	}
@@ -44,6 +47,7 @@ func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
 	informer := cache.NewSharedInformer(listwatch, &appsv1.DaemonSet{}, time.Minute)
 
 	eventHandler := &daemonSetEventHandler{
+		informers:       filterStatusInformersByResourceKind(informers, DaemonSetResourceKind),
 		resourceStateCh: resourceStateCh,
 		clientset:       clientset,
 		targetNamespace: targetNamespace,
@@ -54,17 +58,41 @@ func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
 
 func (h *daemonSetEventHandler) ObjectCreated(obj interface{}) {
 	r := h.cast(obj)
-	h.resourceStateCh <- makeDaemonSetResourceState(r, h.calculateDaemonSetState(r))
+	if _, ok := h.getInformer(r); !ok {
+		return
+	}
+
+	h.resourceStateCh <- makeDaemonSetResourceState(r, h.calculateDaemonSetState(h.clientset, h.targetNamespace, r))
 }
 
 func (h *daemonSetEventHandler) ObjectDeleted(obj interface{}) {
 	r := h.cast(obj)
+	if _, ok := h.getInformer(r); !ok {
+		return
+	}
+
 	h.resourceStateCh <- makeDaemonSetResourceState(r, types.StateMissing)
 }
 
 func (h *daemonSetEventHandler) ObjectUpdated(obj interface{}) {
 	r := h.cast(obj)
-	h.resourceStateCh <- makeDaemonSetResourceState(r, h.calculateDaemonSetState(r))
+	if _, ok := h.getInformer(r); !ok {
+		return
+	}
+
+	h.resourceStateCh <- makeDaemonSetResourceState(r, h.calculateDaemonSetState(h.clientset, h.targetNamespace, r))
+}
+
+func (h *daemonSetEventHandler) getInformer(r *appsv1.DaemonSet) (types.StatusInformer, bool) {
+	if r != nil {
+		for _, informer := range h.informers {
+			if r.Namespace == informer.Namespace && r.Name == informer.Name {
+				return informer, true
+			}
+		}
+	}
+
+	return types.StatusInformer{}, false
 }
 
 func (h *daemonSetEventHandler) cast(obj interface{}) *appsv1.DaemonSet {
@@ -75,7 +103,7 @@ func (h *daemonSetEventHandler) cast(obj interface{}) *appsv1.DaemonSet {
 // The pods in a daemonset can be identified by the match label set in the daemonset and the
 // "controller-revision-hash" can be used to determine if they are all the in the same daemonset
 // version.
-func (h *daemonSetEventHandler) calculateDaemonSetState(r *appsv1.DaemonSet) types.State {
+func (h *daemonSetEventHandler) calculateDaemonSetState(clientset kubernetes.Interface, targetNamespace string, r *appsv1.DaemonSet) types.State {
 	if r == nil {
 		return types.StateUnavailable
 	}
@@ -86,7 +114,7 @@ func (h *daemonSetEventHandler) calculateDaemonSetState(r *appsv1.DaemonSet) typ
 
 	listOptions := metav1.ListOptions{LabelSelector: labels.SelectorFromSet(r.Spec.Selector.MatchLabels).String()}
 
-	pods, err := h.clientset.CoreV1().Pods(h.targetNamespace).List(context.TODO(), listOptions)
+	pods, err := clientset.CoreV1().Pods(targetNamespace).List(context.TODO(), listOptions)
 	if err != nil {
 		log.Printf("failed to get daemonset pod list: %s", err)
 		return types.StateUnavailable

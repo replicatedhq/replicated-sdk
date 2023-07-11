@@ -73,19 +73,18 @@ func APICmd() *cobra.Command {
 			}
 
 			params := apiserver.APIServerParams{
-				License:                license,
-				LicenseFields:          replicatedConfig.LicenseFields,
-				AppName:                replicatedConfig.AppName,
-				ChannelID:              replicatedConfig.ChannelID,
-				ChannelName:            replicatedConfig.ChannelName,
-				ChannelSequence:        replicatedConfig.ChannelSequence,
-				ReleaseSequence:        replicatedConfig.ReleaseSequence,
-				ReleaseCreatedAt:       replicatedConfig.ReleaseCreatedAt,
-				ReleaseNotes:           replicatedConfig.ReleaseNotes,
-				VersionLabel:           replicatedConfig.VersionLabel,
-				ReplicatedAppEndpoint:  replicatedConfig.ReplicatedAppEndpoint,
-				InformersLabelSelector: replicatedConfig.InformersLabelSelector,
-				Namespace:              namespace,
+				License:               license,
+				LicenseFields:         replicatedConfig.LicenseFields,
+				AppName:               replicatedConfig.AppName,
+				ChannelID:             replicatedConfig.ChannelID,
+				ChannelName:           replicatedConfig.ChannelName,
+				ChannelSequence:       replicatedConfig.ChannelSequence,
+				ReleaseSequence:       replicatedConfig.ReleaseSequence,
+				ReleaseCreatedAt:      replicatedConfig.ReleaseCreatedAt,
+				ReleaseNotes:          replicatedConfig.ReleaseNotes,
+				VersionLabel:          replicatedConfig.VersionLabel,
+				ReplicatedAppEndpoint: replicatedConfig.ReplicatedAppEndpoint,
+				Namespace:             namespace,
 			}
 			apiserver.Start(params)
 
