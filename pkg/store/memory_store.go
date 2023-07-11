@@ -22,10 +22,10 @@ const (
 )
 
 var (
-	store *Store
+	store Store
 )
 
-type Store struct {
+type InMemoryStore struct {
 	replicatedID          string
 	appID                 string
 	license               *kotsv1beta1.License
@@ -44,7 +44,7 @@ type Store struct {
 	appStatus             appstatetypes.AppStatus
 }
 
-type InitStoreOptions struct {
+type InitInMemoryStoreOptions struct {
 	License               *kotsv1beta1.License
 	LicenseFields         sdklicensetypes.LicenseFields
 	AppName               string
@@ -59,7 +59,7 @@ type InitStoreOptions struct {
 	Namespace             string
 }
 
-func Init(options InitStoreOptions) error {
+func InitInMemory(options InitInMemoryStoreOptions) error {
 	verifiedLicense, err := sdklicense.VerifySignature(options.License)
 	if err != nil {
 		return errors.Wrap(err, "failed to verify license signature")
@@ -90,7 +90,7 @@ func Init(options InitStoreOptions) error {
 		return errors.Wrap(err, "failed to generate ids")
 	}
 
-	store = &Store{
+	store = &InMemoryStore{
 		replicatedID:          replicatedID,
 		appID:                 appID,
 		license:               verifiedLicense,
@@ -111,35 +111,35 @@ func Init(options InitStoreOptions) error {
 	return nil
 }
 
-func GetStore() *Store {
+func GetStore() Store {
 	if store == nil {
-		return &Store{}
+		return &InMemoryStore{}
 	}
 
 	return store
 }
 
-func (s *Store) GetReplicatedID() string {
+func (s *InMemoryStore) GetReplicatedID() string {
 	return s.replicatedID
 }
 
-func (s *Store) GetAppID() string {
+func (s *InMemoryStore) GetAppID() string {
 	return s.appID
 }
 
-func (s *Store) GetLicense() *kotsv1beta1.License {
+func (s *InMemoryStore) GetLicense() *kotsv1beta1.License {
 	return s.license
 }
 
-func (s *Store) SetLicense(license *kotsv1beta1.License) {
+func (s *InMemoryStore) SetLicense(license *kotsv1beta1.License) {
 	s.license = license.DeepCopy()
 }
 
-func (s *Store) GetLicenseFields() sdklicensetypes.LicenseFields {
+func (s *InMemoryStore) GetLicenseFields() sdklicensetypes.LicenseFields {
 	return s.licenseFields
 }
 
-func (s *Store) SetLicenseFields(licenseFields sdklicensetypes.LicenseFields) {
+func (s *InMemoryStore) SetLicenseFields(licenseFields sdklicensetypes.LicenseFields) {
 	// copy by value not reference
 	if licenseFields == nil {
 		s.licenseFields = nil
@@ -153,55 +153,55 @@ func (s *Store) SetLicenseFields(licenseFields sdklicensetypes.LicenseFields) {
 	}
 }
 
-func (s *Store) IsDevLicense() bool {
+func (s *InMemoryStore) IsDevLicense() bool {
 	return s.license.Spec.LicenseType == "dev"
 }
 
-func (s *Store) GetAppSlug() string {
+func (s *InMemoryStore) GetAppSlug() string {
 	return s.appSlug
 }
 
-func (s *Store) GetAppName() string {
+func (s *InMemoryStore) GetAppName() string {
 	return s.appName
 }
 
-func (s *Store) GetChannelID() string {
+func (s *InMemoryStore) GetChannelID() string {
 	return s.channelID
 }
 
-func (s *Store) GetChannelName() string {
+func (s *InMemoryStore) GetChannelName() string {
 	return s.channelName
 }
 
-func (s *Store) GetChannelSequence() int64 {
+func (s *InMemoryStore) GetChannelSequence() int64 {
 	return s.channelSequence
 }
 
-func (s *Store) GetReleaseSequence() int64 {
+func (s *InMemoryStore) GetReleaseSequence() int64 {
 	return s.releaseSequence
 }
 
-func (s *Store) GetReleaseCreatedAt() string {
+func (s *InMemoryStore) GetReleaseCreatedAt() string {
 	return s.releaseCreatedAt
 }
 
-func (s *Store) GetReleaseNotes() string {
+func (s *InMemoryStore) GetReleaseNotes() string {
 	return s.releaseNotes
 }
 
-func (s *Store) GetVersionLabel() string {
+func (s *InMemoryStore) GetVersionLabel() string {
 	return s.versionLabel
 }
 
-func (s *Store) GetReplicatedAppEndpoint() string {
+func (s *InMemoryStore) GetReplicatedAppEndpoint() string {
 	return s.replicatedAppEndpoint
 }
 
-func (s *Store) GetNamespace() string {
+func (s *InMemoryStore) GetNamespace() string {
 	return s.namespace
 }
 
-func (s *Store) GetAppStatus() appstatetypes.AppStatus {
+func (s *InMemoryStore) GetAppStatus() appstatetypes.AppStatus {
 	if s.appStatus.State == "" {
 		// initialize with none state so that subsequent changes will trigger reporting
 		return appstatetypes.AppStatus{
@@ -213,7 +213,7 @@ func (s *Store) GetAppStatus() appstatetypes.AppStatus {
 	return s.appStatus
 }
 
-func (s *Store) SetAppStatus(status appstatetypes.AppStatus) {
+func (s *InMemoryStore) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
 }
 

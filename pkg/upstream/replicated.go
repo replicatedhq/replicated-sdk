@@ -17,8 +17,8 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
-func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
-	endpoint := store.GetStore().GetReplicatedAppEndpoint()
+func ListPendingChannelReleases(sdkStore store.Store, license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
+	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
 	}
@@ -48,7 +48,7 @@ func ListPendingChannelReleases(license *kotsv1beta1.License, currentCursor type
 	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, license.Spec.AppSlug, urlValues.Encode())
 
 	// build the request body
-	heartbeatInfo := heartbeat.GetHeartbeatInfo()
+	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore)
 
 	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 	if err != nil {

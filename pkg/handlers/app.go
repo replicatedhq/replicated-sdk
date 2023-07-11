@@ -160,7 +160,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 		ChannelName:     store.GetStore().GetChannelName(),
 		ChannelSequence: store.GetStore().GetChannelSequence(),
 	}
-	updates, err := upstream.ListPendingChannelReleases(license, currentCursor)
+	updates, err := upstream.ListPendingChannelReleases(store.GetStore(), license, currentCursor)
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to list pending channel releases"))
 		w.WriteHeader(http.StatusInternalServerError)

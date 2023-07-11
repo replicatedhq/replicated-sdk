@@ -103,7 +103,7 @@ func (o *Operator) setAppStatus(newAppStatus types.AppStatus) error {
 	if newAppStatus.State != currentAppStatus.State {
 		log.Printf("app state changed from %s to %s", currentAppStatus.State, newAppStatus.State)
 		go func() {
-			err := heartbeat.SendAppHeartbeat()
+			err := heartbeat.SendAppHeartbeat(store.GetStore())
 			if err != nil {
 				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
 			}

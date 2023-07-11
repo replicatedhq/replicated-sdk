@@ -8,9 +8,37 @@ on:
     - 'v[0-9]+.[0-9]+.[0-9]+\-alpha'
     - 'v[0-9]+.[0-9]+.[0-9]+\-alpha\.[0-9]+'
 
+env:
+  PACT_VERSION: ${{ github.ref_name }}
+  PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+  PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+
 jobs:
+  make-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '^1.20'
+      - run: make test
+      - run: make publish-pact
+
+  make-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '^1.20'
+      - name: make build
+        run: make build
+
   package-and-publish:
-    runs-on: 'ubuntu-20.04'
+    runs-on: 'ubuntu-22.04'
+    needs:
+      - make-tests
+      - make-build
     steps:
     - name: Get tag
       id: tag
@@ -19,6 +47,10 @@ jobs:
         strip_v: true
     - name: Checkout
       uses: actions/checkout@v2
+    - uses: replicatedhq/action-install-pact@v1
+    - name: Pact can-i-deploy
+      run: |
+        make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
     - name: Install Helm
       uses: azure/setup-helm@v1
       with:
@@ -55,3 +87,5 @@ jobs:
         echo pushing ${CHART_NAME} to production
         helm registry login registry.replicated.com --username $REPLICATED_USER_PROD --password $REPLICATED_PASS_PROD
         helm push $CHART_NAME oci://registry.replicated.com/library
+    - name: Pact record-release
+      run: make record-release
