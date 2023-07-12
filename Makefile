@@ -1,8 +1,15 @@
 include Makefile.build.mk
 
+.PHONY: test-unit
+test-unit:
+	go test -v $(TEST_BUILDFLAGS) `go list -f '{{if ne .Name "pact"}}{{.ImportPath}}{{end}}' ./...` -coverprofile cover.out
+
+.PHONY: test-pact
+test-pact:
+	go test -v `go list -f '{{if eq .Name "pact"}}{{.ImportPath}}{{end}}' ./...` -tags "$(BUILDTAGS)"
+
 .PHONY: test
-test:
-	go test -v $(TEST_BUILDFLAGS) ./pkg/... ./cmd/... -coverprofile cover.out
+test: test-unit test-pact
 
 .PHONY: publish-pact
 publish-pact:
