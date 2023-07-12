@@ -1,8 +1,15 @@
 include Makefile.build.mk
 
-.PHONY: test
-test:
+.PHONY: test-unit
+test-unit:
 	go test -v $(TEST_BUILDFLAGS) ./pkg/... ./cmd/... -coverprofile cover.out
+
+.PHONY: test-pact
+test-pact:
+	go test -v ./pact/... -tags "$(BUILDTAGS)"
+
+.PHONY: test
+test: test-unit test-pact
 
 .PHONY: publish-pact
 publish-pact:

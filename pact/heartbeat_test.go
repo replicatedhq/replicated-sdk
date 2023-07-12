@@ -1,50 +1,18 @@
-package heartbeat
+package pact
 
 import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"os"
-	"path"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/pact-foundation/pact-go/dsl"
 	"github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
 )
-
-var (
-	pact dsl.Pact
-)
-
-func TestMain(m *testing.M) {
-	pact = createPact()
-	pact.Setup(true)
-
-	code := m.Run()
-
-	pact.WritePact()
-	pact.Teardown()
-
-	os.Exit(code)
-}
-
-func createPact() dsl.Pact {
-	dir, _ := os.Getwd()
-
-	pactDir := path.Join(dir, "../..", "pacts")
-	logDir := path.Join(dir, "../..", "pact_logs")
-
-	return dsl.Pact{
-		Consumer: "replicated-sdk",
-		Provider: "replicated-app",
-		LogDir:   logDir,
-		PactDir:  pactDir,
-		LogLevel: "debug",
-	}
-}
 
 func TestSendAppHeartbeat(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -262,7 +230,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 			tt.mockStoreExpectations()
 			tt.pactInteraction()
 			if err := pact.Verify(func() error {
-				if err := SendAppHeartbeat(mockStore); (err != nil) != tt.wantErr {
+				if err := heartbeat.SendAppHeartbeat(mockStore); (err != nil) != tt.wantErr {
 					t.Errorf("SendAppHeartbeat() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				return nil

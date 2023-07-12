@@ -235,6 +235,14 @@ integration:
     enabled: true
 ```
 
+## Testing
+
+Tests are automatically run in GitHub Actions after opening or updating a pull request.
+
+Unit and Pact tests can be run locally using the `make test` command.
+
+Pact tests live in the `pact/` directory at the root of the repository. The Pact standalone command line executable must be installed to run Pact tests locally. It can be downloaded from the releases page in the following repository: https://github.com/pact-foundation/pact-ruby-standalone.
+
 ## Release process
 1. Compare the commits between the previous tag and the current commit on the main branch.
 2. Share the details of the commit differences by posting a note on the Slack channels [#production-system](https://replicated.slack.com/archives/C0HFCF4JE) and [#wg-builders-plan](https://replicated.slack.com/archives/C0522NKK988).
