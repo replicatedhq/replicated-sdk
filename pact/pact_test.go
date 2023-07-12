@@ -3,6 +3,7 @@ package pact
 import (
 	"os"
 	"path"
+	"testing"
 
 	"github.com/pact-foundation/pact-go/dsl"
 )
@@ -10,6 +11,18 @@ import (
 var (
 	pact dsl.Pact
 )
+
+func TestMain(m *testing.M) {
+	pact = createPact()
+	pact.Setup(true)
+
+	code := m.Run()
+
+	pact.WritePact()
+	pact.Teardown()
+
+	os.Exit(code)
+}
 
 func createPact() dsl.Pact {
 	dir, _ := os.Getwd()

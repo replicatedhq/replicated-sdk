@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -14,18 +13,6 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
 )
-
-func TestMain(m *testing.M) {
-	pact = createPact()
-	pact.Setup(true)
-
-	code := m.Run()
-
-	pact.WritePact()
-	pact.Teardown()
-
-	os.Exit(code)
-}
 
 func TestSendAppHeartbeat(t *testing.T) {
 	ctrl := gomock.NewController(t)
