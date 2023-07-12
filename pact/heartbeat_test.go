@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -14,10 +13,6 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
-)
-
-var (
-	pact dsl.Pact
 )
 
 func TestMain(m *testing.M) {
@@ -30,21 +25,6 @@ func TestMain(m *testing.M) {
 	pact.Teardown()
 
 	os.Exit(code)
-}
-
-func createPact() dsl.Pact {
-	dir, _ := os.Getwd()
-
-	pactDir := path.Join(dir, "../../..", "pacts")
-	logDir := path.Join(dir, "../../..", "pact_logs")
-
-	return dsl.Pact{
-		Consumer: "replicated-sdk",
-		Provider: "replicated-app",
-		LogDir:   logDir,
-		PactDir:  pactDir,
-		LogLevel: "debug",
-	}
 }
 
 func TestSendAppHeartbeat(t *testing.T) {

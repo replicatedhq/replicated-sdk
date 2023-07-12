@@ -241,7 +241,7 @@ Tests are automatically run in GitHub Actions after opening or updating a pull r
 
 Unit and Pact tests can be run locally using the `make test` command.
 
-The Pact standalone command line executable must be installed to run Pact tests locally. It can be downloaded from the releases page in the following repository: https://github.com/pact-foundation/pact-ruby-standalone.
+Pact tests live in the `pact/` directory at the root of the repository. The Pact standalone command line executable must be installed to run Pact tests locally. It can be downloaded from the releases page in the following repository: https://github.com/pact-foundation/pact-ruby-standalone.
 
 ## Release process
 1. Compare the commits between the previous tag and the current commit on the main branch.
