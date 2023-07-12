@@ -6,7 +6,12 @@ test-unit:
 
 .PHONY: test-pact
 test-pact:
-	go test -v ./pact/... -tags "$(BUILDTAGS)"
+	@echo "Running Pact tests..."
+	@if ! command -v pact-mock-service &> /dev/null; then \
+		echo "The 'pact-mock-service' command is not found on your PATH. Please install the CLI from the releases page in https://github.com/pact-foundation/pact-ruby-standalone."; \
+	else \
+		go test -v ./pact/... -tags "$(BUILDTAGS)"; \
+	fi
 
 .PHONY: test
 test: test-unit test-pact
