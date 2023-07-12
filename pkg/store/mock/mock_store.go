@@ -11,6 +11,7 @@ import (
 	v1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	types "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	types0 "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	types1 "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
 
 // MockStore is a mock of Store interface.
@@ -244,6 +245,20 @@ func (m *MockStore) GetReplicatedID() string {
 func (mr *MockStoreMockRecorder) GetReplicatedID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReplicatedID", reflect.TypeOf((*MockStore)(nil).GetReplicatedID))
+}
+
+// GetUpdates mocks base method.
+func (m *MockStore) GetUpdates() []types1.ChannelRelease {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUpdates")
+	ret0, _ := ret[0].([]types1.ChannelRelease)
+	return ret0
+}
+
+// GetUpdates indicates an expected call of GetUpdates.
+func (mr *MockStoreMockRecorder) GetUpdates() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockStore)(nil).GetUpdates))
 }
 
 // GetVersionLabel mocks base method.

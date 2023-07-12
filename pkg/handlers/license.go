@@ -27,13 +27,10 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 		l, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		} else {
+			license = l.License
+			store.GetStore().SetLicense(license)
 		}
-		license = l.License
-
-		// update the store
-		store.GetStore().SetLicense(license)
 	}
 
 	licenseInfo := LicenseInfo{
@@ -54,13 +51,10 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 		fields, err := sdklicense.GetLatestLicenseFields(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		} else {
+			licenseFields = fields
+			store.GetStore().SetLicenseFields(licenseFields)
 		}
-		licenseFields = fields
-
-		// update the store
-		store.GetStore().SetLicenseFields(licenseFields)
 	}
 
 	JSON(w, http.StatusOK, licenseFields)
@@ -78,19 +72,15 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 		field, err := sdklicense.GetLatestLicenseField(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), fieldName)
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license field"))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if field == nil {
-			// field might not exist or has been removed
-			delete(licenseFields, fieldName)
 		} else {
-			licenseFields[fieldName] = *field
+			if field == nil {
+				// field might not exist or has been removed
+				delete(licenseFields, fieldName)
+			} else {
+				licenseFields[fieldName] = *field
+			}
+			store.GetStore().SetLicenseFields(licenseFields)
 		}
-
-		// update the store
-		store.GetStore().SetLicenseFields(licenseFields)
 	}
 
 	if _, ok := licenseFields[fieldName]; !ok {

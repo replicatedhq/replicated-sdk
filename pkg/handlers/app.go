@@ -14,7 +14,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
-	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	helmrelease "helm.sh/helm/v3/pkg/release"
@@ -141,30 +141,32 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	license := store.GetStore().GetLicense()
+	updates := store.GetStore().GetUpdates()
 
 	if !util.IsAirgap() {
 		licenseData, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		} else {
+			license = licenseData.License
+			store.GetStore().SetLicense(license)
 		}
-		license = licenseData.License
-
-		// update the store
-		store.GetStore().SetLicense(license)
 	}
+
+	// TODO NOW: don't check for updates if license fails to sync?
+	// TODO NOW: use defer and inject cache header if any error occurs.
 
 	currentCursor := upstreamtypes.ReplicatedCursor{
 		ChannelID:       store.GetStore().GetChannelID(),
 		ChannelName:     store.GetStore().GetChannelName(),
 		ChannelSequence: store.GetStore().GetChannelSequence(),
 	}
-	updates, err := upstream.ListPendingChannelReleases(store.GetStore(), license, currentCursor)
+	u, err := upstream.ListPendingChannelReleases(store.GetStore(), license, currentCursor)
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to list pending channel releases"))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	} else {
+		updates = u
+		store.GetStore().SetUpdates(updates)
 	}
 
 	JSON(w, http.StatusOK, updates)

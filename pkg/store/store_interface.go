@@ -4,6 +4,13 @@ import (
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+)
+
+var (
+	store Store
+
+	_ Store = (*InMemoryStore)(nil)
 )
 
 type Store interface {
@@ -27,4 +34,17 @@ type Store interface {
 	GetNamespace() string
 	GetAppStatus() appstatetypes.AppStatus
 	SetAppStatus(status appstatetypes.AppStatus)
+	GetUpdates() []upstreamtypes.ChannelRelease
+	SetUpdates(updates []upstreamtypes.ChannelRelease)
+}
+
+func SetStore(s Store) {
+	store = s
+}
+
+func GetStore() Store {
+	if store == nil {
+		return &InMemoryStore{}
+	}
+	return store
 }
