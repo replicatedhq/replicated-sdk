@@ -4,8 +4,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/helm"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
@@ -32,15 +35,31 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 	}
 }
 
-func canReport(license *kotsv1beta1.License) bool {
+func canReport(license *kotsv1beta1.License) (bool, error) {
+	if helm.IsHelmManaged() {
+		sdkHelmRevision := helm.GetReleaseRevision()
+
+		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
+		if err != nil {
+			return false, errors.Wrap(err, "failed to get release")
+		}
+
+		// don't report from sdk instances that are not associated with the current helm release revision.
+		// this can happen during a helm upgrade/rollback when a rolling update of the replicated deployment is in progress.
+		if sdkHelmRevision != helmRelease.Version {
+			logger.Debugf("not reporting from sdk instance with helm revision %d because current helm release revision is %d\n", sdkHelmRevision, helmRelease.Version)
+			return false, nil
+		}
+	}
+
 	if util.IsAirgap() {
-		return false
+		return false, nil
 	}
 
 	if util.IsDevEnv() && !util.IsDevLicense(license) {
 		// don't send reports from our dev env to our production services even if this is a production license
-		return false
+		return false, nil
 	}
 
-	return true
+	return true, nil
 }
