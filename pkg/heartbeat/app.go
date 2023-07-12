@@ -17,7 +17,12 @@ import (
 
 func SendAppHeartbeat(sdkStore store.Store) error {
 	license := sdkStore.GetLicense()
-	if !canReport(license) {
+
+	canReport, err := canReport(license)
+	if err != nil {
+		return errors.Wrap(err, "failed to check if can report")
+	}
+	if !canReport {
 		return nil
 	}
 

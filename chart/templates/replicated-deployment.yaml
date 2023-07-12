@@ -8,9 +8,6 @@ spec:
   selector:
     matchLabels:
       {{- include "replicated.selectorLabels" . | nindent 6 }}
-  strategy:
-    # this is to avoid having two replicated instances reporting at the same time for different app versions.
-    type: Recreate
   template:
     metadata:
       labels:
