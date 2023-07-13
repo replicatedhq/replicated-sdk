@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -27,21 +29,15 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 		l, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
-		} else {
-			license = l.License
-			store.GetStore().SetLicense(license)
+			JSONCached(w, http.StatusOK, licenseInfoFromLicense(license))
+			return
 		}
+
+		license = l.License
+		store.GetStore().SetLicense(license)
 	}
 
-	licenseInfo := LicenseInfo{
-		LicenseID:     license.Spec.LicenseID,
-		ChannelName:   license.Spec.ChannelName,
-		CustomerName:  license.Spec.CustomerName,
-		CustomerEmail: license.Spec.CustomerEmail,
-		LicenseType:   license.Spec.LicenseType,
-	}
-
-	JSON(w, http.StatusOK, licenseInfo)
+	JSON(w, http.StatusOK, licenseInfoFromLicense(license))
 }
 
 func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
@@ -51,10 +47,12 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 		fields, err := sdklicense.GetLatestLicenseFields(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
-		} else {
-			licenseFields = fields
-			store.GetStore().SetLicenseFields(licenseFields)
+			JSONCached(w, http.StatusOK, licenseFields)
+			return
 		}
+
+		licenseFields = fields
+		store.GetStore().SetLicenseFields(licenseFields)
 	}
 
 	JSON(w, http.StatusOK, licenseFields)
@@ -72,22 +70,37 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 		field, err := sdklicense.GetLatestLicenseField(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), fieldName)
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license field"))
-		} else {
-			if field == nil {
-				// field might not exist or has been removed
-				delete(licenseFields, fieldName)
+			if lf, ok := licenseFields[fieldName]; !ok {
+				JSONCached(w, http.StatusNotFound, fmt.Sprintf("license field %q not found", fieldName))
 			} else {
-				licenseFields[fieldName] = *field
+				JSONCached(w, http.StatusOK, lf)
 			}
-			store.GetStore().SetLicenseFields(licenseFields)
+			return
 		}
+
+		if field == nil {
+			// field might not exist or has been removed
+			delete(licenseFields, fieldName)
+		} else {
+			licenseFields[fieldName] = *field
+		}
+		store.GetStore().SetLicenseFields(licenseFields)
 	}
 
 	if _, ok := licenseFields[fieldName]; !ok {
-		logger.Errorf("license field %q not found", fieldName)
-		w.WriteHeader(http.StatusNotFound)
+		JSON(w, http.StatusNotFound, fmt.Sprintf("license field %q not found", fieldName))
 		return
 	}
 
 	JSON(w, http.StatusOK, licenseFields[fieldName])
+}
+
+func licenseInfoFromLicense(license *kotsv1beta1.License) LicenseInfo {
+	return LicenseInfo{
+		LicenseID:     license.Spec.LicenseID,
+		ChannelName:   license.Spec.ChannelName,
+		CustomerName:  license.Spec.CustomerName,
+		CustomerEmail: license.Spec.CustomerEmail,
+		LicenseType:   license.Spec.LicenseType,
+	}
 }

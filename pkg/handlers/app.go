@@ -14,9 +14,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
-	"github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -47,7 +45,7 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
 		isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context())
 		if err != nil {
-			logger.Errorf("failed to check if mocks exist: %v", err)
+			logger.Errorf("failed to check if mock is enabled: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -113,7 +111,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
 		isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context())
 		if err != nil {
-			logger.Errorf("failed to check if mocks exist: %v", err)
+			logger.Errorf("failed to check if mock is enabled: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -126,9 +124,9 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			response := []types.ChannelRelease{}
+			response := []upstreamtypes.ChannelRelease{}
 			for _, mockRelease := range mockAvailableReleases {
-				response = append(response, types.ChannelRelease{
+				response = append(response, upstreamtypes.ChannelRelease{
 					VersionLabel: mockRelease.VersionLabel,
 					CreatedAt:    mockRelease.CreatedAt,
 					ReleaseNotes: mockRelease.ReleaseNotes,
@@ -143,31 +141,30 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 	updates := store.GetStore().GetUpdates()
 
-	if !util.IsAirgap() {
-		licenseData, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
-		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get latest license"))
-		} else {
-			license = licenseData.License
-			store.GetStore().SetLicense(license)
-		}
+	licenseData, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get latest license"))
+		JSONCached(w, http.StatusOK, updates)
+		return
 	}
 
-	// TODO NOW: don't check for updates if license fails to sync?
-	// TODO NOW: use defer and inject cache header if any error occurs.
+	license = licenseData.License
+	store.GetStore().SetLicense(license)
 
 	currentCursor := upstreamtypes.ReplicatedCursor{
 		ChannelID:       store.GetStore().GetChannelID(),
 		ChannelName:     store.GetStore().GetChannelName(),
 		ChannelSequence: store.GetStore().GetChannelSequence(),
 	}
-	u, err := upstream.ListPendingChannelReleases(store.GetStore(), license, currentCursor)
+	us, err := upstream.GetUpdates(store.GetStore(), license, currentCursor)
 	if err != nil {
-		logger.Error(errors.Wrap(err, "failed to list pending channel releases"))
-	} else {
-		updates = u
-		store.GetStore().SetUpdates(updates)
+		logger.Error(errors.Wrap(err, "failed to get updates"))
+		JSONCached(w, http.StatusOK, updates)
+		return
 	}
+
+	updates = us
+	store.GetStore().SetUpdates(updates)
 
 	JSON(w, http.StatusOK, updates)
 }
@@ -176,7 +173,7 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 	if store.GetStore().IsDevLicense() {
 		isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context())
 		if err != nil {
-			logger.Errorf("failed to check if mocks exist: %v", err)
+			logger.Errorf("failed to check if mock is enabled: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

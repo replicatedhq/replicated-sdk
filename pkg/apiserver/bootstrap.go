@@ -48,14 +48,24 @@ func bootstrap(params APIServerParams) error {
 		return errors.Wrap(err, "failed to generate ids")
 	}
 
+	channelID := params.ChannelID
+	if channelID == "" {
+		channelID = verifiedLicense.Spec.ChannelID
+	}
+
+	channelName := params.ChannelName
+	if channelName == "" {
+		channelName = verifiedLicense.Spec.ChannelName
+	}
+
 	storeOptions := store.InitInMemoryStoreOptions{
 		ReplicatedID:          replicatedID,
 		AppID:                 appID,
 		License:               verifiedLicense,
 		LicenseFields:         params.LicenseFields,
 		AppName:               params.AppName,
-		ChannelID:             params.ChannelID,
-		ChannelName:           params.ChannelName,
+		ChannelID:             channelID,
+		ChannelName:           channelName,
 		ChannelSequence:       params.ChannelSequence,
 		ReleaseSequence:       params.ReleaseSequence,
 		ReleaseCreatedAt:      params.ReleaseCreatedAt,
@@ -68,23 +78,32 @@ func bootstrap(params APIServerParams) error {
 		return errors.Wrap(err, "failed to init store")
 	}
 
-	if !util.IsAirgap() {
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		return errors.Wrap(err, "failed to get clientset")
+	}
+
+	if store.GetStore().IsDevLicense() {
+		mock.InitMock(clientset, store.GetStore().GetNamespace())
+	}
+
+	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(context.TODO())
+	if err != nil {
+		return errors.Wrap(err, "failed to check if mock is enabled")
+	}
+
+	if !util.IsAirgap() && !isMockEnabled {
 		// retrieve and cache updates
 		currentCursor := upstreamtypes.ReplicatedCursor{
 			ChannelID:       store.GetStore().GetChannelID(),
 			ChannelName:     store.GetStore().GetChannelName(),
 			ChannelSequence: store.GetStore().GetChannelSequence(),
 		}
-		updates, err := upstream.ListPendingChannelReleases(store.GetStore(), store.GetStore().GetLicense(), currentCursor)
+		updates, err := upstream.GetUpdates(store.GetStore(), store.GetStore().GetLicense(), currentCursor)
 		if err != nil {
-			return errors.Wrap(err, "failed to list pending channel releases")
+			return errors.Wrap(err, "failed to get updates")
 		}
 		store.GetStore().SetUpdates(updates)
-	}
-
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		return errors.Wrap(err, "failed to get clientset")
 	}
 
 	targetNamespace := params.Namespace
@@ -117,10 +136,6 @@ func bootstrap(params APIServerParams) error {
 
 	if err := heartbeat.Start(); err != nil {
 		return errors.Wrap(err, "failed to start heartbeat")
-	}
-
-	if store.GetStore().IsDevLicense() {
-		mock.InitMock(clientset, store.GetStore().GetNamespace())
 	}
 
 	return nil
