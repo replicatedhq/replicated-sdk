@@ -73,6 +73,7 @@ func APICmd() *cobra.Command {
 			}
 
 			params := apiserver.APIServerParams{
+				Context:               cmd.Context(),
 				License:               license,
 				LicenseFields:         replicatedConfig.LicenseFields,
 				AppName:               replicatedConfig.AppName,

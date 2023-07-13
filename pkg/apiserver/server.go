@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -15,6 +16,7 @@ import (
 )
 
 type APIServerParams struct {
+	Context               context.Context
 	License               *kotsv1beta1.License
 	LicenseFields         sdklicensetypes.LicenseFields
 	AppName               string

@@ -1,8 +1,6 @@
 package apiserver
 
 import (
-	"context"
-
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
@@ -87,7 +85,7 @@ func bootstrap(params APIServerParams) error {
 		mock.InitMock(clientset, store.GetStore().GetNamespace())
 	}
 
-	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(context.TODO())
+	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(params.Context)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if mock is enabled")
 	}
@@ -107,7 +105,7 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	targetNamespace := params.Namespace
-	if k8sutil.IsReplicatedClusterScoped(context.Background(), clientset, params.Namespace) {
+	if k8sutil.IsReplicatedClusterScoped(params.Context, clientset, params.Namespace) {
 		targetNamespace = "" // watch all namespaces
 	}
 	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
