@@ -324,3 +324,15 @@ func (mr *MockStoreMockRecorder) SetLicenseFields(licenseFields interface{}) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLicenseFields", reflect.TypeOf((*MockStore)(nil).SetLicenseFields), licenseFields)
 }
+
+// SetUpdates mocks base method.
+func (m *MockStore) SetUpdates(updates []types1.ChannelRelease) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetUpdates", updates)
+}
+
+// SetUpdates indicates an expected call of SetUpdates.
+func (mr *MockStoreMockRecorder) SetUpdates(updates interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUpdates", reflect.TypeOf((*MockStore)(nil).SetUpdates), updates)
+}
