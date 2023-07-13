@@ -72,12 +72,22 @@ func APICmd() *cobra.Command {
 				}
 			}
 
+			channelID := replicatedConfig.ChannelID
+			if channelID == "" {
+				channelID = license.Spec.ChannelID
+			}
+
+			channelName := replicatedConfig.ChannelName
+			if channelName == "" {
+				channelName = license.Spec.ChannelName
+			}
+
 			params := apiserver.APIServerParams{
 				License:               license,
 				LicenseFields:         replicatedConfig.LicenseFields,
 				AppName:               replicatedConfig.AppName,
-				ChannelID:             replicatedConfig.ChannelID,
-				ChannelName:           replicatedConfig.ChannelName,
+				ChannelID:             channelID,
+				ChannelName:           channelName,
 				ChannelSequence:       replicatedConfig.ChannelSequence,
 				ReleaseSequence:       replicatedConfig.ReleaseSequence,
 				ReleaseCreatedAt:      replicatedConfig.ReleaseCreatedAt,
