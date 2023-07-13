@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -68,7 +69,11 @@ type MockRelease struct {
 	HelmReleaseNamespace string `json:"helmReleaseNamespace" yaml:"helmReleaseNamespace"`
 }
 
-func (m *Mock) IsMockEnabled(ctx context.Context) (bool, error) {
+func (m *Mock) IsMockEnabled(ctx context.Context, license *kotsv1beta1.License) (bool, error) {
+	if license == nil || license.Spec.LicenseType != "dev" {
+		return false, nil
+	}
+
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
@@ -80,9 +85,9 @@ func (m *Mock) IsMockEnabled(ctx context.Context) (bool, error) {
 		return false, errors.Wrap(err, "failed to get replicated secret")
 	}
 
-	v := secret.Data[replicatedMockEnabledKey]
-	if len(v) == 0 {
-		return false, nil
+	v, ok := secret.Data[replicatedMockEnabledKey]
+	if !ok {
+		return true, nil
 	}
 
 	enabled, _ := strconv.ParseBool(string(v))

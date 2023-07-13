@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
+	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -25,9 +26,13 @@ func TestMock_IsMockEnabled(t *testing.T) {
 		clientset kubernetes.Interface
 		namespace string
 	}
+	type args struct {
+		license *kotsv1beta1.License
+	}
 	tests := []struct {
 		name    string
 		fields  fields
+		args    args
 		want    bool
 		wantErr bool
 	}{
@@ -59,7 +64,72 @@ func TestMock_IsMockEnabled(t *testing.T) {
 				}),
 				namespace: "default",
 			},
+			args: args{
+				license: &kotsv1beta1.License{
+					Spec: kotsv1beta1.LicenseSpec{
+						LicenseType: "dev",
+					},
+				},
+			},
 			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "not enabled because not a dev license",
+			fields: fields{
+				clientset: fake.NewSimpleClientset(&corev1.SecretList{
+					TypeMeta: metav1.TypeMeta{},
+					ListMeta: metav1.ListMeta{},
+					Items: []corev1.Secret{{
+						TypeMeta: metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      replicatedSecretName,
+							Namespace: "default",
+						},
+						Data: map[string][]byte{
+							replicatedMockEnabledKey: []byte("true"),
+						},
+					}},
+				}),
+				namespace: "default",
+			},
+			args: args{
+				license: &kotsv1beta1.License{
+					Spec: kotsv1beta1.LicenseSpec{
+						LicenseType: "paid",
+					},
+				},
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "not enabled for a dev license",
+			fields: fields{
+				clientset: fake.NewSimpleClientset(&corev1.SecretList{
+					TypeMeta: metav1.TypeMeta{},
+					ListMeta: metav1.ListMeta{},
+					Items: []corev1.Secret{{
+						TypeMeta: metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      replicatedSecretName,
+							Namespace: "default",
+						},
+						Data: map[string][]byte{
+							replicatedMockEnabledKey: []byte("false"),
+						},
+					}},
+				}),
+				namespace: "default",
+			},
+			args: args{
+				license: &kotsv1beta1.License{
+					Spec: kotsv1beta1.LicenseSpec{
+						LicenseType: "dev",
+					},
+				},
+			},
+			want:    false,
 			wantErr: false,
 		},
 	}
@@ -67,7 +137,7 @@ func TestMock_IsMockEnabled(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			InitMock(tt.fields.clientset, tt.fields.namespace)
 
-			got, err := MustGetMock().IsMockEnabled(context.Background())
+			got, err := MustGetMock().IsMockEnabled(context.Background(), tt.args.license)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Mock.IsMockEnabled() error = %v, wantErr %v", err, tt.wantErr)
 				return

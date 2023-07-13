@@ -42,41 +42,39 @@ type AppRelease struct {
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
-	if store.GetStore().IsDevLicense() {
-		isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context())
+	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if mock is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isMockEnabled {
+		response := GetCurrentAppInfoResponse{
+			AppSlug: store.GetStore().GetAppSlug(),
+			AppName: store.GetStore().GetAppName(),
+		}
+
+		mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease(r.Context())
 		if err != nil {
-			logger.Errorf("failed to check if mock is enabled: %v", err)
+			logger.Errorf("failed to get mock current release: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		if mockCurrentRelease != nil {
+			response.CurrentRelease = mockReleaseToAppRelease(*mockCurrentRelease)
+		}
 
-		if isMockEnabled {
-			response := GetCurrentAppInfoResponse{
-				AppSlug: store.GetStore().GetAppSlug(),
-				AppName: store.GetStore().GetAppName(),
-			}
-
-			mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease(r.Context())
-			if err != nil {
-				logger.Errorf("failed to get mock current release: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			if mockCurrentRelease != nil {
-				response.CurrentRelease = mockReleaseToAppRelease(*mockCurrentRelease)
-			}
-
-			mockHelmChartURL, err := mock.MustGetMock().GetHelmChartURL(r.Context())
-			if err != nil {
-				logger.Errorf("failed to get mock helm chart url: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			response.HelmChartURL = mockHelmChartURL
-
-			JSON(w, http.StatusOK, response)
+		mockHelmChartURL, err := mock.MustGetMock().GetHelmChartURL(r.Context())
+		if err != nil {
+			logger.Errorf("failed to get mock helm chart url: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		response.HelmChartURL = mockHelmChartURL
+
+		JSON(w, http.StatusOK, response)
+		return
 	}
 
 	response := GetCurrentAppInfoResponse{
@@ -108,34 +106,32 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
-	if store.GetStore().IsDevLicense() {
-		isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context())
+	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if mock is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isMockEnabled {
+		mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases(r.Context())
 		if err != nil {
-			logger.Errorf("failed to check if mock is enabled: %v", err)
+			logger.Errorf("failed to get available mock releases: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if isMockEnabled {
-			mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases(r.Context())
-			if err != nil {
-				logger.Errorf("failed to get available mock releases: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			response := []upstreamtypes.ChannelRelease{}
-			for _, mockRelease := range mockAvailableReleases {
-				response = append(response, upstreamtypes.ChannelRelease{
-					VersionLabel: mockRelease.VersionLabel,
-					CreatedAt:    mockRelease.CreatedAt,
-					ReleaseNotes: mockRelease.ReleaseNotes,
-				})
-			}
-
-			JSON(w, http.StatusOK, response)
-			return
+		response := []upstreamtypes.ChannelRelease{}
+		for _, mockRelease := range mockAvailableReleases {
+			response = append(response, upstreamtypes.ChannelRelease{
+				VersionLabel: mockRelease.VersionLabel,
+				CreatedAt:    mockRelease.CreatedAt,
+				ReleaseNotes: mockRelease.ReleaseNotes,
+			})
 		}
+
+		JSON(w, http.StatusOK, response)
+		return
 	}
 
 	license := store.GetStore().GetLicense()
@@ -170,33 +166,31 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppHistory(w http.ResponseWriter, r *http.Request) {
-	if store.GetStore().IsDevLicense() {
-		isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context())
+	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if mock is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isMockEnabled {
+		mockReleases, err := mock.MustGetMock().GetDeployedReleases(r.Context())
 		if err != nil {
-			logger.Errorf("failed to check if mock is enabled: %v", err)
+			logger.Errorf("failed to get mock releases: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if isMockEnabled {
-			mockReleases, err := mock.MustGetMock().GetDeployedReleases(r.Context())
-			if err != nil {
-				logger.Errorf("failed to get mock releases: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			response := GetAppHistoryResponse{
-				Releases: []AppRelease{},
-			}
-			for _, mockRelease := range mockReleases {
-				appRelease := mockReleaseToAppRelease(mockRelease)
-				response.Releases = append(response.Releases, appRelease)
-			}
-
-			JSON(w, http.StatusOK, response)
-			return
+		response := GetAppHistoryResponse{
+			Releases: []AppRelease{},
 		}
+		for _, mockRelease := range mockReleases {
+			appRelease := mockReleaseToAppRelease(mockRelease)
+			response.Releases = append(response.Releases, appRelease)
+		}
+
+		JSON(w, http.StatusOK, response)
+		return
 	}
 
 	if !helm.IsHelmManaged() {
