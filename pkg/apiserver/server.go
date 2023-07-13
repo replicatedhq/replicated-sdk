@@ -2,26 +2,21 @@ package apiserver
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/gorilla/mux"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
-	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
-	"github.com/replicatedhq/replicated-sdk/pkg/helm"
-	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/logger"
-	"github.com/replicatedhq/replicated-sdk/pkg/mock"
-	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
 type APIServerParams struct {
+	Context               context.Context
 	License               *kotsv1beta1.License
 	LicenseFields         sdklicensetypes.LicenseFields
 	AppName               string
@@ -40,65 +35,15 @@ type APIServerParams struct {
 func Start(params APIServerParams) {
 	log.Println("Replicated version:", buildversion.Version())
 
-	storeOptions := store.InitInMemoryStoreOptions{
-		License:               params.License,
-		LicenseFields:         params.LicenseFields,
-		AppName:               params.AppName,
-		ChannelID:             params.ChannelID,
-		ChannelName:           params.ChannelName,
-		ChannelSequence:       params.ChannelSequence,
-		ReleaseSequence:       params.ReleaseSequence,
-		ReleaseCreatedAt:      params.ReleaseCreatedAt,
-		ReleaseNotes:          params.ReleaseNotes,
-		VersionLabel:          params.VersionLabel,
-		ReplicatedAppEndpoint: params.ReplicatedAppEndpoint,
-		Namespace:             params.Namespace,
+	backoffDuration := 10 * time.Second
+	bootstrapFn := func() error {
+		return bootstrap(params)
 	}
-	if err := store.InitInMemory(storeOptions); err != nil {
-		log.Fatalf("Failed to init store: %v", err)
-	}
-
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		log.Fatalf("Failed to get clientset: %v", err)
-	}
-
-	targetNamespace := params.Namespace
-	if k8sutil.IsReplicatedClusterScoped(context.Background(), clientset, params.Namespace) {
-		targetNamespace = "" // watch all namespaces
-	}
-	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
-	appStateOperator.Start()
-
-	// if no status informers are provided, generate them from the helm release
-	informers := params.StatusInformers
-	if len(informers) == 0 && helm.IsHelmManaged() {
-		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
-		if err != nil {
-			log.Fatalf("Failed to get helm release: %v", err)
-		}
-
-		i, err := appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
-		if err != nil {
-			logger.Errorf("Failed to generate status informers: %v", err)
-		} else {
-			informers = i
-		}
-	}
-
-	appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
-		AppSlug:   store.GetStore().GetAppSlug(),
-		Sequence:  store.GetStore().GetReleaseSequence(),
-		Informers: informers,
+	err := backoff.RetryNotify(bootstrapFn, backoff.NewConstantBackOff(backoffDuration), func(err error, d time.Duration) {
+		log.Printf("failed to bootstrap, retrying in %s: %v", d, err)
 	})
-
-	if err := heartbeat.Start(); err != nil {
-		log.Println("Failed to start heartbeat:", err)
-	}
-
-	if store.GetStore().IsDevLicense() {
-		logger.Info("Detected dev license, initializing mock")
-		mock.InitMock(clientset, store.GetStore().GetNamespace())
+	if err != nil {
+		log.Fatalf("failed to bootstrap: %v", err)
 	}
 
 	r := mux.NewRouter()
@@ -125,7 +70,7 @@ func Start(params APIServerParams) {
 		Addr:    ":3000",
 	}
 
-	fmt.Printf("Starting Replicated API on port %d...\n", 3000)
+	log.Printf("Starting Replicated API on port %d...\n", 3000)
 
 	log.Fatal(srv.ListenAndServe())
 }

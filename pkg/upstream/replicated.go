@@ -17,7 +17,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
-func ListPendingChannelReleases(sdkStore store.Store, license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
+func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint

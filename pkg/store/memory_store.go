@@ -1,28 +1,10 @@
 package store
 
 import (
-	"context"
-
-	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
-	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/logger"
-	"github.com/replicatedhq/replicated-sdk/pkg/util"
-	"github.com/segmentio/ksuid"
-	corev1 "k8s.io/api/core/v1"
-	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	replicatedConfigMapName = "replicated"
-)
-
-var (
-	store Store
+	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
 
 type InMemoryStore struct {
@@ -42,9 +24,12 @@ type InMemoryStore struct {
 	replicatedAppEndpoint string
 	namespace             string
 	appStatus             appstatetypes.AppStatus
+	updates               []upstreamtypes.ChannelRelease
 }
 
 type InitInMemoryStoreOptions struct {
+	ReplicatedID          string
+	AppID                 string
 	License               *kotsv1beta1.License
 	LicenseFields         sdklicensetypes.LicenseFields
 	AppName               string
@@ -60,42 +45,12 @@ type InitInMemoryStoreOptions struct {
 }
 
 func InitInMemory(options InitInMemoryStoreOptions) error {
-	verifiedLicense, err := sdklicense.VerifySignature(options.License)
-	if err != nil {
-		return errors.Wrap(err, "failed to verify license signature")
-	}
-
-	if !util.IsAirgap() {
-		// sync license
-		logger.Info("syncing license with server to retrieve latest version")
-		licenseData, err := sdklicense.GetLatestLicense(verifiedLicense, options.ReplicatedAppEndpoint)
-		if err != nil {
-			return errors.Wrap(err, "failed to get latest license")
-		}
-		verifiedLicense = licenseData.License
-	}
-
-	// check license expiration
-	expired, err := sdklicense.LicenseIsExpired(verifiedLicense)
-	if err != nil {
-		return errors.Wrapf(err, "failed to check if license is expired")
-	}
-	if expired {
-		return errors.New("license is expired")
-	}
-
-	// generate / retrieve sdk and app ids
-	replicatedID, appID, err := generateIDs(options.Namespace)
-	if err != nil {
-		return errors.Wrap(err, "failed to generate ids")
-	}
-
-	store = &InMemoryStore{
-		replicatedID:          replicatedID,
-		appID:                 appID,
-		license:               verifiedLicense,
+	SetStore(&InMemoryStore{
+		replicatedID:          options.ReplicatedID,
+		appID:                 options.AppID,
+		license:               options.License,
 		licenseFields:         options.LicenseFields,
-		appSlug:               verifiedLicense.Spec.AppSlug,
+		appSlug:               options.License.Spec.AppSlug,
 		appName:               options.AppName,
 		channelID:             options.ChannelID,
 		channelName:           options.ChannelName,
@@ -106,17 +61,9 @@ func InitInMemory(options InitInMemoryStoreOptions) error {
 		versionLabel:          options.VersionLabel,
 		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
 		namespace:             options.Namespace,
-	}
+	})
 
 	return nil
-}
-
-func GetStore() Store {
-	if store == nil {
-		return &InMemoryStore{}
-	}
-
-	return store
 }
 
 func (s *InMemoryStore) GetReplicatedID() string {
@@ -217,47 +164,10 @@ func (s *InMemoryStore) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
 }
 
-func generateIDs(namespace string) (string, string, error) {
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		return "", "", errors.Wrap(err, "failed to get clientset")
-	}
+func (s *InMemoryStore) GetUpdates() []upstreamtypes.ChannelRelease {
+	return s.updates
+}
 
-	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), replicatedConfigMapName, metav1.GetOptions{})
-	if err != nil && !kuberneteserrors.IsNotFound(err) {
-		return "", "", errors.Wrap(err, "failed to get replicated configmap")
-	}
-
-	replicatedID := ""
-	appID := ""
-
-	if kuberneteserrors.IsNotFound(err) {
-		replicatedID = ksuid.New().String()
-		appID = ksuid.New().String()
-
-		configmap := corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "ConfigMap",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      replicatedConfigMapName,
-				Namespace: namespace,
-			},
-			Data: map[string]string{
-				"replicated-id": replicatedID,
-				"app-id":        appID,
-			},
-		}
-
-		_, err := clientset.CoreV1().ConfigMaps(namespace).Create(context.TODO(), &configmap, metav1.CreateOptions{})
-		if err != nil {
-			return "", "", errors.Wrap(err, "failed to create replicated configmap")
-		}
-	} else {
-		replicatedID = cm.Data["replicated-id"]
-		appID = cm.Data["app-id"]
-	}
-
-	return replicatedID, appID, nil
+func (s *InMemoryStore) SetUpdates(updates []upstreamtypes.ChannelRelease) {
+	s.updates = updates
 }

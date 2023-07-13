@@ -59,7 +59,6 @@ func Start() error {
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 		} else {
-			// update the store
 			store.GetStore().SetLicense(licenseData.License)
 		}
 

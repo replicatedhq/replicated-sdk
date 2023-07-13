@@ -11,6 +11,7 @@ import (
 	v1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
 	types "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	types0 "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	types1 "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
 
 // MockStore is a mock of Store interface.
@@ -246,6 +247,20 @@ func (mr *MockStoreMockRecorder) GetReplicatedID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReplicatedID", reflect.TypeOf((*MockStore)(nil).GetReplicatedID))
 }
 
+// GetUpdates mocks base method.
+func (m *MockStore) GetUpdates() []types1.ChannelRelease {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUpdates")
+	ret0, _ := ret[0].([]types1.ChannelRelease)
+	return ret0
+}
+
+// GetUpdates indicates an expected call of GetUpdates.
+func (mr *MockStoreMockRecorder) GetUpdates() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockStore)(nil).GetUpdates))
+}
+
 // GetVersionLabel mocks base method.
 func (m *MockStore) GetVersionLabel() string {
 	m.ctrl.T.Helper()
@@ -308,4 +323,16 @@ func (m *MockStore) SetLicenseFields(licenseFields types0.LicenseFields) {
 func (mr *MockStoreMockRecorder) SetLicenseFields(licenseFields interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLicenseFields", reflect.TypeOf((*MockStore)(nil).SetLicenseFields), licenseFields)
+}
+
+// SetUpdates mocks base method.
+func (m *MockStore) SetUpdates(updates []types1.ChannelRelease) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetUpdates", updates)
+}
+
+// SetUpdates indicates an expected call of SetUpdates.
+func (mr *MockStoreMockRecorder) SetUpdates(updates interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUpdates", reflect.TypeOf((*MockStore)(nil).SetUpdates), updates)
 }
