@@ -83,7 +83,7 @@ func WarnOnOutdatedSDKVersion() error {
 
 	latestSemver, err := semver.ParseTolerant(latestVersion)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse cli semver")
+		return errors.Wrap(err, "failed to parse latest sdk version")
 	}
 
 	if currSemver.LT(latestSemver) {
