@@ -126,8 +126,7 @@ func getLatestSDKVersion() (string, error) {
 		Name string `json:"name"`
 	}
 	var tags []GitHubTag
-	err = json.Unmarshal(body, &tags)
-	if err != nil {
+	if err := json.Unmarshal(body, &tags); err != nil {
 		return "", errors.Wrap(err, "failed to unmarshal response body")
 	}
 
