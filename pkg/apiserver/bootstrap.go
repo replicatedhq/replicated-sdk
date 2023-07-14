@@ -85,7 +85,7 @@ func bootstrap(params APIServerParams) error {
 		mock.InitMock(clientset, store.GetStore().GetNamespace())
 	}
 
-	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(params.Context)
+	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(params.Context, store.GetStore().GetLicense())
 	if err != nil {
 		return errors.Wrap(err, "failed to check if mock is enabled")
 	}
