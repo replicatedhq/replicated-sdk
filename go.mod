@@ -3,6 +3,7 @@ module github.com/replicatedhq/replicated-sdk
 go 1.20
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.0
