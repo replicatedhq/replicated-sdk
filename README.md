@@ -144,25 +144,24 @@ When using a `Development` license, the Replicated SDK will initiate in integrat
 ```yaml
 integration:
   licenseID: "development-license-id"
-  mock:
-    enabled: true
-    data: |
-      helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
-      currentRelease:
-        versionLabel: 0.1.7
-        releaseNotes: "test"
-        createdAt: "2012-09-09"
-        helmReleaseName: dev-parent-chart
-        helmReleaseRevision: 2
-        helmReleaseNamespace: default   
+  enabled: true
+  mockData: |
+    helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
+    currentRelease:
+      versionLabel: 0.1.7
+      releaseNotes: "test"
+      createdAt: "2012-09-09"
+      helmReleaseName: dev-parent-chart
+      helmReleaseRevision: 2
+      helmReleaseNamespace: default   
 ```
 
 To enable the Replicated SDK's `integration` mode, you can use the following values in the chart YAML:
 - `licenseID`: This should be set to the development license ID obtained from the vendor portal.
-- `mock.enabled`: When this field is set to `true`, the SDK will return mocked data.
-- `mock.data`: This field allows you to override the default mock data the Replicated SDK returns when `mock.enabled` is set to `true`.
+- `enabled`: When this field is set to `true`, the SDK will return mocked data.
+- `mockData`: This field allows you to override the default mock data the Replicated SDK returns when `integration.enabled` is set to `true`.
 
-Below is an example demonstrating all the supported values for the `mock.data` field:
+Below is an example demonstrating all the supported values for the `mockData` field:
 ```yaml
 helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
 currentRelease:
@@ -230,9 +229,8 @@ e.g.: for staging licenses you can set the replicated app endpoint as below in `
 ```yaml
 replicatedAppEndpoint: "https://staging.replicated.app"
 integration:
-  licenseID: "development-license-id"
-  mock:
-    enabled: true
+  licenseID: "staging-license-id"
+  enabled: true
 ```
 
 ## Testing

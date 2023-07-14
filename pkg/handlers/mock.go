@@ -4,20 +4,42 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/integration"
+	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
-	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
 func PostMockData(w http.ResponseWriter, r *http.Request) {
-	mockDataRequest := mock.MockData{}
-	if err := json.NewDecoder(r.Body).Decode(&mockDataRequest); err != nil {
-		logger.Error(err)
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if err := mock.MustGetMock().SetMockData(r.Context(), mockDataRequest); err != nil {
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !isIntegrationModeEnabled {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	mockDataRequest := integrationtypes.MockData{}
+	if err := json.NewDecoder(r.Body).Decode(&mockDataRequest); err != nil {
+		logger.Error(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := integration.SetMockData(r.Context(), clientset, store.GetStore().GetNamespace(), mockDataRequest); err != nil {
 		logger.Errorf("failed to update mock data: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -27,12 +49,26 @@ func PostMockData(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetMockData(w http.ResponseWriter, r *http.Request) {
-	if !store.GetStore().IsDevLicense() {
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !isIntegrationModeEnabled {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	mockData, err := mock.MustGetMock().GetMockData(r.Context())
+	mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
 	if err != nil {
 		logger.Errorf("failed to get mock data: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

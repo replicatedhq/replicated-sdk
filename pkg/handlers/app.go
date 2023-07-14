@@ -9,9 +9,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/config"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
+	"github.com/replicatedhq/replicated-sdk/pkg/integration"
+	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
-	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -42,20 +44,27 @@ type AppRelease struct {
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
-	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context(), store.GetStore().GetLicense())
+	clientset, err := k8sutil.GetClientset()
 	if err != nil {
-		logger.Errorf("failed to check if mock is enabled: %v", err)
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if isMockEnabled {
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isIntegrationModeEnabled {
 		response := GetCurrentAppInfoResponse{
 			AppSlug: store.GetStore().GetAppSlug(),
 			AppName: store.GetStore().GetAppName(),
 		}
 
-		mockCurrentRelease, err := mock.MustGetMock().GetCurrentRelease(r.Context())
+		mockCurrentRelease, err := integration.GetCurrentRelease(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
 			logger.Errorf("failed to get mock current release: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -65,7 +74,7 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			response.CurrentRelease = mockReleaseToAppRelease(*mockCurrentRelease)
 		}
 
-		mockHelmChartURL, err := mock.MustGetMock().GetHelmChartURL(r.Context())
+		mockHelmChartURL, err := integration.GetHelmChartURL(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
 			logger.Errorf("failed to get mock helm chart url: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -106,15 +115,22 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
-	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context(), store.GetStore().GetLicense())
+	clientset, err := k8sutil.GetClientset()
 	if err != nil {
-		logger.Errorf("failed to check if mock is enabled: %v", err)
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if isMockEnabled {
-		mockAvailableReleases, err := mock.MustGetMock().GetAvailableReleases(r.Context())
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isIntegrationModeEnabled {
+		mockAvailableReleases, err := integration.GetAvailableReleases(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
 			logger.Errorf("failed to get available mock releases: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -166,15 +182,22 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppHistory(w http.ResponseWriter, r *http.Request) {
-	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(r.Context(), store.GetStore().GetLicense())
+	clientset, err := k8sutil.GetClientset()
 	if err != nil {
-		logger.Errorf("failed to check if mock is enabled: %v", err)
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if isMockEnabled {
-		mockReleases, err := mock.MustGetMock().GetDeployedReleases(r.Context())
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isIntegrationModeEnabled {
+		mockReleases, err := integration.GetDeployedReleases(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
 			logger.Errorf("failed to get mock releases: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -278,7 +301,7 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 	return nil
 }
 
-func mockReleaseToAppRelease(mockRelease mock.MockRelease) AppRelease {
+func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppRelease {
 	appRelease := AppRelease{
 		VersionLabel:         mockRelease.VersionLabel,
 		ReleaseNotes:         mockRelease.ReleaseNotes,

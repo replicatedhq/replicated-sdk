@@ -1,4 +1,4 @@
-package mock
+package integration
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
-	kotsv1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -18,136 +18,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-//go:embed test_mock_data.yaml
+//go:embed data/test_mock_data.yaml
 var testMockDataYAML []byte
-
-func TestMock_IsMockEnabled(t *testing.T) {
-	type fields struct {
-		clientset kubernetes.Interface
-		namespace string
-	}
-	type args struct {
-		license *kotsv1beta1.License
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "is not enabled",
-			fields: fields{
-				clientset: fake.NewSimpleClientset(),
-				namespace: "default",
-			},
-			want:    false,
-			wantErr: false,
-		},
-		{
-			name: "is enabled",
-			fields: fields{
-				clientset: fake.NewSimpleClientset(&corev1.SecretList{
-					TypeMeta: metav1.TypeMeta{},
-					ListMeta: metav1.ListMeta{},
-					Items: []corev1.Secret{{
-						TypeMeta: metav1.TypeMeta{},
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
-							Namespace: "default",
-						},
-						Data: map[string][]byte{
-							replicatedMockEnabledKey: []byte("true"),
-						},
-					}},
-				}),
-				namespace: "default",
-			},
-			args: args{
-				license: &kotsv1beta1.License{
-					Spec: kotsv1beta1.LicenseSpec{
-						LicenseType: "dev",
-					},
-				},
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "not enabled because not a dev license",
-			fields: fields{
-				clientset: fake.NewSimpleClientset(&corev1.SecretList{
-					TypeMeta: metav1.TypeMeta{},
-					ListMeta: metav1.ListMeta{},
-					Items: []corev1.Secret{{
-						TypeMeta: metav1.TypeMeta{},
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
-							Namespace: "default",
-						},
-						Data: map[string][]byte{
-							replicatedMockEnabledKey: []byte("true"),
-						},
-					}},
-				}),
-				namespace: "default",
-			},
-			args: args{
-				license: &kotsv1beta1.License{
-					Spec: kotsv1beta1.LicenseSpec{
-						LicenseType: "paid",
-					},
-				},
-			},
-			want:    false,
-			wantErr: false,
-		},
-		{
-			name: "not enabled for a dev license",
-			fields: fields{
-				clientset: fake.NewSimpleClientset(&corev1.SecretList{
-					TypeMeta: metav1.TypeMeta{},
-					ListMeta: metav1.ListMeta{},
-					Items: []corev1.Secret{{
-						TypeMeta: metav1.TypeMeta{},
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
-							Namespace: "default",
-						},
-						Data: map[string][]byte{
-							replicatedMockEnabledKey: []byte("false"),
-						},
-					}},
-				}),
-				namespace: "default",
-			},
-			args: args{
-				license: &kotsv1beta1.License{
-					Spec: kotsv1beta1.LicenseSpec{
-						LicenseType: "dev",
-					},
-				},
-			},
-			want:    false,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			InitMock(tt.fields.clientset, tt.fields.namespace)
-
-			got, err := MustGetMock().IsMockEnabled(context.Background(), tt.args.license)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Mock.IsMockEnabled() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Mock.IsMockEnabled() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestMock_GetHelmChartURL(t *testing.T) {
 	defaultMockData, err := GetDefaultMockData(context.Background())
@@ -188,7 +60,7 @@ func TestMock_GetHelmChartURL(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedMockDataKey: []byte(testMockDataYAML),
+							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -200,15 +72,13 @@ func TestMock_GetHelmChartURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InitMock(tt.fields.clientset, tt.fields.namespace)
-
-			got, err := MustGetMock().GetHelmChartURL(context.Background())
+			got, err := GetHelmChartURL(context.Background(), tt.fields.clientset, tt.fields.namespace)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Mock.GetHelmChartURL() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetHelmChartURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("Mock.GetHelmChartURL() = %v, want %v", got, tt.want)
+				t.Errorf("GetHelmChartURL() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -228,7 +98,7 @@ func TestMock_GetCurrentRelease(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    *MockRelease
+		want    *integrationtypes.MockRelease
 		wantErr bool
 	}{
 		{
@@ -253,7 +123,7 @@ func TestMock_GetCurrentRelease(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedMockDataKey: []byte(testMockDataYAML),
+							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -265,15 +135,13 @@ func TestMock_GetCurrentRelease(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InitMock(tt.fields.clientset, tt.fields.namespace)
-
-			got, err := MustGetMock().GetCurrentRelease(context.Background())
+			got, err := GetCurrentRelease(context.Background(), tt.fields.clientset, tt.fields.namespace)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Mock.GetCurrentRelease() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetCurrentRelease() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(tt.want, got) {
-				t.Errorf("Mock.GetCurrentRelease() \n\n%s", fmtJSONDiff(got, tt.want))
+				t.Errorf("GetCurrentRelease() \n\n%s", fmtJSONDiff(got, tt.want))
 			}
 		})
 	}
@@ -293,7 +161,7 @@ func TestMock_GetAvailableReleases(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    []MockRelease
+		want    []integrationtypes.MockRelease
 		wantErr bool
 	}{
 		{
@@ -318,7 +186,7 @@ func TestMock_GetAvailableReleases(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedMockDataKey: []byte(testMockDataYAML),
+							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -330,15 +198,13 @@ func TestMock_GetAvailableReleases(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InitMock(tt.fields.clientset, tt.fields.namespace)
-
-			got, err := MustGetMock().GetAvailableReleases(context.Background())
+			got, err := GetAvailableReleases(context.Background(), tt.fields.clientset, tt.fields.namespace)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Mock.GetAvailableReleases() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetAvailableReleases() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(tt.want, got) {
-				t.Errorf("Mock.GetAvailableReleases() \n\n%s", fmtJSONDiff(got, tt.want))
+				t.Errorf("GetAvailableReleases() \n\n%s", fmtJSONDiff(got, tt.want))
 			}
 		})
 	}
@@ -358,7 +224,7 @@ func TestMock_GetDeployedReleases(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    []MockRelease
+		want    []integrationtypes.MockRelease
 		wantErr bool
 	}{
 		{
@@ -383,7 +249,7 @@ func TestMock_GetDeployedReleases(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedMockDataKey: []byte(testMockDataYAML),
+							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -395,15 +261,13 @@ func TestMock_GetDeployedReleases(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InitMock(tt.fields.clientset, tt.fields.namespace)
-
-			got, err := MustGetMock().GetDeployedReleases(context.Background())
+			got, err := GetDeployedReleases(context.Background(), tt.fields.clientset, tt.fields.namespace)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Mock.GetDeployedReleases() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetDeployedReleases() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(tt.want, got) {
-				t.Errorf("Mock.GetDeployedReleases() \n\n%s", fmtJSONDiff(got, tt.want))
+				t.Errorf("GetDeployedReleases() \n\n%s", fmtJSONDiff(got, tt.want))
 			}
 		})
 	}
@@ -423,7 +287,7 @@ func TestMock_GetMockData(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    *MockData
+		want    *integrationtypes.MockData
 		wantErr bool
 	}{
 		{
@@ -448,7 +312,7 @@ func TestMock_GetMockData(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedMockDataKey: []byte(testMockDataYAML),
+							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -460,15 +324,13 @@ func TestMock_GetMockData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InitMock(tt.fields.clientset, tt.fields.namespace)
-
-			got, err := MustGetMock().GetMockData(context.Background())
+			got, err := GetMockData(context.Background(), tt.fields.clientset, tt.fields.namespace)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Mock.GetMockData() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetMockData() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(tt.want, got) {
-				t.Errorf("Mock.GetMockData() \n\n%s", fmtJSONDiff(got, tt.want))
+				t.Errorf("GetMockData() \n\n%s", fmtJSONDiff(got, tt.want))
 			}
 		})
 	}
@@ -483,13 +345,13 @@ func TestMock_SetMockData(t *testing.T) {
 		namespace string
 	}
 	type args struct {
-		mockData *MockData
+		mockData *integrationtypes.MockData
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *MockData
+		want    *integrationtypes.MockData
 		wantErr bool
 	}{
 		{
@@ -507,30 +369,28 @@ func TestMock_SetMockData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InitMock(tt.fields.clientset, tt.fields.namespace)
-
-			err := MustGetMock().SetMockData(context.Background(), *tt.args.mockData)
+			err := SetMockData(context.Background(), tt.fields.clientset, tt.fields.namespace, *tt.args.mockData)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Mock.SetMockData() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SetMockData() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			secret, err := tt.fields.clientset.CoreV1().Secrets(tt.fields.namespace).Get(context.Background(), replicatedSecretName, metav1.GetOptions{})
 			require.NoError(t, err)
 
-			var got MockData
-			err = yaml.Unmarshal(secret.Data[replicatedMockDataKey], &got)
+			var got integrationtypes.MockData
+			err = yaml.Unmarshal(secret.Data[replicatedIntegrationMockDataKey], &got)
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(tt.want, &got) {
-				t.Errorf("Mock.SetMockData() \n\n%s", fmtJSONDiff(got, tt.want))
+				t.Errorf("SetMockData() \n\n%s", fmtJSONDiff(got, tt.want))
 			}
 		})
 	}
 }
 
-func GetTestMockData() (*MockData, error) {
-	var testMockData *MockData
+func GetTestMockData() (*integrationtypes.MockData, error) {
+	var testMockData *integrationtypes.MockData
 	err := yaml.Unmarshal([]byte(testMockDataYAML), &testMockData)
 	if err != nil {
 		return nil, err
