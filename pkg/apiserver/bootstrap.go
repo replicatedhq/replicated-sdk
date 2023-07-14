@@ -7,9 +7,9 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
+	"github.com/replicatedhq/replicated-sdk/pkg/integration"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
-	"github.com/replicatedhq/replicated-sdk/pkg/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -81,16 +81,12 @@ func bootstrap(params APIServerParams) error {
 		return errors.Wrap(err, "failed to get clientset")
 	}
 
-	if store.GetStore().IsDevLicense() {
-		mock.InitMock(clientset, store.GetStore().GetNamespace())
-	}
-
-	isMockEnabled, err := mock.MustGetMock().IsMockEnabled(params.Context, store.GetStore().GetLicense())
+	isIntegrationModeEnabled, err := integration.IsEnabled(params.Context, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
 	if err != nil {
-		return errors.Wrap(err, "failed to check if mock is enabled")
+		return errors.Wrap(err, "failed to check if integration mode is enabled")
 	}
 
-	if !util.IsAirgap() && !isMockEnabled {
+	if !util.IsAirgap() && !isIntegrationModeEnabled {
 		// retrieve and cache updates
 		currentCursor := upstreamtypes.ReplicatedCursor{
 			ChannelID:       store.GetStore().GetChannelID(),
