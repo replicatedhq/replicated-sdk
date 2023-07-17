@@ -134,7 +134,7 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	// this is at the end of the bootstrap function so that it doesn't re-run on retry
-	if !util.IsAirgap() {
+	if !util.IsAirgap() && store.GetStore().IsDevLicense() {
 		go func() {
 			if err := util.WarnOnOutdatedSDKVersion(); err != nil {
 				logger.Infof("Failed to check if running an outdated sdk version: %v", err)
