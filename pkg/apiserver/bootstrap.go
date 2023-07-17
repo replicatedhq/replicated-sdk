@@ -10,6 +10,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -130,6 +131,15 @@ func bootstrap(params APIServerParams) error {
 
 	if err := heartbeat.Start(); err != nil {
 		return errors.Wrap(err, "failed to start heartbeat")
+	}
+
+	// this is at the end of the bootstrap function so that it doesn't re-run on retry
+	if !util.IsAirgap() && store.GetStore().IsDevLicense() {
+		go func() {
+			if err := util.WarnOnOutdatedSDKVersion(); err != nil {
+				logger.Infof("Failed to check if running an outdated sdk version: %v", err)
+			}
+		}()
 	}
 
 	return nil
