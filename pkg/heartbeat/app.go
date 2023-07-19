@@ -28,13 +28,11 @@ func SendAppHeartbeat(sdkStore store.Store) error {
 
 	heartbeatInfo := GetHeartbeatInfo(sdkStore)
 
-	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
+	reqPayload, err := buildHeartbeatRequestPayload(heartbeatInfo)
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal resource states")
+		return errors.Wrap(err, "failed to build request payload")
 	}
-	reqPayload := map[string]interface{}{
-		"resource_states": string(marshalledRS),
-	}
+
 	reqBody, err := json.Marshal(reqPayload)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal request payload")
@@ -62,6 +60,27 @@ func SendAppHeartbeat(sdkStore store.Store) error {
 	return nil
 }
 
+func buildHeartbeatRequestPayload(heartbeatInfo *types.HeartbeatInfo) (*types.HeartbeatRequestPayload, error) {
+	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal resource states")
+	}
+
+	marshalledKPD, err := json.Marshal(heartbeatInfo.K8sProviderData)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal k8s provider data")
+	}
+
+	fmt.Println("sending heartbeat with provider data:", string(marshalledKPD))
+
+	reqPayload := types.HeartbeatRequestPayload{
+		ResourceStates:  string(marshalledRS),
+		K8sProviderData: string(marshalledKPD),
+	}
+
+	return &reqPayload, nil
+}
+
 func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 	r := types.HeartbeatInfo{
 		ClusterID:       sdkStore.GetReplicatedID(),
@@ -83,6 +102,13 @@ func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 
 	if distribution := GetDistribution(); distribution != types.UnknownDistribution {
 		r.K8sDistribution = distribution.String()
+	}
+
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Debugf("failed to get k8s clientset: %v", err.Error())
+	} else {
+		r.K8sProviderData = GetK8sProviderData(clientset)
 	}
 
 	return &r

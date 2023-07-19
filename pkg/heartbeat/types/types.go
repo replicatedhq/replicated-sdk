@@ -35,6 +35,19 @@ type HeartbeatInfo struct {
 	ResourceStates  appstatetypes.ResourceStates `json:"resource_states"`
 	K8sVersion      string                       `json:"k8s_version"`
 	K8sDistribution string                       `json:"k8s_distribution"`
+	K8sProviderData K8sProviderData              `json:"k8s_provider_data"`
+}
+
+type K8sProviderData struct {
+	ProviderIDs      []string            `json:"provider_id"`
+	NodeLabels       map[string][]string `json:"node_labels"`
+	APIGroupVersions []string            `json:"api_group_versions"`
+	ServerVersion    string              `json:"server_version"`
+}
+
+type HeartbeatRequestPayload struct {
+	ResourceStates  string `json:"resource_states"`
+	K8sProviderData string `json:"k8s_provider_data"`
 }
 
 func (d Distribution) String() string {

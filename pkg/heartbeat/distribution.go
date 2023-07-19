@@ -107,3 +107,55 @@ func distributionFromVersion(k8sVersion string) types.Distribution {
 		return types.UnknownDistribution
 	}
 }
+
+func GetK8sProviderData(clientset kubernetes.Interface) types.K8sProviderData {
+	providerIDMap := map[string]bool{}
+	nodeLabelsMap := map[string]map[string]bool{}
+	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		logger.Infof("failed to list nodes: %v", err)
+	}
+	for _, node := range nodes.Items {
+		providerIDMap[node.Spec.ProviderID] = true
+		for k, v := range node.ObjectMeta.Labels {
+			if _, ok := nodeLabelsMap[k]; !ok {
+				nodeLabelsMap[k] = map[string]bool{}
+			}
+			nodeLabelsMap[k][v] = true
+		}
+	}
+
+	providerIDs := []string{}
+	for k := range providerIDMap {
+		providerIDs = append(providerIDs, k)
+	}
+
+	nodeLabels := map[string][]string{}
+	for k, v := range nodeLabelsMap {
+		for label := range v {
+			nodeLabels[k] = append(nodeLabels[k], label)
+		}
+	}
+
+	apiGroupVersions := []string{}
+	_, resources, err := clientset.Discovery().ServerGroupsAndResources()
+	if err != nil {
+		logger.Infof("failed to get server groups and resources: %v", err)
+	}
+	for _, resource := range resources {
+		apiGroupVersions = append(apiGroupVersions, resource.GroupVersion)
+	}
+
+	providerData := types.K8sProviderData{
+		ProviderIDs:      providerIDs,
+		NodeLabels:       nodeLabels,
+		APIGroupVersions: apiGroupVersions,
+	}
+
+	serverVersion, err := clientset.Discovery().ServerVersion()
+	if err == nil {
+		providerData.ServerVersion = serverVersion.GitVersion
+	}
+
+	return providerData
+}
