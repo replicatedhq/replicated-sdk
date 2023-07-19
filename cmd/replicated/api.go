@@ -16,9 +16,10 @@ import (
 
 func APICmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "api",
-		Short: "Starts the API server",
-		Long:  ``,
+		Use:          "api",
+		Short:        "Starts the API server",
+		Long:         ``,
+		SilenceUsage: true,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			viper.BindPFlags(cmd.Flags())
 		},
