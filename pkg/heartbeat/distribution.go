@@ -12,7 +12,7 @@ import (
 )
 
 func GetDistribution() types.Distribution {
-	// First try get the special ones. This is because sometimes the server version string is for example GKE, while the actual server is GKE AutoPilot
+	// First try get the special ones. This is because sometimes we cannot get the distribution from the server version
 	clientset, err := k8sutil.GetClientset()
 	if err == nil {
 		if distribution := distributionFromServerGroupAndResources(clientset); distribution != types.UnknownDistribution {
@@ -45,8 +45,6 @@ func distributionFromServerGroupAndResources(clientset kubernetes.Interface) typ
 	_, resources, _ := clientset.Discovery().ServerGroupsAndResources()
 	for _, resource := range resources {
 		switch {
-		case strings.HasPrefix(resource.GroupVersion, "auto.gke.io/"):
-			return types.GKEAutoPilot
 		case strings.HasPrefix(resource.GroupVersion, "apps.openshift.io/"):
 			return types.OpenShift
 		case strings.HasPrefix(resource.GroupVersion, "run.tanzu.vmware.com/"):

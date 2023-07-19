@@ -12,7 +12,6 @@ const (
 	DigitalOcean
 	EKS
 	GKE
-	GKEAutoPilot
 	K0s
 	K3s
 	Kind
@@ -47,8 +46,6 @@ func (d Distribution) String() string {
 		return "eks"
 	case GKE:
 		return "gke"
-	case GKEAutoPilot:
-		return "gke-autopilot"
 	case K0s:
 		return "k0s"
 	case K3s:
