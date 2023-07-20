@@ -11,25 +11,22 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func GetDistribution() types.Distribution {
+func GetDistribution(clientset kubernetes.Interface) types.Distribution {
 	// First try get the special ones. This is because sometimes we cannot get the distribution from the server version
-	clientset, err := k8sutil.GetClientset()
-	if err == nil {
-		if distribution := distributionFromServerGroupAndResources(clientset); distribution != types.UnknownDistribution {
-			return distribution
-		}
+	if distribution := distributionFromServerGroupAndResources(clientset); distribution != types.UnknownDistribution {
+		return distribution
+	}
 
-		if distribution := distributionFromProviderId(clientset); distribution != types.UnknownDistribution {
-			return distribution
-		}
+	if distribution := distributionFromProviderId(clientset); distribution != types.UnknownDistribution {
+		return distribution
+	}
 
-		if distribution := distributionFromLabels(clientset); distribution != types.UnknownDistribution {
-			return distribution
-		}
+	if distribution := distributionFromLabels(clientset); distribution != types.UnknownDistribution {
+		return distribution
 	}
 
 	// Getting distribution from server version string
-	k8sVersion, err := k8sutil.GetK8sVersion()
+	k8sVersion, err := k8sutil.GetK8sVersion(clientset)
 	if err != nil {
 		logger.Debugf("failed to get k8s version: %v", err.Error())
 		return types.UnknownDistribution

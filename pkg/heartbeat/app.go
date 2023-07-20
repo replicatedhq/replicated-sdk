@@ -73,16 +73,20 @@ func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 		ResourceStates:  sdkStore.GetAppStatus().ResourceStates,
 	}
 
-	// get kubernetes cluster version
-	k8sVersion, err := k8sutil.GetK8sVersion()
+	clientset, err := k8sutil.GetClientset()
 	if err != nil {
-		logger.Debugf("failed to get k8s version: %v", err.Error())
+		logger.Debugf("failed to get clientset: %v", err.Error())
 	} else {
-		r.K8sVersion = k8sVersion
-	}
+		k8sVersion, err := k8sutil.GetK8sVersion(clientset)
+		if err != nil {
+			logger.Debugf("failed to get k8s version: %v", err.Error())
+		} else {
+			r.K8sVersion = k8sVersion
+		}
 
-	if distribution := GetDistribution(); distribution != types.UnknownDistribution {
-		r.K8sDistribution = distribution.String()
+		if distribution := GetDistribution(clientset); distribution != types.UnknownDistribution {
+			r.K8sDistribution = distribution.String()
+		}
 	}
 
 	return &r
