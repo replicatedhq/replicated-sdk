@@ -355,9 +355,20 @@ func TestMock_SetMockData(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "creates the replicated secret with the mock data",
+			name: "updates the replicated secret with the mock data",
 			fields: fields{
-				clientset: fake.NewSimpleClientset(),
+				clientset: fake.NewSimpleClientset(&corev1.SecretList{
+					TypeMeta: metav1.TypeMeta{},
+					ListMeta: metav1.ListMeta{},
+					Items: []corev1.Secret{{
+						TypeMeta: metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      replicatedSecretName,
+							Namespace: "default",
+						},
+						Data: map[string][]byte{},
+					}},
+				}),
 				namespace: "default",
 			},
 			args: args{
