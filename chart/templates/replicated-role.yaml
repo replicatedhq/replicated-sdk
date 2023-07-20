@@ -11,5 +11,16 @@ rules:
   resources:
   - '*'
   verbs:
-  - '*'
+  - 'get'
+  - 'list'
+  - 'watch'
+- apiGroups:
+  - ''
+  resources:
+  - 'configmaps'
+  - 'secrets'
+  verbs:
+  - 'update'
+  resourceNames:
+  - replicated
 {{ end }}

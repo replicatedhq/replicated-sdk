@@ -41,10 +41,16 @@ func bootstrap(params APIServerParams) error {
 		return backoff.Permanent(errors.New("License is expired"))
 	}
 
-	// generate / retrieve sdk and app ids
-	replicatedID, appID, err := util.GenerateIDs(params.Namespace)
+	// retrieve replicated and app ids
+	replicatedID, appID, err := util.GetReplicatedAndAppIDs(params.Namespace)
 	if err != nil {
-		return errors.Wrap(err, "failed to generate ids")
+		return errors.Wrap(err, "failed to get replicated and app ids")
+	}
+	if replicatedID == "" {
+		return backoff.Permanent(errors.New("Replicated ID not found"))
+	}
+	if appID == "" {
+		return backoff.Permanent(errors.New("App ID not found"))
 	}
 
 	channelID := params.ChannelID
