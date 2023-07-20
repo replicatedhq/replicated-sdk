@@ -10,6 +10,6 @@ data:
   replicated-id: {{ index $data "replicated-id" }}
   app-id: {{ index $data "app-id" }}
 {{- else }}
-  replicated-id: {{ randAlphaNum 27 }}
-  app-id: {{ randAlphaNum 27 }}
+  replicated-id: {{ uuidv4 }}
+  app-id: {{ uuidv4 }}
 {{- end }}
