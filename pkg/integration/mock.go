@@ -72,17 +72,6 @@ func SetMockData(ctx context.Context, clientset kubernetes.Interface, namespace 
 
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
 	if err != nil {
-		if kuberneteserrors.IsNotFound(err) {
-			data := map[string][]byte{
-				replicatedIntegrationMockDataKey: b,
-			}
-			err = createReplicatedSecret(ctx, clientset, namespace, data)
-			if err != nil {
-				return errors.Wrap(err, "failed to create secret replicated")
-			}
-			return nil
-		}
-
 		return errors.Wrap(err, "failed to get replicated secret")
 	}
 

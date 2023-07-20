@@ -20,5 +20,7 @@ rules:
   - 'configmaps'
   - 'secrets'
   verbs:
-  - '*'
+  - 'update'
+  resourceNames:
+  - replicated
 {{ end }}

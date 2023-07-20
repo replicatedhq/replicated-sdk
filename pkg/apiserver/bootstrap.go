@@ -42,7 +42,7 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	// generate / retrieve sdk and app ids
-	replicatedID, appID, err := util.GenerateIDs(params.Namespace)
+	replicatedID, appID, err := util.GetReplicatedAndAppIDs(params.Namespace)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate ids")
 	}
