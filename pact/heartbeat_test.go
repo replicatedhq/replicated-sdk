@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/pact-foundation/pact-go/dsl"
-	"github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
