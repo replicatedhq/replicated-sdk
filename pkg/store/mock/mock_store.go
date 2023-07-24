@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v1beta1 "github.com/replicatedhq/kots/kotskinds/apis/kots/v1beta1"
+	v1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	types "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	types0 "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	types1 "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
