@@ -62,42 +62,42 @@ func GetDeployedReleases(ctx context.Context, clientset kubernetes.Interface, na
 }
 
 func SetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string, mockData types.MockData) error {
-	replicatedSecretLock.Lock()
-	defer replicatedSecretLock.Unlock()
+	replicatedSDKSecretLock.Lock()
+	defer replicatedSDKSecretLock.Unlock()
 
 	b, err := yaml.Marshal(mockData)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal mock data")
 	}
 
-	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSDKSecretName, metav1.GetOptions{})
 	if err != nil {
-		return errors.Wrap(err, "failed to get replicated secret")
+		return errors.Wrap(err, "failed to get replicated-sdk secret")
 	}
 
 	if secret.Data == nil {
 		secret.Data = map[string][]byte{}
 	}
 
-	secret.Data[replicatedIntegrationMockDataKey] = b
+	secret.Data[replicatedSDKIntegrationMockDataKey] = b
 	_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil {
-		return errors.Wrap(err, "failed to update replicated secret")
+		return errors.Wrap(err, "failed to update replicated-sdk secret")
 	}
 
 	return nil
 }
 
 func GetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.MockData, error) {
-	replicatedSecretLock.Lock()
-	defer replicatedSecretLock.Unlock()
+	replicatedSDKSecretLock.Lock()
+	defer replicatedSDKSecretLock.Unlock()
 
-	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSDKSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
-		return nil, errors.Wrap(err, "failed to get replicated secret")
+		return nil, errors.Wrap(err, "failed to get replicated-sdk secret")
 	}
 	if err == nil {
-		b := secret.Data[replicatedIntegrationMockDataKey]
+		b := secret.Data[replicatedSDKIntegrationMockDataKey]
 		if len(b) != 0 {
 			var mockData types.MockData
 			if err := yaml.Unmarshal(b, &mockData); err != nil {

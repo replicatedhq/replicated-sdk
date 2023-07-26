@@ -12,7 +12,7 @@ COPY pkg ./pkg
 ARG git_tag
 ENV GIT_TAG=${git_tag}
 
-RUN make build && mv ./bin/replicated /replicated
+RUN make build && mv ./bin/replicated-sdk /replicated-sdk
 
 FROM golang:1.20
 
@@ -20,14 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg2 ca-
   && rm -rf /var/lib/apt/lists/*
 
 # Setup user
-RUN useradd -c 'replicated user' -m -d /home/replicated -s /bin/bash -u 1001 replicated
-USER replicated
-ENV HOME /home/replicated
+RUN useradd -c 'replicated-sdk user' -m -d /home/replicated-sdk -s /bin/bash -u 1001 replicated-sdk
+USER replicated-sdk
+ENV HOME /home/replicated-sdk
 
-COPY --from=builder --chown=replicated:replicated /replicated /replicated
+COPY --from=builder --chown=replicated-sdk:replicated-sdk /replicated-sdk /replicated-sdk
 
 WORKDIR /
 
 EXPOSE 3000
-ENTRYPOINT ["/replicated"]
+ENTRYPOINT ["/replicated-sdk"]
 CMD ["api"]

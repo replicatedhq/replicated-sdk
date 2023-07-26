@@ -41,11 +41,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationEnabledKey: []byte("true"),
+							replicatedSDKIntegrationEnabledKey: []byte("true"),
 						},
 					}},
 				}),
@@ -68,11 +68,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationEnabledKey: []byte("true"),
+							replicatedSDKIntegrationEnabledKey: []byte("true"),
 						},
 					}},
 				}),
@@ -95,11 +95,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationEnabledKey: []byte("false"),
+							replicatedSDKIntegrationEnabledKey: []byte("false"),
 						},
 					}},
 				}),
@@ -122,7 +122,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{},
@@ -147,11 +147,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationEnabledKey: []byte(""),
+							replicatedSDKIntegrationEnabledKey: []byte(""),
 						},
 					}},
 				}),

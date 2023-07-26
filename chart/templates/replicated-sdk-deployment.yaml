@@ -2,36 +2,36 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    {{- include "replicated.labels" . | nindent 4 }}
-  name: replicated
+    {{- include "replicated-sdk.labels" . | nindent 4 }}
+  name: replicated-sdk
 spec:
   selector:
     matchLabels:
-      {{- include "replicated.selectorLabels" . | nindent 6 }}
+      {{- include "replicated-sdk.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "replicated.labels" . | nindent 8 }}
+        {{- include "replicated-sdk.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-      - name: replicated
+      - name: replicated-sdk
         secret:
-          secretName: replicated
+          secretName: replicated-sdk
       containers:
-      - name: replicated
-        image: {{ .Values.images.replicated }}
+      - name: replicated-sdk
+        image: {{ index .Values.images "replicated-sdk" }}
         imagePullPolicy: IfNotPresent
         volumeMounts:
-        - name: replicated
-          mountPath: /etc/replicated/config.yaml
+        - name: replicated-sdk
+          mountPath: /etc/replicated-sdk/config.yaml
           readOnly: true
           subPath: config.yaml
         env:
-        - name: REPLICATED_NAMESPACE
+        - name: REPLICATED_SDK_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
@@ -47,14 +47,14 @@ spec:
           value: {{ .Values.parentChartURL | default "" | quote }}
         - name: HELM_DRIVER
           value: secret # TODO: support other drivers
-        - name: REPLICATED_CONFIG_FILE
-          value: /etc/replicated/config.yaml
+        - name: REPLICATED_SDK_CONFIG_FILE
+          value: /etc/replicated-sdk/config.yaml
         {{- if (.Values.integration).licenseID }}
-        - name: REPLICATED_INTEGRATION_LICENSE_ID
+        - name: REPLICATED_SDK_INTEGRATION_LICENSE_ID
           valueFrom:
             secretKeyRef:
-              name: replicated
-              key: REPLICATED_INTEGRATION_LICENSE_ID
+              name: replicated-sdk
+              key: REPLICATED_SDK_INTEGRATION_LICENSE_ID
         {{- end }}
         ports:
         - containerPort: 3000
@@ -78,5 +78,5 @@ spec:
       securityContext:
         fsGroup: 1001
         runAsUser: 1001
-      serviceAccountName: {{ .Values.serviceAccountName | default "replicated" }}
+      serviceAccountName: {{ .Values.serviceAccountName | default "replicated-sdk" }}
 status: {}

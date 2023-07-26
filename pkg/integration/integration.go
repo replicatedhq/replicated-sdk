@@ -13,30 +13,30 @@ import (
 )
 
 const (
-	replicatedSecretName             = "replicated"
-	replicatedIntegrationMockDataKey = "REPLICATED_INTEGRATION_MOCK_DATA"
-	replicatedIntegrationEnabledKey  = "REPLICATED_INTEGRATION_ENABLED"
+	replicatedSDKSecretName             = "replicated-sdk"
+	replicatedSDKIntegrationMockDataKey = "REPLICATED_SDK_INTEGRATION_MOCK_DATA"
+	replicatedSDKIntegrationEnabledKey  = "REPLICATED_SDK_INTEGRATION_ENABLED"
 )
 
-var replicatedSecretLock = sync.Mutex{}
+var replicatedSDKSecretLock = sync.Mutex{}
 
 func IsEnabled(ctx context.Context, clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
 	if license == nil || license.Spec.LicenseType != "dev" {
 		return false, nil
 	}
 
-	replicatedSecretLock.Lock()
-	defer replicatedSecretLock.Unlock()
+	replicatedSDKSecretLock.Lock()
+	defer replicatedSDKSecretLock.Unlock()
 
-	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSecretName, metav1.GetOptions{})
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSDKSecretName, metav1.GetOptions{})
 	if err != nil {
 		if kuberneteserrors.IsNotFound(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, "failed to get replicated secret")
+		return false, errors.Wrap(err, "failed to get replicated-sdk secret")
 	}
 
-	v, ok := secret.Data[replicatedIntegrationEnabledKey]
+	v, ok := secret.Data[replicatedSDKIntegrationEnabledKey]
 	if !ok || len(v) == 0 {
 		return true, nil
 	}

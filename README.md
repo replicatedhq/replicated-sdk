@@ -29,9 +29,9 @@ replicatedAppEndpoint: "REPLICATED_APP_ENDPOINT"
 statusInformers: "STATUS_INFORMERS"
 ```
 
-Run the Replicated API:
+Run the Replicated SDK API:
 ```shell
-./bin/replicated api \
+./bin/replicated-sdk api \
     --config-file=[path/to/config.yaml]
     --namespace=[NAMESPACE]
 ```
@@ -85,23 +85,23 @@ statusInformers:
 ```
 
 ```shell
-./bin/replicated api \
+./bin/replicated-sdk api \
     --config-file=config.yaml
     --namespace=default
 ```
 
 ### Helm Chart
-Build and push the replicated Docker image and Helm chart to ttl.sh:
+Build and push the replicated-sdk Docker image and Helm chart to ttl.sh:
 
 ```shell
 make build-ttl.sh
 ```
 
-The above command will also output the .tgz Helm chart under `chart/replicated-0.0.0.tgz`.
+The above command will also output the .tgz Helm chart under `chart/replicated-sdk-0.0.0.tgz`.
 You can either extract and include the produced .tgz Helm chart as a subchart in other applications, or you can run the following command to install the chart:
 
 ```shell
-helm upgrade --install replicated oci://ttl.sh/salah/replicated \
+helm upgrade --install replicated-sdk oci://ttl.sh/salah/replicated-sdk \
     --namespace [NAMESPACE] \
     --set-file license=[path/to/license.yaml] \
     --set-file licenseFields=[path/to/license-fields.yaml] \
@@ -120,7 +120,7 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 
 Example:
 ```shell
-helm upgrade --install replicated oci://ttl.sh/salah/replicated \
+helm upgrade --install replicated-sdk oci://ttl.sh/salah/replicated-sdk \
     --namespace default \
     --set-file license=license.yaml \
     --set-file licenseFields=license-fields.yaml \
@@ -140,7 +140,7 @@ helm upgrade --install replicated oci://ttl.sh/salah/replicated \
 **Note**: you can set the above values in the `values.yaml` file instead of using the `--set` flag for each field.
 
 ## Enabling Replicated SDK "integration" mode
-When using a `Development` license, the Replicated SDK will initiate in integration mode. If you are performing a Helm install/upgrade using the replicated Helm chart, you can utilize the following values in the chart YAML for the Replicated SDK's integration mode:
+When using a `Development` license, the Replicated SDK will initiate in integration mode. If you are performing a Helm install/upgrade using the replicated SDK Helm chart, you can utilize the following values in the chart YAML for the Replicated SDK's integration mode:
 ```yaml
 integration:
   licenseID: "development-license-id"

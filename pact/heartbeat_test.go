@@ -34,7 +34,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")
@@ -84,7 +84,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
@@ -134,7 +134,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
@@ -184,7 +184,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")

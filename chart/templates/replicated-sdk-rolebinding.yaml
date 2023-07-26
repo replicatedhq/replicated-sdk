@@ -3,14 +3,14 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    {{- include "replicated.labels" . | nindent 4 }}
-  name: replicated-rolebinding
+    {{- include "replicated-sdk.labels" . | nindent 4 }}
+  name: replicated-sdk-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: replicated-role
+  name: replicated-sdk-role
 subjects:
 - kind: ServiceAccount
-  name: replicated
+  name: replicated-sdk
   namespace: {{ .Release.Namespace }}
 {{ end }}

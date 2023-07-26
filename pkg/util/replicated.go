@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	replicatedConfigMapName = "replicated"
+	replicatedConfigMapName = "replicated-sdk"
 )
 
-func GetReplicatedAndAppIDs(namespace string) (string, string, error) {
+func GetReplicatedSDKAndAppIDs(namespace string) (string, string, error) {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to get clientset")
@@ -29,17 +29,17 @@ func GetReplicatedAndAppIDs(namespace string) (string, string, error) {
 
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), replicatedConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", errors.Wrap(err, "failed to get replicated configmap")
+		return "", "", errors.Wrap(err, "failed to get replicated-sdk configmap")
 	}
 
 	if cm.Data == nil {
 		cm.Data = map[string]string{}
 	}
 
-	replicatedID := cm.Data["replicated-id"]
+	replicatedSDKID := cm.Data["replicated-sdk-id"]
 	appID := cm.Data["app-id"]
 
-	return replicatedID, appID, nil
+	return replicatedSDKID, appID, nil
 }
 
 func WarnOnOutdatedSDKVersion() error {

@@ -7,9 +7,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// IsReplicatedClusterScoped will check if replicated has cluster scope access or not
+// IsReplicatedClusterScoped will check if replicated-sdk has cluster scope access or not
 func IsReplicatedClusterScoped(ctx context.Context, clientset kubernetes.Interface, namespace string) bool {
-	rb, err := clientset.RbacV1().ClusterRoleBindings().Get(ctx, "replicated-rolebinding", metav1.GetOptions{})
+	rb, err := clientset.RbacV1().ClusterRoleBindings().Get(ctx, "replicated-sdk-rolebinding", metav1.GetOptions{})
 	if err != nil {
 		return false
 	}
@@ -17,7 +17,7 @@ func IsReplicatedClusterScoped(ctx context.Context, clientset kubernetes.Interfa
 		if s.Kind != "ServiceAccount" {
 			continue
 		}
-		if s.Name != "replicated" {
+		if s.Name != "replicated-sdk" {
 			continue
 		}
 		if s.Namespace != "" && s.Namespace == namespace {
