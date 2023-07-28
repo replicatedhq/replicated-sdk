@@ -56,11 +56,11 @@ func TestMock_GetHelmChartURL(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
+							replicatedSDKIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -119,11 +119,11 @@ func TestMock_GetCurrentRelease(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
+							replicatedSDKIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -182,11 +182,11 @@ func TestMock_GetAvailableReleases(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
+							replicatedSDKIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -245,11 +245,11 @@ func TestMock_GetDeployedReleases(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
+							replicatedSDKIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -308,11 +308,11 @@ func TestMock_GetMockData(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedIntegrationMockDataKey: []byte(testMockDataYAML),
+							replicatedSDKIntegrationMockDataKey: []byte(testMockDataYAML),
 						},
 					}},
 				}),
@@ -355,7 +355,7 @@ func TestMock_SetMockData(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "updates the replicated secret with the mock data",
+			name: "updates the replicated-sdk secret with the mock data",
 			fields: fields{
 				clientset: fake.NewSimpleClientset(&corev1.SecretList{
 					TypeMeta: metav1.TypeMeta{},
@@ -363,7 +363,7 @@ func TestMock_SetMockData(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSecretName,
+							Name:      replicatedSDKSecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{},
@@ -386,11 +386,11 @@ func TestMock_SetMockData(t *testing.T) {
 				return
 			}
 
-			secret, err := tt.fields.clientset.CoreV1().Secrets(tt.fields.namespace).Get(context.Background(), replicatedSecretName, metav1.GetOptions{})
+			secret, err := tt.fields.clientset.CoreV1().Secrets(tt.fields.namespace).Get(context.Background(), replicatedSDKSecretName, metav1.GetOptions{})
 			require.NoError(t, err)
 
 			var got integrationtypes.MockData
-			err = yaml.Unmarshal(secret.Data[replicatedIntegrationMockDataKey], &got)
+			err = yaml.Unmarshal(secret.Data[replicatedSDKIntegrationMockDataKey], &got)
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(tt.want, &got) {

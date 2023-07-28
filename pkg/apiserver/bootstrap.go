@@ -41,13 +41,13 @@ func bootstrap(params APIServerParams) error {
 		return backoff.Permanent(errors.New("License is expired"))
 	}
 
-	// retrieve replicated and app ids
-	replicatedID, appID, err := util.GetReplicatedAndAppIDs(params.Namespace)
+	// retrieve replicated sdk and app ids
+	replicatedSDKID, appID, err := util.GetReplicatedSDKAndAppIDs(params.Namespace)
 	if err != nil {
-		return errors.Wrap(err, "failed to get replicated and app ids")
+		return errors.Wrap(err, "failed to get replicated sdk and app ids")
 	}
-	if replicatedID == "" {
-		return backoff.Permanent(errors.New("Replicated ID not found"))
+	if replicatedSDKID == "" {
+		return backoff.Permanent(errors.New("Replicated SDK ID not found"))
 	}
 	if appID == "" {
 		return backoff.Permanent(errors.New("App ID not found"))
@@ -64,7 +64,7 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	storeOptions := store.InitInMemoryStoreOptions{
-		ReplicatedID:          replicatedID,
+		ReplicatedSDKID:       replicatedSDKID,
 		AppID:                 appID,
 		License:               verifiedLicense,
 		LicenseFields:         params.LicenseFields,

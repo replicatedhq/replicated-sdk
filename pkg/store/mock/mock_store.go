@@ -233,18 +233,18 @@ func (mr *MockStoreMockRecorder) GetReplicatedAppEndpoint() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReplicatedAppEndpoint", reflect.TypeOf((*MockStore)(nil).GetReplicatedAppEndpoint))
 }
 
-// GetReplicatedID mocks base method.
-func (m *MockStore) GetReplicatedID() string {
+// GetReplicatedSDKID mocks base method.
+func (m *MockStore) GetReplicatedSDKID() string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetReplicatedID")
+	ret := m.ctrl.Call(m, "GetReplicatedSDKID")
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// GetReplicatedID indicates an expected call of GetReplicatedID.
-func (mr *MockStoreMockRecorder) GetReplicatedID() *gomock.Call {
+// GetReplicatedSDKID indicates an expected call of GetReplicatedSDKID.
+func (mr *MockStoreMockRecorder) GetReplicatedSDKID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReplicatedID", reflect.TypeOf((*MockStore)(nil).GetReplicatedID))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReplicatedSDKID", reflect.TypeOf((*MockStore)(nil).GetReplicatedSDKID))
 }
 
 // GetUpdates mocks base method.

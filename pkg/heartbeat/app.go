@@ -64,7 +64,7 @@ func SendAppHeartbeat(sdkStore store.Store) error {
 
 func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 	r := types.HeartbeatInfo{
-		ClusterID:       sdkStore.GetReplicatedID(),
+		ClusterID:       sdkStore.GetReplicatedSDKID(),
 		InstanceID:      sdkStore.GetAppID(),
 		ChannelID:       sdkStore.GetChannelID(),
 		ChannelName:     sdkStore.GetChannelName(),

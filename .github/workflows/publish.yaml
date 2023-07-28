@@ -71,8 +71,8 @@ jobs:
         REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
         REPLICATED_PASS_PROD: ${{secrets.REPLICATED_PASS_PROD}}
       run: |
-        docker build --pull -t "$REPLICATED_SDK_REGISTRY/replicated:$REPLICATED_SDK_TAG" --build-arg git_tag=${{steps.tag.outputs.tag}} .
-        docker push "$REPLICATED_SDK_REGISTRY/replicated:$REPLICATED_SDK_TAG"
+        docker build --pull -t "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG" --build-arg git_tag=${{steps.tag.outputs.tag}} .
+        docker push "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG"
 
         cd chart
         envsubst < Chart.yaml.tmpl > Chart.yaml

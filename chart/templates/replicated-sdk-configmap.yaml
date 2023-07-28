@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "replicated-sdk.labels" . | nindent 4 }}
+  name: replicated-sdk
+data:
+{{- $data := (lookup "v1" "ConfigMap" .Release.Namespace "replicated-sdk").data }}
+{{- if $data }}
+  replicated-sdk-id: {{ index $data "replicated-sdk-id" }}
+  app-id: {{ index $data "app-id" }}
+{{- else }}
+  replicated-sdk-id: {{ uuidv4 }}
+  app-id: {{ uuidv4 }}
+{{- end }}

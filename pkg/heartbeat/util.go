@@ -45,7 +45,7 @@ func canReport(license *kotsv1beta1.License) (bool, error) {
 		}
 
 		// don't report from sdk instances that are not associated with the current helm release revision.
-		// this can happen during a helm upgrade/rollback when a rolling update of the replicated deployment is in progress.
+		// this can happen during a helm upgrade/rollback when a rolling update of the replicated-sdk deployment is in progress.
 		if sdkHelmRevision != helmRelease.Version {
 			logger.Debugf("not reporting from sdk instance with helm revision %d because current helm release revision is %d\n", sdkHelmRevision, helmRelease.Version)
 			return false, nil
