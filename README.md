@@ -1,6 +1,8 @@
 # Introduction
 
-This is the software development kit (SDK) for Replicated.
+The Replicated SDK (software development kit) is a service that allows you to embed key Replicated features alongside your application. 
+
+[Replicated SDK Product Documentation](https://docs.replicated.com/vendor/replicated-sdk-overview) 
 
 # Development
 
@@ -218,7 +220,7 @@ The mock data endpoints provide functionality to manage mock data. The following
 **Note** The endpoint *POST* `/api/v1/mock-data` exclusively supports full data posts, meaning that if any updates are required for the mock data, the entire dataset must be sent to the endpoint via the `POST` method.
 
 ### Replicated SDK "integration" mode for staging/okteto environments
-**Note**: Please don't document this in customer facing docs.
+**Note**: This section is only applicable for Replicated internal development.
 
 Replicated SDK supports `replicatedAppEndpoint` helm value which can be used to provide a custom replicated app endpoint.
 This helm value will be handy for replicants when working with staging/okteto environment deployments.
@@ -247,11 +249,11 @@ Pact tests live in the `pact/` directory at the root of the repository. The Pact
 3. Generate a new tag for the commits and proceed to push the tag to the repository using the following commands:
 eg:
 ```bash
-  SDK_TAG="v0.0.1-alpha.16"
+  SDK_TAG="v0.0.1-beta.1"
   git checkout main && git pull
   git tag $SDK_TAG
   git push -u origin $SDK_TAG
 ```
 4. Ensure that the GitHub actions associated with the newly created tag are executed, and verify that the updated Helm charts are successfully published to both the staging and production replicated registry.
-5. Make sure to update the [Replicated SDK Documentation](https://docs.google.com/document/d/1KJo9MfwS9sfu13p-Lyf3W4KRDBxNcAQPuOOYoHnQVis/edit#heading=h.pmlj79z5v9zk) by replacing all instances of the Replicated SDK version with the latest tag.
+5. Make sure to update the [Replicated SDK Documentation](https://docs.replicated.com/vendor/replicated-sdk-overview) by replacing all instances of the Replicated SDK version with the latest tag.
 
