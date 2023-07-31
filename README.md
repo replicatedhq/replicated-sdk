@@ -220,7 +220,7 @@ The mock data endpoints provide functionality to manage mock data. The following
 **Note** The endpoint *POST* `/api/v1/mock-data` exclusively supports full data posts, meaning that if any updates are required for the mock data, the entire dataset must be sent to the endpoint via the `POST` method.
 
 ### Replicated SDK "integration" mode for staging/okteto environments
-**Note**: This section in only applicable for Replicated internal development.
+**Note**: This section is only applicable for Replicated internal development.
 
 Replicated SDK supports `replicatedAppEndpoint` helm value which can be used to provide a custom replicated app endpoint.
 This helm value will be handy for replicants when working with staging/okteto environment deployments.
