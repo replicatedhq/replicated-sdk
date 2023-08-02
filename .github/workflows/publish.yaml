@@ -15,7 +15,7 @@ env:
 
 jobs:
   get-tag:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
@@ -25,7 +25,7 @@ jobs:
           strip_v: true
 
   generate-release-notes-pr:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [get-tag]
     if: github.ref_type != 'branch'
     steps:
@@ -117,6 +117,6 @@ jobs:
         echo pushing ${CHART_NAME} to production
         helm registry login registry.replicated.com --username $REPLICATED_USER_PROD --password $REPLICATED_PASS_PROD
         helm push $CHART_NAME oci://registry.replicated.com/library
-        
+
     - name: Pact record-release
       run: make record-release
