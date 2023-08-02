@@ -14,6 +14,34 @@ env:
   PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
 
 jobs:
+  get-tag:
+    runs-on: ubuntu-20.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        uses: dawidd6/action-get-tag@v1
+        with:
+          strip_v: true
+
+  generate-release-notes-pr:
+    runs-on: ubuntu-20.04
+    needs: [get-tag]
+    if: github.ref_type != 'branch'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Generate Release Notes PR
+      env:
+        GIT_TAG: ${{ needs.get-tag.outputs.tag }}
+        GH_PAT: ${{ secrets.GH_PAT }}
+      run: |
+        curl -H "Authorization: token $GH_PAT" \
+          -H 'Accept: application/json' \
+          -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\" }}" \
+          "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
+
   make-tests:
     runs-on: ubuntu-22.04
     steps:
@@ -38,40 +66,41 @@ jobs:
   package-and-publish:
     runs-on: 'ubuntu-22.04'
     needs:
+      - get-tag
       - make-tests
       - make-build
     steps:
-    - name: Get tag
-      id: tag
-      uses: dawidd6/action-get-tag@v1
-      with:
-        strip_v: true
     - name: Checkout
       uses: actions/checkout@v2
+
     - uses: replicatedhq/action-install-pact@v1
+
     - name: Pact can-i-deploy
       run: |
         make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
+
     - name: Install Helm
       uses: azure/setup-helm@v1
       with:
         version: v3.10.1
+
     - uses: docker/login-action@v1
       with:
         registry: ghcr.io
         username: ${{github.actor}}
         password: ${{secrets.GITHUB_TOKEN}}
+
     - name: Run Package and Publish
       env: 
-        REPLICATED_SDK_TAG: v${{steps.tag.outputs.tag}}
+        REPLICATED_SDK_TAG: v${{needs.get-tag.outputs.tag}}
         REPLICATED_SDK_REGISTRY: ghcr.io/replicatedhq # TODO: move to docker.io
-        CHART_VERSION: ${{steps.tag.outputs.tag}}
+        CHART_VERSION: ${{needs.get-tag.outputs.tag}}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
         REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
         REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
         REPLICATED_PASS_PROD: ${{secrets.REPLICATED_PASS_PROD}}
       run: |
-        docker build --pull -t "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG" --build-arg git_tag=${{steps.tag.outputs.tag}} .
+        docker build --pull -t "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG" --build-arg git_tag=${{needs.get-tag.outputs.tag}} .
         docker push "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG"
 
         cd chart
@@ -88,5 +117,6 @@ jobs:
         echo pushing ${CHART_NAME} to production
         helm registry login registry.replicated.com --username $REPLICATED_USER_PROD --password $REPLICATED_PASS_PROD
         helm push $CHART_NAME oci://registry.replicated.com/library
+        
     - name: Pact record-release
       run: make record-release
