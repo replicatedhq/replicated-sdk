@@ -37,3 +37,15 @@ jobs:
           go-version: '^1.20'
       - name: make build
         run: make build
+
+  build-and-push-ttl-image:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: build and push kotsadm for e2e
+        uses: docker/build-push-action@v3
+        with:
+          tags: ttl.sh/automated-${{ github.run_id }}/replicated-sdk:24h
+          context: ./
+          file: ./Dockerfile
+          push: true
