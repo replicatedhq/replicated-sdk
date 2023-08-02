@@ -48,4 +48,4 @@ jobs:
           tags: ttl.sh/automated-${{ github.run_id }}/replicated-sdk:24h
           context: ./
           file: ./Dockerfile
-          push: true
+          push: false # we don't need to push the image since we don't have any e2e tests yet
