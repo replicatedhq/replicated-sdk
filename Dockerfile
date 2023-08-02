@@ -16,9 +16,7 @@ RUN make build && mv ./bin/replicated-sdk /replicated-sdk
 
 FROM cgr.dev/chainguard/static:latest
 
-USER replicated-sdk
-
-COPY --from=builder --chown=replicated-sdk:replicated-sdk /replicated-sdk /replicated-sdk
+COPY --from=builder /replicated-sdk /replicated-sdk
 
 WORKDIR /
 
