@@ -1,4 +1,4 @@
-FROM golang:1.20 as builder
+FROM cgr.dev/chainguard/go:1.20 as builder
 
 ENV PROJECTPATH=/go/src/github.com/replicatedhq/replicated-sdk
 WORKDIR $PROJECTPATH
@@ -14,17 +14,9 @@ ENV GIT_TAG=${git_tag}
 
 RUN make build && mv ./bin/replicated-sdk /replicated-sdk
 
-FROM golang:1.20
+FROM cgr.dev/chainguard/static:latest
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg2 ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-
-# Setup user
-RUN useradd -c 'replicated-sdk user' -m -d /home/replicated-sdk -s /bin/bash -u 1001 replicated-sdk
-USER replicated-sdk
-ENV HOME /home/replicated-sdk
-
-COPY --from=builder --chown=replicated-sdk:replicated-sdk /replicated-sdk /replicated-sdk
+COPY --from=builder /replicated-sdk /replicated-sdk
 
 WORKDIR /
 
