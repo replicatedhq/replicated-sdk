@@ -17,14 +17,14 @@ jobs:
   get-tags:
     runs-on: ubuntu-22.04
     outputs:
-      tag: ${{ steps.get-previous-tag.outputs.tag }}
-      previous-tag: ${{ steps.get-previous-tag.outputs.previous-tag }}
+      tag: ${{ steps.get-tags.outputs.tag }}
+      previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Get previous tag
-        id: previous-tag
+      - name: Get tags
+        id: get-tags
         run: |
           git fetch -a
           tags=($(git tag --sort="-creatordate"))
@@ -43,8 +43,8 @@ jobs:
 
     - name: Generate Release Notes PR
       env:
-        GIT_PREV_TAG: ${{ needs.get-previous-tag.outputs.previous-tag }}
-        GIT_TAG: ${{ needs.get-previous-tag.outputs.tag }}
+        GIT_PREV_TAG: ${{ needs.get-tags.outputs.previous-tag }}
+        GIT_TAG: ${{ needs.get-tags.outputs.tag }}
         GH_PAT: ${{ secrets.GH_PAT }}
       run: |
         curl -H "Authorization: token $GH_PAT" \
