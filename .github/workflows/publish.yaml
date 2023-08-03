@@ -38,7 +38,7 @@ jobs:
           git fetch -a
           tags=($(git tag --sort="-creatordate"))
           previous_tag=${tags[1]}
-          echo "tag=$previous_tag" >> $GITHUB_OUTPUT
+          echo "tag=${previous_tag#v}" >> $GITHUB_OUTPUT
 
   generate-release-notes-pr:
     runs-on: ubuntu-22.04
