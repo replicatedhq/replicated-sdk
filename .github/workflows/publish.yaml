@@ -14,20 +14,11 @@ env:
   PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
 
 jobs:
-  get-tag:
+  get-tags:
     runs-on: ubuntu-22.04
     outputs:
-      tag: ${{ steps.tag.outputs.tag }}
-    steps:
-      - id: tag
-        uses: dawidd6/action-get-tag@v1
-        with:
-          strip_v: true
-
-  get-previous-tag:
-    runs-on: ubuntu-22.04
-    outputs:
-      tag: ${{ steps.previous-tag.outputs.tag }}
+      tag: ${{ steps.get-previous-tag.outputs.tag }}
+      previous-tag: ${{ steps.get-previous-tag.outputs.previous-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -37,12 +28,14 @@ jobs:
         run: |
           git fetch -a
           tags=($(git tag --sort="-creatordate"))
+          current_tag=${tags[0]}
           previous_tag=${tags[1]}
-          echo "tag=${previous_tag#v}" >> $GITHUB_OUTPUT
+          echo "tag=${current_tag#v}" >> $GITHUB_OUTPUT
+          echo "previous-tag=${previous_tag#v}" >> $GITHUB_OUTPUT
 
   generate-release-notes-pr:
     runs-on: ubuntu-22.04
-    needs: [get-tag, get-previous-tag]
+    needs: [get-tags]
     if: github.ref_type != 'branch'
     steps:
     - name: Checkout
@@ -50,8 +43,8 @@ jobs:
 
     - name: Generate Release Notes PR
       env:
-        GIT_PREV_TAG: ${{ needs.get-previous-tag.outputs.tag }}
-        GIT_TAG: ${{ needs.get-tag.outputs.tag }}
+        GIT_PREV_TAG: ${{ needs.get-previous-tag.outputs.previous-tag }}
+        GIT_TAG: ${{ needs.get-previous-tag.outputs.tag }}
         GH_PAT: ${{ secrets.GH_PAT }}
       run: |
         curl -H "Authorization: token $GH_PAT" \
@@ -83,7 +76,7 @@ jobs:
   package-and-publish:
     runs-on: 'ubuntu-22.04'
     needs:
-      - get-tag
+      - get-tags
       - make-tests
       - make-build
     steps:
@@ -109,15 +102,15 @@ jobs:
 
     - name: Run Package and Publish
       env: 
-        REPLICATED_SDK_TAG: v${{needs.get-tag.outputs.tag}}
+        REPLICATED_SDK_TAG: v${{needs.get-tags.outputs.tag}}
         REPLICATED_SDK_REGISTRY: ghcr.io/replicatedhq # TODO: move to docker.io
-        CHART_VERSION: ${{needs.get-tag.outputs.tag}}
+        CHART_VERSION: ${{needs.get-tags.outputs.tag}}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
         REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
         REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
         REPLICATED_PASS_PROD: ${{secrets.REPLICATED_PASS_PROD}}
       run: |
-        docker build --pull -t "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG" --build-arg git_tag=${{needs.get-tag.outputs.tag}} .
+        docker build --pull -t "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG" --build-arg git_tag=${{needs.get-tags.outputs.tag}} .
         docker push "$REPLICATED_SDK_REGISTRY/replicated-sdk:$REPLICATED_SDK_TAG"
 
         cd chart
