@@ -27,7 +27,7 @@ jobs:
   get-previous-tag:
     runs-on: ubuntu-22.04
     outputs:
-      previous-tag: ${{ steps.previous-tag.outputs.tag }}
+      tag: ${{ steps.previous-tag.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -36,9 +36,9 @@ jobs:
         id: previous-tag
         run: |
           git fetch -a
-          tags=($(git tag --sort="-committerdate"))
+          tags=($(git tag --sort="-creatordate"))
           previous_tag=${tags[1]}
-          echo "::set-output name=tag::$previous_tag"
+          echo "tag=$previous_tag" >> $GITHUB_OUTPUT
 
   generate-release-notes-pr:
     runs-on: ubuntu-22.04
@@ -50,13 +50,13 @@ jobs:
 
     - name: Generate Release Notes PR
       env:
-        GIT_PREV_TAG: ${{ needs.get-previous-tag.outputs.previous-tag }}
+        GIT_PREV_TAG: ${{ needs.get-previous-tag.outputs.tag }}
         GIT_TAG: ${{ needs.get-tag.outputs.tag }}
         GH_PAT: ${{ secrets.GH_PAT }}
       run: |
         curl -H "Authorization: token $GH_PAT" \
           -H 'Accept: application/json' \
-          -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"base\": \"${GIT_PREV_TAG}\" }}" \
+          -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
           "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
 
   make-tests:
