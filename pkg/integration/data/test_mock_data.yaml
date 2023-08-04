@@ -1,3 +1,4 @@
+appStatus: ready
 helmChartURL: oci://custom.registry.com/my-app
 currentRelease:
   versionLabel: custom-label
