@@ -1,4 +1,9 @@
-FROM cgr.dev/chainguard/go:1.20 as builder
+FROM cgr.dev/chainguard/wolfi-base:latest as local_go
+
+RUN apk update && apk add ca-certificates-bundle build-base openssh go-1.20~=1.20.7
+ENTRYPOINT /usr/bin/go
+
+FROM local_go as builder
 
 ENV PROJECTPATH=/go/src/github.com/replicatedhq/replicated-sdk
 WORKDIR $PROJECTPATH
