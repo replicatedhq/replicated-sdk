@@ -17,48 +17,34 @@ var (
 	defaultMockDataYAML []byte
 )
 
-func GetHelmChartURL(ctx context.Context, clientset kubernetes.Interface, namespace string) (string, error) {
-	mockData, err := GetMockData(ctx, clientset, namespace)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to get mock data")
-	} else if mockData == nil {
-		return "", nil
+func GetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.MockData, error) {
+	replicatedSDKSecretLock.Lock()
+	defer replicatedSDKSecretLock.Unlock()
+
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSDKSecretName, metav1.GetOptions{})
+	if err != nil && !kuberneteserrors.IsNotFound(err) {
+		return nil, errors.Wrap(err, "failed to get replicated-sdk secret")
+	}
+	if err == nil {
+		b := secret.Data[integrationMockDataKey]
+		if len(b) != 0 {
+			var mockData types.MockData
+			if err := yaml.Unmarshal(b, &mockData); err != nil {
+				return nil, errors.Wrap(err, "failed to unmarshal mock data")
+			}
+			return &mockData, nil
+		}
 	}
 
-	return mockData.HelmChartURL, nil
+	return GetDefaultMockData(ctx)
 }
 
-func GetCurrentRelease(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.MockRelease, error) {
-	mockData, err := GetMockData(ctx, clientset, namespace)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get mock data")
-	} else if mockData == nil {
-		return nil, nil
+func GetDefaultMockData(ctx context.Context) (*types.MockData, error) {
+	var mockData types.MockData
+	if err := yaml.Unmarshal(defaultMockDataYAML, &mockData); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal default mock data")
 	}
-
-	return mockData.CurrentRelease, nil
-}
-
-func GetAvailableReleases(ctx context.Context, clientset kubernetes.Interface, namespace string) ([]types.MockRelease, error) {
-	mockData, err := GetMockData(ctx, clientset, namespace)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get mock data")
-	} else if mockData == nil {
-		return nil, nil
-	}
-
-	return mockData.AvailableReleases, nil
-}
-
-func GetDeployedReleases(ctx context.Context, clientset kubernetes.Interface, namespace string) ([]types.MockRelease, error) {
-	mockData, err := GetMockData(ctx, clientset, namespace)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get mock data")
-	} else if mockData == nil {
-		return nil, nil
-	}
-
-	return mockData.DeployedReleases, nil
+	return &mockData, nil
 }
 
 func SetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string, mockData types.MockData) error {
@@ -79,41 +65,11 @@ func SetMockData(ctx context.Context, clientset kubernetes.Interface, namespace 
 		secret.Data = map[string][]byte{}
 	}
 
-	secret.Data[replicatedSDKIntegrationMockDataKey] = b
+	secret.Data[integrationMockDataKey] = b
 	_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to update replicated-sdk secret")
 	}
 
 	return nil
-}
-
-func GetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.MockData, error) {
-	replicatedSDKSecretLock.Lock()
-	defer replicatedSDKSecretLock.Unlock()
-
-	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, replicatedSDKSecretName, metav1.GetOptions{})
-	if err != nil && !kuberneteserrors.IsNotFound(err) {
-		return nil, errors.Wrap(err, "failed to get replicated-sdk secret")
-	}
-	if err == nil {
-		b := secret.Data[replicatedSDKIntegrationMockDataKey]
-		if len(b) != 0 {
-			var mockData types.MockData
-			if err := yaml.Unmarshal(b, &mockData); err != nil {
-				return nil, errors.Wrap(err, "failed to unmarshal mock data")
-			}
-			return &mockData, nil
-		}
-	}
-
-	return GetDefaultMockData(ctx)
-}
-
-func GetDefaultMockData(ctx context.Context) (*types.MockData, error) {
-	var mockData types.MockData
-	if err := yaml.Unmarshal(defaultMockDataYAML, &mockData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal default mock data")
-	}
-	return &mockData, nil
 }

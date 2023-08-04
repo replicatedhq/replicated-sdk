@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/config"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
@@ -23,10 +24,11 @@ import (
 )
 
 type GetCurrentAppInfoResponse struct {
-	AppSlug        string     `json:"appSlug"`
-	AppName        string     `json:"appName"`
-	HelmChartURL   string     `json:"helmChartURL,omitempty"`
-	CurrentRelease AppRelease `json:"currentRelease"`
+	AppSlug        string              `json:"appSlug"`
+	AppName        string              `json:"appName"`
+	AppStatus      appstatetypes.State `json:"appStatus"`
+	HelmChartURL   string              `json:"helmChartURL,omitempty"`
+	CurrentRelease AppRelease          `json:"currentRelease"`
 }
 
 type GetAppHistoryResponse struct {
@@ -64,23 +66,19 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			AppName: store.GetStore().GetAppName(),
 		}
 
-		mockCurrentRelease, err := integration.GetCurrentRelease(r.Context(), clientset, store.GetStore().GetNamespace())
+		mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
-			logger.Errorf("failed to get mock current release: %v", err)
+			logger.Errorf("failed to get mock data: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
-		}
-		if mockCurrentRelease != nil {
-			response.CurrentRelease = mockReleaseToAppRelease(*mockCurrentRelease)
 		}
 
-		mockHelmChartURL, err := integration.GetHelmChartURL(r.Context(), clientset, store.GetStore().GetNamespace())
-		if err != nil {
-			logger.Errorf("failed to get mock helm chart url: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		response.AppStatus = mockData.AppStatus
+		response.HelmChartURL = mockData.HelmChartURL
+
+		if mockData.CurrentRelease != nil {
+			response.CurrentRelease = mockReleaseToAppRelease(*mockData.CurrentRelease)
 		}
-		response.HelmChartURL = mockHelmChartURL
 
 		JSON(w, http.StatusOK, response)
 		return
@@ -89,6 +87,7 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	response := GetCurrentAppInfoResponse{
 		AppSlug:      store.GetStore().GetAppSlug(),
 		AppName:      store.GetStore().GetAppName(),
+		AppStatus:    store.GetStore().GetAppStatus().State,
 		HelmChartURL: helm.GetParentChartURL(),
 		CurrentRelease: AppRelease{
 			VersionLabel: store.GetStore().GetVersionLabel(),
@@ -130,15 +129,15 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isIntegrationModeEnabled {
-		mockAvailableReleases, err := integration.GetAvailableReleases(r.Context(), clientset, store.GetStore().GetNamespace())
+		mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
-			logger.Errorf("failed to get available mock releases: %v", err)
+			logger.Errorf("failed to get mock data: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		response := []upstreamtypes.ChannelRelease{}
-		for _, mockRelease := range mockAvailableReleases {
+		for _, mockRelease := range mockData.AvailableReleases {
 			response = append(response, upstreamtypes.ChannelRelease{
 				VersionLabel: mockRelease.VersionLabel,
 				CreatedAt:    mockRelease.CreatedAt,
@@ -197,9 +196,9 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isIntegrationModeEnabled {
-		mockReleases, err := integration.GetDeployedReleases(r.Context(), clientset, store.GetStore().GetNamespace())
+		mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
-			logger.Errorf("failed to get mock releases: %v", err)
+			logger.Errorf("failed to get mock data: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -207,9 +206,8 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 		response := GetAppHistoryResponse{
 			Releases: []AppRelease{},
 		}
-		for _, mockRelease := range mockReleases {
-			appRelease := mockReleaseToAppRelease(mockRelease)
-			response.Releases = append(response.Releases, appRelease)
+		for _, mockRelease := range mockData.DeployedReleases {
+			response.Releases = append(response.Releases, mockReleaseToAppRelease(mockRelease))
 		}
 
 		JSON(w, http.StatusOK, response)

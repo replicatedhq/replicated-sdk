@@ -1,10 +1,15 @@
 package types
 
+import (
+	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+)
+
 type MockData struct {
-	HelmChartURL      string        `json:"helmChartURL,omitempty" yaml:"helmChartURL,omitempty"`
-	CurrentRelease    *MockRelease  `json:"currentRelease,omitempty" yaml:"currentRelease,omitempty"`
-	DeployedReleases  []MockRelease `json:"deployedReleases,omitempty" yaml:"deployedReleases,omitempty"`
-	AvailableReleases []MockRelease `json:"availableReleases,omitempty" yaml:"availableReleases,omitempty"`
+	AppStatus         appstatetypes.State `json:"appStatus,omitempty" yaml:"appStatus,omitempty"`
+	HelmChartURL      string              `json:"helmChartURL,omitempty" yaml:"helmChartURL,omitempty"`
+	CurrentRelease    *MockRelease        `json:"currentRelease,omitempty" yaml:"currentRelease,omitempty"`
+	DeployedReleases  []MockRelease       `json:"deployedReleases,omitempty" yaml:"deployedReleases,omitempty"`
+	AvailableReleases []MockRelease       `json:"availableReleases,omitempty" yaml:"availableReleases,omitempty"`
 }
 
 type MockRelease struct {

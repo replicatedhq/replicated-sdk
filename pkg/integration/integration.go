@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	replicatedSDKSecretName             = "replicated-sdk"
-	replicatedSDKIntegrationMockDataKey = "REPLICATED_SDK_INTEGRATION_MOCK_DATA"
-	replicatedSDKIntegrationEnabledKey  = "REPLICATED_SDK_INTEGRATION_ENABLED"
+	replicatedSDKSecretName = "replicated-sdk"
+	integrationMockDataKey  = "integration-mock-data"
+	integrationEnabledKey   = "integration-enabled"
 )
 
 var replicatedSDKSecretLock = sync.Mutex{}
@@ -36,7 +36,7 @@ func IsEnabled(ctx context.Context, clientset kubernetes.Interface, namespace st
 		return false, errors.Wrap(err, "failed to get replicated-sdk secret")
 	}
 
-	v, ok := secret.Data[replicatedSDKIntegrationEnabledKey]
+	v, ok := secret.Data[integrationEnabledKey]
 	if !ok || len(v) == 0 {
 		return true, nil
 	}

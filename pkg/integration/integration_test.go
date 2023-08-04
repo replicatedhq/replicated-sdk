@@ -45,7 +45,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedSDKIntegrationEnabledKey: []byte("true"),
+							integrationEnabledKey: []byte("true"),
 						},
 					}},
 				}),
@@ -72,7 +72,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedSDKIntegrationEnabledKey: []byte("true"),
+							integrationEnabledKey: []byte("true"),
 						},
 					}},
 				}),
@@ -99,7 +99,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedSDKIntegrationEnabledKey: []byte("false"),
+							integrationEnabledKey: []byte("false"),
 						},
 					}},
 				}),
@@ -151,7 +151,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							replicatedSDKIntegrationEnabledKey: []byte(""),
+							integrationEnabledKey: []byte(""),
 						},
 					}},
 				}),

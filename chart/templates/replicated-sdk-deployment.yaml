@@ -54,7 +54,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: replicated-sdk
-              key: REPLICATED_SDK_INTEGRATION_LICENSE_ID
+              key: integration-license-id
         {{- end }}
         ports:
         - containerPort: 3000
