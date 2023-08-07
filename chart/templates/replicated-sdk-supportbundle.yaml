@@ -20,5 +20,7 @@ stringData:
         - logs:
             collectorName: replicated-sdk-logs
             selector:
-              {{- include "replicated-sdk.labels" . | nindent 14 }}
+              {{- range $k, $v := (include "replicated-sdk.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }} 
             name: replicated-sdk/logs
