@@ -21,7 +21,7 @@ jobs:
       previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Get tags
         id: get-tags
@@ -81,7 +81,7 @@ jobs:
       - make-build
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - uses: replicatedhq/action-install-pact@v1
 
