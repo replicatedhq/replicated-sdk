@@ -28,6 +28,7 @@ jobs:
         run: |
           git fetch -a
           tags=($(git tag --sort="-creatordate"))
+          echo $tags
           current_tag=${tags[0]}
           previous_tag=${tags[1]}
           echo "tag=${current_tag#v}" >> $GITHUB_OUTPUT
@@ -47,10 +48,12 @@ jobs:
         GIT_TAG: ${{ needs.get-tags.outputs.tag }}
         GH_PAT: ${{ secrets.GH_PAT }}
       run: |
-        curl -H "Authorization: token $GH_PAT" \
-          -H 'Accept: application/json' \
-          -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
-          "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
+        echo $GIT_PREV_TAG
+        echo $GIT_TAG
+        # curl -H "Authorization: token $GH_PAT" \
+        #   -H 'Accept: application/json' \
+        #   -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
+        #   "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
 
   make-tests:
     runs-on: ubuntu-22.04
