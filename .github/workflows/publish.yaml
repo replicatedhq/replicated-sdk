@@ -19,6 +19,7 @@ jobs:
     outputs:
       tag: ${{ steps.get-tags.outputs.tag }}
       previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
+      third-tag: ${{ steps.get-tags.outputs.third-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -30,8 +31,10 @@ jobs:
           tags=($(git tag --sort="-creatordate"))
           current_tag=${tags[0]}
           previous_tag=${tags[1]}
+          third_tag=${tags[2]}
           echo "tag=${current_tag#v}" >> $GITHUB_OUTPUT
           echo "previous-tag=${previous_tag#v}" >> $GITHUB_OUTPUT
+          echo "third-tag=${third_tag#v}" >> $GITHUB_OUTPUT
 
   generate-release-notes-pr:
     runs-on: ubuntu-22.04
@@ -43,12 +46,14 @@ jobs:
 
     - name: Generate Release Notes PR
       env:
+        THIRD_TAG: ${{ needs.get-tags.outputs.third-tag }}
         GIT_PREV_TAG: ${{ needs.get-tags.outputs.previous-tag }}
         GIT_TAG: ${{ needs.get-tags.outputs.tag }}
         GH_PAT: ${{ secrets.GH_PAT }}
       run: |
-        echo $GIT_PREV_TAG
         echo $GIT_TAG
+        echo $GIT_PREV_TAG
+        echo $THIRD_TAG
         # curl -H "Authorization: token $GH_PAT" \
         #   -H 'Accept: application/json' \
         #   -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
