@@ -36,6 +36,24 @@ record-release:
 	pact-broker record-release \
 		--pacticipant replicated-sdk \
 		--version ${PACT_VERSION} \
+		--environment staging \
+		--verbose
+	pact-broker record-release \
+		--pacticipant replicated-sdk \
+		--version ${PACT_VERSION} \
+		--environment production \
+		--verbose
+
+.PHONY: record-support-ended
+record-support-ended:
+	pact-broker record-support-ended \
+		--pacticipant replicated-sdk \
+		--version ${PACT_VERSION} \
+		--environment staging \
+		--verbose
+	pact-broker record-support-ended \
+		--pacticipant replicated-sdk \
+		--version ${PACT_VERSION} \
 		--environment production \
 		--verbose
 
