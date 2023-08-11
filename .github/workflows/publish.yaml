@@ -25,13 +25,18 @@ jobs:
 
       - name: Get tags
         id: get-tags
-        run: |
-          git fetch -a
-          tags=($(git tag --sort="-creatordate"))
-          current_tag=${tags[0]}
-          previous_tag=${tags[1]}
-          echo "tag=${current_tag#v}" >> $GITHUB_OUTPUT
-          echo "previous-tag=${previous_tag#v}" >> $GITHUB_OUTPUT
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const {
+              data: [latest, previous],
+            } = await github.rest.repos.listTags({
+              ...context.repo,
+              per_page: 2,
+              page: 1,
+            });
+            core.setOutput("tag", latest.name.replace(/^v/, ''));
+            core.setOutput("previous-tag", previous.name.replace(/^v/, ''));
 
   generate-release-notes-pr:
     runs-on: ubuntu-22.04
