@@ -130,23 +130,3 @@ jobs:
 
     - name: Pact record-release
       run: make record-release
-
-    - name: get previous release tag
-      id: previous-release
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const {
-            data: [latest, previous],
-          } = await github.rest.repos.listReleases({
-            ...context.repo,
-            per_page: 2,
-            page: 1,
-          });
-          if (!previous) return;
-          core.setOutput("sha", previous.tag_name);
-
-    - if: steps.previous-release.outputs.sha
-      env:
-        PACT_VERSION: ${{ steps.previous-release.outputs.sha }}
-      run: make record-support-ended

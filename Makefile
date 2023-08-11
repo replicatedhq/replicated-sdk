@@ -44,19 +44,6 @@ record-release:
 		--environment production \
 		--verbose
 
-.PHONY: record-support-ended
-record-support-ended:
-	pact-broker record-support-ended \
-		--pacticipant replicated-sdk \
-		--version ${PACT_VERSION} \
-		--environment staging \
-		--verbose
-	pact-broker record-support-ended \
-		--pacticipant replicated-sdk \
-		--version ${PACT_VERSION} \
-		--environment production \
-		--verbose
-
 .PHONY: build
 build:
 	go build ${LDFLAGS} ${GCFLAGS} -v -o bin/replicated-sdk $(BUILDFLAGS) ./cmd/replicated-sdk
