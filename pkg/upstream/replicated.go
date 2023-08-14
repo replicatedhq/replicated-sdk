@@ -44,6 +44,7 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 	urlValues.Set("channelSequence", channelSequenceStr)
 	urlValues.Add("licenseSequence", fmt.Sprintf("%d", license.Spec.LicenseSequence))
 	urlValues.Add("isSemverSupported", "true")
+	urlValues.Add("sortOrder", "desc")
 
 	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, license.Spec.AppSlug, urlValues.Encode())
 
