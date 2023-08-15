@@ -11,16 +11,16 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 If release name contains chart name it will be used as a full name.
 */}}
 {{- define "replicated-sdk.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s" $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
+  {{- if .Values.fullnameOverride }}
+    {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+  {{- else }}
+    {{- $name := default .Chart.Name .Values.nameOverride }}
+    {{- if contains $name .Release.Name }}
+      {{- .Release.Name | trunc 63 | trimSuffix "-" }}
+    {{- else }}
+      {{- printf "%s" $name | trunc 63 | trimSuffix "-" }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 
 {{/*
@@ -54,20 +54,22 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 License Fields
 */}}
 {{- define "replicated-sdk.licenseFields" -}}
-{{- if (((.Values.global).replicated).licenseFields) -}}
-{{- .Values.global.replicated.licenseFields | toYaml -}}
-{{- else if .Values.licenseFields -}}
-{{- .Values.licenseFields | toYaml -}}
-{{- end -}}
+  {{- if (((.Values.global).replicated).licenseFields) -}}
+    {{- .Values.global.replicated.licenseFields | toYaml -}}
+  {{- else if .Values.licenseFields -}}
+    {{- .Values.licenseFields | toYaml -}}
+  {{- end -}}
 {{- end -}}
 
 {{/*
-Create the name of the service account to use
+Is OpenShift
 */}}
-{{- define "replicated-sdk.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "replicated-sdk.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
+{{- define "replicated-sdk.isOpenShift" -}}
+  {{- $isOpenShift := false }}
+  {{- range .Capabilities.APIVersions -}}
+    {{- if hasPrefix "apps.openshift.io/" . -}}
+      {{- $isOpenShift = true }}
+    {{- end -}}
+  {{- end -}}
+  {{- $isOpenShift }}
 {{- end }}

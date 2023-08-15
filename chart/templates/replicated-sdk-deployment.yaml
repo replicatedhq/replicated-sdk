@@ -1,3 +1,12 @@
+{{- $podSecurityContext := .Values.podSecurityContext }}
+{{ if eq (include "replicated-sdk.isOpenShift" .) "true" }}
+  {{ if eq ($podSecurityContext.runAsUser | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsUser" }}
+  {{- end }}
+  {{ if eq ($podSecurityContext.runAsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsGroup" }}
+  {{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,6 +26,9 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if $podSecurityContext.enabled }}
+      securityContext: {{- omit $podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
       volumes:
       - name: replicated-sdk
         secret:
@@ -25,6 +37,9 @@ spec:
       - name: replicated-sdk
         image: {{ index .Values.images "replicated-sdk" }}
         imagePullPolicy: IfNotPresent
+        {{- if .Values.containerSecurityContext.enabled }}
+        securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 10 }}
+        {{- end }}
         volumeMounts:
         - name: replicated-sdk
           mountPath: /etc/replicated-sdk/config.yaml
@@ -75,8 +90,4 @@ spec:
             cpu: 100m
             memory: 100Mi
       restartPolicy: Always
-      securityContext:
-        fsGroup: 1001
-        runAsUser: 1001
       serviceAccountName: {{ .Values.serviceAccountName | default "replicated-sdk" }}
-status: {}
