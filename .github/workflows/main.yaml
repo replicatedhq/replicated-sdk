@@ -8,44 +8,208 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  APP_SLUG: replicated-sdk-e2e
+
 jobs:
-  make-tests:
-    env:
-      PACT_VERSION: ${{ github.sha }}
-      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
-      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
-    runs-on: ubuntu-22.04
+  # make-tests:
+  #   env:
+  #     PACT_VERSION: ${{ github.sha }}
+  #     PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+  #     PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-go@v4
+  #       with:
+  #         go-version: '^1.20'
+  #     - uses: replicatedhq/action-install-pact@v1
+  #     - run: make test
+  #     - if: github.event_name == 'push' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository )
+  #       run: make publish-pact
+  #     - if: github.event_name == 'push' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository )
+  #       run: |
+  #         make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
+
+  build-and-push-e2e:
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-go@v4
         with:
           go-version: '^1.20'
-      - uses: replicatedhq/action-install-pact@v1
-      - run: make test
-      - if: github.event_name == 'push' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository )
-        run: make publish-pact
-      - if: github.event_name == 'push' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository )
-        run: |
-          make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
 
-  make-build:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '^1.20'
-      - name: make build
-        run: make build
-
-  build-and-push-ttl-image:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
       - name: build and push sdk for e2e
-        uses: docker/build-push-action@v3
+        env:
+          USER: automated-${{ github.run_id }}
+        run: make build-ttl.sh
+
+  validate-chart:
+    runs-on: ubuntu-20.04
+    needs: [ build-and-push-e2e ]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: validate chart
+        run: |
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0)
+
+          if echo $output | grep -q integration-enabled; then
+            printf "'integration-enabled' key should not exist if value is not set by the user:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.enabled=true)
+
+          if ! echo $output | grep -q integration-enabled; then
+            printf "'integration-enabled' key should exist if value is set by the user:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+  create-test-release:
+    runs-on: ubuntu-20.04
+    needs: [ build-and-push-e2e ]
+    outputs:
+      license-id: ${{ steps.create-customer.outputs.license-id }}
+      customer-id: ${{ steps.create-customer.outputs.customer-id }}
+      channel-slug: ${{ steps.create-release.outputs.channel-slug }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Package test chart
+        env:
+          REPLICATED_SDK_IMAGE_NAME: replicated-sdk
+          REPLICATED_SDK_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}
+          REPLICATED_SDK_VERSION: 0.0.0
+        run: |
+          cd test-chart
+          envsubst < Chart.yaml.tmpl > Chart.yaml
+          helm dep update
+          helm package .
+
+      - name: Create release
+        id: create-release
+        uses: replicatedhq/replicated-actions/create-release@v1.0.1
         with:
-          tags: ttl.sh/automated-${{ github.run_id }}/replicated-sdk:24h
-          context: ./
-          file: ./Dockerfile
-          push: false # we don't need to push the image since we don't have any e2e tests yet
+          app-slug: ${{ env.APP_SLUG }}
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
+          chart: test-chart/test-chart-0.1.0.tgz
+          promote-channel: automated-${{ github.run_id }}
+          version: 0.1.0
+
+      - name: Create customer
+        id: create-customer
+        uses: replicatedhq/replicated-actions/create-customer@main
+        with:
+          app-slug: ${{ env.APP_SLUG }}
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
+          customer-name: automated-${{ github.run_id }}
+          customer-email: testcustomer@replicated.com
+          license-type: dev
+          channel-slug: ${{ steps.create-release.outputs.channel-slug }}
+          entitlements: |
+            - name: "num_seats"
+              value: "10"
+          is-kots-install-enabled: "false"
+
+  validate-e2e:
+    runs-on: ubuntu-20.04
+    needs: [ create-test-release ]
+    strategy:
+      fail-fast: false
+      matrix:
+        cluster: [
+          {distribution: k3s, version: 1.26},
+          {distribution: eks, version: 1.27},
+          {distribution: gke, version: 1.27},
+          {distribution: kind, version: 1.27},
+          {distribution: openshift, version: 4.13.0-okd}
+        ]
+    env:
+      LICENSE_ID: ${{ needs.create-test-release.outputs.license-id }}
+      CHANNEL_SLUG: ${{ needs.create-test-release.outputs.channel-slug }}
+      LICENSE_FIELDS: '[{"name":"expires_at","value": ""},{"name":"num_seats","value":"10"}]'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create cluster
+        id: create-cluster 
+        uses: replicatedhq/replicated-actions/create-cluster@v1.0.1
+        with:
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
+          kubernetes-distribution: ${{ matrix.cluster.distribution }}
+          kubernetes-version: ${{ matrix.cluster.version }}
+          cluster-name: automated-${{ github.run_id }}-${{ matrix.cluster.distribution }}-${{ matrix.cluster.version }}
+          ttl: 2h
+          export-kubeconfig: true
+
+      - name: Install as standalone in integration mode
+        run: helm install replicated-sdk oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.licenseID=$LICENSE_ID --wait
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'true'
+
+      - name: Uninstall replicated-sdk
+        run: helm uninstall replicated-sdk --wait
+
+      - name: Login to registry
+        run: helm registry login registry.replicated.com --username $LICENSE_ID --password $LICENSE_ID
+
+      - name: Install as subchart in integration mode
+        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --wait
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'true'
+
+      - name: Uninstall test-chart
+        run: helm uninstall test-chart --wait
+
+      # we have to explicitly disable integration mode here because we're using a "dev" license
+      - name: Install as subchart in production mode
+        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false --wait
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'false'
+
+      - name: Remove Cluster
+        uses: replicatedhq/replicated-actions/remove-cluster@v1.0.1
+        with:
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
+          cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}
+
+  cleanup-test-release:
+    runs-on: ubuntu-20.04
+    needs: [ create-test-release, validate-e2e ]
+    if: always()
+    steps:
+      - name: Archive Customer
+        if: ${{ needs.create-test-release.outputs.customer-id != '' }}
+        uses: replicatedhq/replicated-actions/archive-customer@v1.0.1
+        with:
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }} 
+          customer-id: ${{ needs.create-test-release.outputs.customer-id }}
+
+      - name: Archive Channel
+        if: ${{ needs.create-test-release.outputs.channel-slug != '' }}
+        uses: replicatedhq/replicated-actions/archive-channel@v1.0.1
+        with:
+          app-slug: ${{ env.APP_SLUG }}
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }} 
+          channel-slug: ${{ needs.create-test-release.outputs.channel-slug }}

@@ -61,9 +61,10 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
 
-	// mock-data
-	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.PostMockData)).Methods("POST")
-	r.HandleFunc("/api/v1/mock-data", handlers.EnforceMockAccess(handlers.GetMockData)).Methods("GET")
+	// integration
+	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.PostIntegrationMockData)).Methods("POST")
+	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.GetIntegrationMockData)).Methods("GET")
+	r.HandleFunc("/api/v1/integration/status", handlers.EnforceMockAccess(handlers.GetIntegrationStatus)).Methods("GET")
 
 	srv := &http.Server{
 		Handler: r,

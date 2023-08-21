@@ -12,7 +12,11 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
-func PostMockData(w http.ResponseWriter, r *http.Request) {
+type GetIntegrationStatusResponse struct {
+	IsEnabled bool `json:"isEnabled"`
+}
+
+func PostIntegrationMockData(w http.ResponseWriter, r *http.Request) {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get clientset"))
@@ -48,7 +52,7 @@ func PostMockData(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func GetMockData(w http.ResponseWriter, r *http.Request) {
+func GetIntegrationMockData(w http.ResponseWriter, r *http.Request) {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get clientset"))
@@ -81,4 +85,26 @@ func GetMockData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSON(w, http.StatusOK, mockData)
+}
+
+func GetIntegrationStatus(w http.ResponseWriter, r *http.Request) {
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response := GetIntegrationStatusResponse{
+		IsEnabled: isIntegrationModeEnabled,
+	}
+
+	JSON(w, http.StatusOK, response)
 }
