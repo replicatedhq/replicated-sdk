@@ -198,7 +198,6 @@ jobs:
   cleanup-test-release:
     runs-on: ubuntu-22.04
     needs: [ create-test-release, validate-e2e ]
-    if: always()
     steps:
       - name: Archive Customer
         if: ${{ needs.create-test-release.outputs.customer-id != '' }}
