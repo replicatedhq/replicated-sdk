@@ -11,7 +11,7 @@ make build-ttl.sh
 You can then install the Helm chart using one of the following options:
 
 **Option 1 (Integration mode)**:
-This is the quickest way get the SDK up and running out of the box.
+This is the quickest way to get the SDK up and running out of the box.
 
 Notes:
 - When the SDK runs in integration mode, it returns mocked data instead of real data except for `/license` endpoints.

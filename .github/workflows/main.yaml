@@ -94,7 +94,7 @@ jobs:
 
       - name: Create release
         id: create-release
-        uses: replicatedhq/replicated-actions/create-release@v1.0.1
+        uses: replicatedhq/replicated-actions/create-release@v1.1.1
         with:
           app-slug: ${{ env.APP_SLUG }}
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
@@ -139,7 +139,7 @@ jobs:
 
       - name: Create cluster
         id: create-cluster 
-        uses: replicatedhq/replicated-actions/create-cluster@v1.0.1
+        uses: replicatedhq/replicated-actions/create-cluster@v1.1.1
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
           kubernetes-distribution: ${{ matrix.cluster.distribution }}
@@ -189,7 +189,7 @@ jobs:
           integration-enabled: 'false'
 
       - name: Remove Cluster
-        uses: replicatedhq/replicated-actions/remove-cluster@v1.0.1
+        uses: replicatedhq/replicated-actions/remove-cluster@v1.1.1
         if: ${{ success() || cancelled() }}
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
@@ -202,14 +202,14 @@ jobs:
     steps:
       - name: Archive Customer
         if: ${{ needs.create-test-release.outputs.customer-id != '' }}
-        uses: replicatedhq/replicated-actions/archive-customer@v1.0.1
+        uses: replicatedhq/replicated-actions/archive-customer@v1.1.1
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }} 
           customer-id: ${{ needs.create-test-release.outputs.customer-id }}
 
       - name: Archive Channel
         if: ${{ needs.create-test-release.outputs.channel-slug != '' }}
-        uses: replicatedhq/replicated-actions/archive-channel@v1.0.1
+        uses: replicatedhq/replicated-actions/archive-channel@v1.1.1
         with:
           app-slug: ${{ env.APP_SLUG }}
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }} 
