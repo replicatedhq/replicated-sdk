@@ -36,7 +36,7 @@ jobs:
           make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
 
   build-and-push-e2e:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
 
@@ -50,7 +50,7 @@ jobs:
         run: make build-ttl.sh
 
   validate-chart:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [ build-and-push-e2e ]
     steps:
       - uses: actions/checkout@v3
@@ -72,7 +72,7 @@ jobs:
           fi
 
   create-test-release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [ build-and-push-e2e ]
     outputs:
       license-id: ${{ steps.create-customer.outputs.license-id }}
@@ -118,7 +118,7 @@ jobs:
           is-kots-install-enabled: "false"
 
   validate-e2e:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [ create-test-release ]
     strategy:
       fail-fast: false
@@ -195,7 +195,7 @@ jobs:
           cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}
 
   cleanup-test-release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [ create-test-release, validate-e2e ]
     if: always()
     steps:
