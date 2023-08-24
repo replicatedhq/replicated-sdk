@@ -24,6 +24,12 @@ vendor
 /chart/Chart.yaml
 /chart/values.yaml
 
+# packaged test charts
+/test-chart/Chart.yaml
+/test-chart/Chart.lock
+/test-chart/charts/
+/test-chart/test-chart-*.tgz
+
 .envrc
 .DS_Store
 
