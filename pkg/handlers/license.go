@@ -51,6 +51,9 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		field := fields["num_seats"]
+		field.Value = "whatever"
+		fields["num_seats"] = field
 		licenseFields = fields
 		store.GetStore().SetLicenseFields(licenseFields)
 	}
@@ -82,9 +85,6 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 			// field might not exist or has been removed
 			delete(licenseFields, fieldName)
 		} else {
-			if field.Name == "num_seats" {
-				field.Value = "whatever"
-			}
 			licenseFields[fieldName] = *field
 		}
 		store.GetStore().SetLicenseFields(licenseFields)
