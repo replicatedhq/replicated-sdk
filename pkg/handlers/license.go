@@ -15,7 +15,7 @@ import (
 )
 
 type LicenseInfo struct {
-	LicenseID     string `json:"licenseID"`
+	LicenseID     string `json:"licenseId"`
 	ChannelName   string `json:"channelName"`
 	CustomerName  string `json:"customerName"`
 	CustomerEmail string `json:"customerEmail"`
