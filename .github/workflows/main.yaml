@@ -190,6 +190,7 @@ jobs:
 
       - name: Remove Cluster
         uses: replicatedhq/replicated-actions/remove-cluster@v1.0.1
+        if: ${{ success() || cancelled() }}
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
           cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}
