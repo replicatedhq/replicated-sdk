@@ -149,7 +149,7 @@ jobs:
           export-kubeconfig: true
 
       - name: Install as standalone in integration mode
-        run: helm install replicated-sdk oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.licenseID=$LICENSE_ID --wait
+        run: helm install replicated-sdk oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.licenseID=$LICENSE_ID --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -159,13 +159,13 @@ jobs:
           integration-enabled: 'true'
 
       - name: Uninstall replicated-sdk
-        run: helm uninstall replicated-sdk --wait
+        run: helm uninstall replicated-sdk --wait --timeout 2m
 
       - name: Login to registry
         run: helm registry login registry.replicated.com --username $LICENSE_ID --password $LICENSE_ID
 
       - name: Install as subchart in integration mode
-        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --wait
+        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -175,11 +175,11 @@ jobs:
           integration-enabled: 'true'
 
       - name: Uninstall test-chart
-        run: helm uninstall test-chart --wait
+        run: helm uninstall test-chart --wait --timeout 2m
 
       # we have to explicitly disable integration mode here because we're using a "dev" license
       - name: Install as subchart in production mode
-        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false --wait
+        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
