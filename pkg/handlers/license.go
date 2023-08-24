@@ -15,7 +15,7 @@ import (
 )
 
 type LicenseInfo struct {
-	LicenseID     string `json:"licenseId"`
+	LicenseID     string `json:"licenseID"`
 	ChannelName   string `json:"channelName"`
 	CustomerName  string `json:"customerName"`
 	CustomerEmail string `json:"customerEmail"`
@@ -82,6 +82,7 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 			// field might not exist or has been removed
 			delete(licenseFields, fieldName)
 		} else {
+			field.Value = "whatever"
 			licenseFields[fieldName] = *field
 		}
 		store.GetStore().SetLicenseFields(licenseFields)
