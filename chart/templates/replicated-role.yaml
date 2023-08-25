@@ -3,8 +3,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
-    {{- include "replicated-sdk.labels" . | nindent 4 }}
-  name: replicated-sdk-role
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: {{ include "replicated.roleName" . }}
 rules:
 - apiGroups:
   - '*'
@@ -18,9 +18,16 @@ rules:
   - ''
   resources:
   - 'configmaps'
+  verbs:
+  - 'update'
+  resourceNames:
+  - {{ include "replicated.configMapName" . }}
+- apiGroups:
+  - ''
+  resources:
   - 'secrets'
   verbs:
   - 'update'
   resourceNames:
-  - replicated-sdk
+  - {{ include "replicated.secretName" . }}
 {{ end }}

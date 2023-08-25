@@ -1,5 +1,5 @@
-name: 'Validate SDK Endpoints'
-description: 'Composite action for validating the Replicated SDK endpoints'
+name: 'Validate Replicated API Endpoints'
+description: 'Composite action for validating the replicated API endpoints'
 inputs:
   license-id:
     description: 'License ID to use for validation'
@@ -18,11 +18,11 @@ runs:
     - name: Install jq
       uses: dcarbone/install-jq-action@v1.0.1
 
-    - name: Port forward to replicated-sdk service
+    - name: Port forward to replicated service
       shell: bash
       run: |
         kill -9 $(sudo lsof -t -i:8888) 2>/dev/null || true
-        kubectl port-forward svc/replicated-sdk 8888:3000 &
+        kubectl port-forward svc/replicated 8888:3000 &
         sleep 5
 
     - name: Validate integration status

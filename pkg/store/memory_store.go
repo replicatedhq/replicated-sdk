@@ -8,7 +8,7 @@ import (
 )
 
 type InMemoryStore struct {
-	replicatedSDKID       string
+	replicatedID          string
 	appID                 string
 	license               *kotsv1beta1.License
 	licenseFields         sdklicensetypes.LicenseFields
@@ -28,7 +28,7 @@ type InMemoryStore struct {
 }
 
 type InitInMemoryStoreOptions struct {
-	ReplicatedSDKID       string
+	ReplicatedID          string
 	AppID                 string
 	License               *kotsv1beta1.License
 	LicenseFields         sdklicensetypes.LicenseFields
@@ -46,7 +46,7 @@ type InitInMemoryStoreOptions struct {
 
 func InitInMemory(options InitInMemoryStoreOptions) error {
 	SetStore(&InMemoryStore{
-		replicatedSDKID:       options.ReplicatedSDKID,
+		replicatedID:          options.ReplicatedID,
 		appID:                 options.AppID,
 		license:               options.License,
 		licenseFields:         options.LicenseFields,
@@ -66,8 +66,8 @@ func InitInMemory(options InitInMemoryStoreOptions) error {
 	return nil
 }
 
-func (s *InMemoryStore) GetReplicatedSDKID() string {
-	return s.replicatedSDKID
+func (s *InMemoryStore) GetReplicatedID() string {
+	return s.replicatedID
 }
 
 func (s *InMemoryStore) GetAppID() string {

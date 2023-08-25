@@ -9,8 +9,8 @@ import (
 
 func RootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "replicated-sdk",
-		Short: "replicated-sdk is the software development kit for Replicated",
+		Use:   "replicated",
+		Short: "replicated is the software development kit for Replicated",
 		Long:  ``,
 		Args:  cobra.MinimumNArgs(1),
 		PreRun: func(cmd *cobra.Command, args []string) {
@@ -34,6 +34,6 @@ func RootCmd() *cobra.Command {
 }
 
 func initConfig() {
-	viper.SetEnvPrefix("REPLICATED_SDK")
+	viper.SetEnvPrefix("REPLICATED")
 	viper.AutomaticEnv()
 }

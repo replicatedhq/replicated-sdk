@@ -37,17 +37,17 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 
 func canReport(license *kotsv1beta1.License) (bool, error) {
 	if helm.IsHelmManaged() {
-		sdkHelmRevision := helm.GetReleaseRevision()
+		replicatedHelmRevision := helm.GetReleaseRevision()
 
 		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
 		if err != nil {
 			return false, errors.Wrap(err, "failed to get release")
 		}
 
-		// don't report from sdk instances that are not associated with the current helm release revision.
-		// this can happen during a helm upgrade/rollback when a rolling update of the replicated-sdk deployment is in progress.
-		if sdkHelmRevision != helmRelease.Version {
-			logger.Debugf("not reporting from sdk instance with helm revision %d because current helm release revision is %d\n", sdkHelmRevision, helmRelease.Version)
+		// don't report from replicated instances that are not associated with the current helm release revision.
+		// this can happen during a helm upgrade/rollback when a rolling update of the replicated deployment is in progress.
+		if replicatedHelmRevision != helmRelease.Version {
+			logger.Debugf("not reporting from replicated instance with helm revision %d because current helm release revision is %d\n", replicatedHelmRevision, helmRelease.Version)
 			return false, nil
 		}
 	}

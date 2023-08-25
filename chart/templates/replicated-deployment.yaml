@@ -1,5 +1,5 @@
 {{- $podSecurityContext := .Values.podSecurityContext }}
-{{ if eq (include "replicated-sdk.isOpenShift" .) "true" }}
+{{ if eq (include "replicated.isOpenShift" .) "true" }}
   {{ if eq ($podSecurityContext.runAsUser | int) 1001 }}
     {{- $_ := unset $podSecurityContext "runAsUser" }}
   {{- end }}
@@ -11,16 +11,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    {{- include "replicated-sdk.labels" . | nindent 4 }}
-  name: replicated-sdk
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: {{ include "replicated.deploymentName" . }}
 spec:
   selector:
     matchLabels:
-      {{- include "replicated-sdk.selectorLabels" . | nindent 6 }}
+      {{- include "replicated.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "replicated-sdk.labels" . | nindent 8 }}
+        {{- include "replicated.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -30,23 +30,23 @@ spec:
       securityContext: {{- omit $podSecurityContext "enabled" | toYaml | nindent 8 }}
       {{- end }}
       volumes:
-      - name: replicated-sdk
+      - name: replicated
         secret:
-          secretName: replicated-sdk
+          secretName: {{ include "replicated.secretName" . }}
       containers:
-      - name: replicated-sdk
-        image: {{ index .Values.images "replicated-sdk" }}
+      - name: replicated
+        image: {{ index .Values.images "replicated" }}
         imagePullPolicy: IfNotPresent
         {{- if .Values.containerSecurityContext.enabled }}
         securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 10 }}
         {{- end }}
         volumeMounts:
-        - name: replicated-sdk
-          mountPath: /etc/replicated-sdk/config.yaml
+        - name: replicated
+          mountPath: /etc/replicated/config.yaml
           readOnly: true
           subPath: config.yaml
         env:
-        - name: REPLICATED_SDK_NAMESPACE
+        - name: REPLICATED_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
@@ -62,13 +62,17 @@ spec:
           value: {{ .Values.parentChartURL | default "" | quote }}
         - name: HELM_DRIVER
           value: secret # TODO: support other drivers
-        - name: REPLICATED_SDK_CONFIG_FILE
-          value: /etc/replicated-sdk/config.yaml
+        - name: REPLICATED_SECRET_NAME
+          value: {{ include "replicated.secretName" . }}
+        - name: REPLICATED_CONFIGMAP_NAME
+          value: {{ include "replicated.configMapName" . }}
+        - name: REPLICATED_CONFIG_FILE
+          value: /etc/replicated/config.yaml
         {{- if (.Values.integration).licenseID }}
-        - name: REPLICATED_SDK_INTEGRATION_LICENSE_ID
+        - name: REPLICATED_INTEGRATION_LICENSE_ID
           valueFrom:
             secretKeyRef:
-              name: replicated-sdk
+              name: {{ include "replicated.secretName" . }}
               key: integration-license-id
         {{- end }}
         ports:
@@ -90,4 +94,4 @@ spec:
             cpu: 100m
             memory: 100Mi
       restartPolicy: Always
-      serviceAccountName: {{ .Values.serviceAccountName | default "replicated-sdk" }}
+      serviceAccountName: {{ .Values.serviceAccountName | default (include "replicated.serviceAccountName" .) }}

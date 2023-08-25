@@ -1,0 +1,26 @@
+{{/*
+Renders the Support Bundle secret to be used by replicated
+*/}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    {{- include "replicated.labels" . | nindent 4 }}
+    troubleshoot.io/kind: support-bundle
+  name: {{ include "replicated.supportBundleName" . }}
+stringData:
+  support-bundle-spec: |-
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: SupportBundle
+    metadata:
+      name: {{ include "replicated.supportBundleName" . }}
+    spec:
+      collectors:
+        - logs:
+            collectorName: replicated-logs
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }} 
+            name: replicated/logs

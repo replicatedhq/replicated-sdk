@@ -18,6 +18,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -247,7 +248,7 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
-	// find the replicated-sdk secret in the helm release and get the info from it
+	// find the replicated secret in the helm release and get the info from it
 	for _, doc := range strings.Split(helmRelease.Manifest, "\n---\n") {
 		if doc == "" {
 			continue
@@ -263,7 +264,8 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 		if gvk.Group != "" || gvk.Version != "v1" || gvk.Kind != "Secret" {
 			continue
 		}
-		if unstructured.GetName() != "replicated-sdk" {
+		// TODO NOW: pass resource name
+		if unstructured.GetName() != util.GetReplicatedSecretName() {
 			continue
 		}
 
@@ -281,20 +283,20 @@ func helmReleaseToAppRelease(helmRelease *helmrelease.Release) *AppRelease {
 
 		configFile, ok := data["config.yaml"]
 		if ok {
-			replicatedSDKConfig, err := config.ParseReplicatedSDKConfig([]byte(configFile.(string)))
+			replicatedConfig, err := config.ParseReplicatedConfig([]byte(configFile.(string)))
 			if err != nil {
 				logger.Infof("failed to parse config file: %v", err)
 				continue
 			}
-			appRelease.VersionLabel = replicatedSDKConfig.VersionLabel
-			appRelease.ReleaseNotes = replicatedSDKConfig.ReleaseNotes
-			appRelease.CreatedAt = replicatedSDKConfig.ReleaseCreatedAt
+			appRelease.VersionLabel = replicatedConfig.VersionLabel
+			appRelease.ReleaseNotes = replicatedConfig.ReleaseNotes
+			appRelease.CreatedAt = replicatedConfig.ReleaseCreatedAt
 		}
 
 		return appRelease
 	}
 
-	logger.Debugf("replicated-sdk secret not found in helm release %s revision %d", helmRelease.Name, helmRelease.Version)
+	logger.Debugf("replicated secret not found in helm release %s revision %d", helmRelease.Name, helmRelease.Version)
 
 	return nil
 }

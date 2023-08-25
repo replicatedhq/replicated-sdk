@@ -1,9 +1,9 @@
-# Default values for replicated-sdk.
+# Default values for replicated.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 images:
-  replicated-sdk: ${REPLICATED_SDK_REGISTRY}/replicated-sdk:${REPLICATED_SDK_TAG}
+  replicated: ${REPLICATED_REGISTRY}/replicated:${REPLICATED_TAG}
 
 license: ""
 licenseFields: ""
@@ -22,7 +22,6 @@ replicatedAppEndpoint: ""
 serviceAccountName: ""
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: ""
 
 containerSecurityContext:
   enabled: true

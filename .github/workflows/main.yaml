@@ -44,7 +44,7 @@ jobs:
         with:
           go-version: '^1.20'
 
-      - name: build and push sdk for e2e
+      - name: build and push replicated for e2e
         env:
           USER: automated-${{ github.run_id }}
         run: make build-ttl.sh
@@ -57,14 +57,14 @@ jobs:
 
       - name: validate chart
         run: |
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0)
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0)
 
           if echo $output | grep -q integration-enabled; then
             printf "'integration-enabled' key should not exist if value is not set by the user:\n\n%s\n\n" "$output"
             exit 1
           fi
 
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.enabled=true)
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.enabled=true)
 
           if ! echo $output | grep -q integration-enabled; then
             printf "'integration-enabled' key should exist if value is set by the user:\n\n%s\n\n" "$output"
@@ -83,9 +83,9 @@ jobs:
 
       - name: Package test chart
         env:
-          REPLICATED_SDK_IMAGE_NAME: replicated-sdk
-          REPLICATED_SDK_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}
-          REPLICATED_SDK_VERSION: 0.0.0
+          REPLICATED_IMAGE_NAME: replicated
+          REPLICATED_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}
+          REPLICATED_VERSION: 0.0.0
         run: |
           cd test-chart
           envsubst < Chart.yaml.tmpl > Chart.yaml
@@ -149,7 +149,7 @@ jobs:
           export-kubeconfig: true
 
       - name: Install as standalone in integration mode
-        run: helm install replicated-sdk oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.licenseID=$LICENSE_ID --wait --timeout 2m
+        run: helm install replicated oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.licenseID=$LICENSE_ID --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -158,8 +158,8 @@ jobs:
           license-fields: ${{ env.LICENSE_FIELDS }}
           integration-enabled: 'true'
 
-      - name: Uninstall replicated-sdk
-        run: helm uninstall replicated-sdk --wait --timeout 2m
+      - name: Uninstall replicated
+        run: helm uninstall replicated --wait --timeout 2m
 
       - name: Login to registry
         run: helm registry login registry.replicated.com --username $LICENSE_ID --password $LICENSE_ID
@@ -179,7 +179,7 @@ jobs:
 
       # we have to explicitly disable integration mode here because we're using a "dev" license
       - name: Install as subchart in production mode
-        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false --wait --timeout 2m
+        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints

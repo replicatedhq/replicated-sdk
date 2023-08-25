@@ -12,7 +12,7 @@ func IsAirgap() bool {
 }
 
 func IsDevEnv() bool {
-	return os.Getenv("REPLICATED_SDK_ENV") == "dev"
+	return os.Getenv("REPLICATED_ENV") == "dev"
 }
 
 func IsDevLicense(license *kotsv1beta1.License) bool {
