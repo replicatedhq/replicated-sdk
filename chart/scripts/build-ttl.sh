@@ -2,7 +2,7 @@
 
 set -e
 
-export CHART_VERSION=0.0.0
+export REPLICATED_CHART_VERSION=0.0.0
 export REPLICATED_TAG=24h
 export REPLICATED_REGISTRY=ttl.sh/$USER
 
