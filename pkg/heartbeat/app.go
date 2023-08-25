@@ -65,7 +65,7 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 
 func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 	r := types.HeartbeatInfo{
-		ClusterID:       sdkStore.GetReplicatedSDKID(),
+		ClusterID:       sdkStore.GetReplicatedID(),
 		InstanceID:      sdkStore.GetAppID(),
 		ChannelID:       sdkStore.GetChannelID(),
 		ChannelName:     sdkStore.GetChannelName(),

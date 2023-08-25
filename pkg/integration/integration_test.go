@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -41,7 +42,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSDKSecretName,
+							Name:      util.GetReplicatedSecretName(),
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
@@ -68,7 +69,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSDKSecretName,
+							Name:      util.GetReplicatedSecretName(),
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
@@ -95,7 +96,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSDKSecretName,
+							Name:      util.GetReplicatedSecretName(),
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
@@ -122,7 +123,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSDKSecretName,
+							Name:      util.GetReplicatedSecretName(),
 							Namespace: "default",
 						},
 						Data: map[string][]byte{},
@@ -147,7 +148,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSDKSecretName,
+							Name:      util.GetReplicatedSecretName(),
 							Namespace: "default",
 						},
 						Data: map[string][]byte{

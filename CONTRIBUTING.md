@@ -1,38 +1,38 @@
 ## Development
 
-Build and push the replicated-sdk Docker image and Helm chart to ttl.sh:
+Build and push the replicated Docker image and Helm chart to ttl.sh:
 
 ```shell
 make build-ttl.sh
 ```
 
-**Note**: The above command will also output the .tgz Helm chart under `chart/replicated-sdk-0.0.0.tgz`.
+**Note**: The above command will also output the .tgz Helm chart under `chart/replicated-0.0.0.tgz`.
 
 You can then install the Helm chart using one of the following options:
 
 **Option 1 (Integration mode)**:
-This is the quickest way to get the SDK up and running out of the box.
+This is the quickest way to get replicated up and running out of the box.
 
 Notes:
-- When the SDK runs in integration mode, it returns mocked data instead of real data except for `/license` endpoints.
-- Only a `Development` license ID is required to run the SDK in integration mode.
+- When replicated runs in integration mode, it returns mocked data instead of real data except for `/license` endpoints.
+- Only a `Development` license ID is required to run replicated in integration mode.
 - Integration mode is enabled by default when using a `Development` license.
 - Integration mode is only supported for `Development` licenses.
 - When using a license ID from a staging/okteto environment, the `replicatedAppEndpoint` field must be set accordingly. For example: `--set replicatedAppEndpoint=https://staging.replicated.app`.
 
-To install the SDK in integration mode, run the following command:
+To install replicated in integration mode, run the following command:
 ```bash
-helm install replicated-sdk oci://ttl.sh/[USER]/replicated-sdk --version 0.0.0 --set integration.licenseID=[DEV_LICENSE_ID]
+helm install replicated oci://ttl.sh/[USER]/replicated --version 0.0.0 --set integration.licenseID=[DEV_LICENSE_ID]
 ```
 
 **Option 2 (Production mode)**:
 
-Use the following command to install the SDK in production mode:
+Use the following command to install replicated in production mode:
 
 **Note**: if using a `Development` license, disable integration mode by passing `--set integration.enabled=false` as well.
 
 ```shell
-helm install replicated-sdk oci://ttl.sh/[USER]/replicated-sdk \
+helm install replicated oci://ttl.sh/[USER]/replicated \
     --namespace [NAMESPACE] \
     --set-file license=[path/to/license.yaml] \
     --set-file licenseFields=[path/to/license-fields.yaml] \
@@ -51,7 +51,7 @@ helm install replicated-sdk oci://ttl.sh/[USER]/replicated-sdk \
 
 Example:
 ```shell
-helm install replicated-sdk oci://ttl.sh/salah/replicated-sdk \
+helm install replicated oci://ttl.sh/salah/replicated \
     --namespace default \
     --set-file license=license.yaml \
     --set-file licenseFields=license-fields.yaml \

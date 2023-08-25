@@ -27,7 +27,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 		k8sutil.CreateTestPod("sdk-heartbeat-pod", "sdk-heartbeat-namespace", "sdk-heartbeat-replicaset", map[string]string{"app": "sdk-heartbeat-app"}),
 	)
 
-	t.Setenv("REPLICATED_SDK_POD_NAME", "sdk-heartbeat-pod")
+	t.Setenv("REPLICATED_POD_NAME", "sdk-heartbeat-pod")
 
 	tests := []struct {
 		name                  string
@@ -45,7 +45,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 					},
 				})
 				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
-				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")
@@ -96,7 +96,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 					},
 				})
 				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
-				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
@@ -147,7 +147,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 					},
 				})
 				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
-				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
@@ -198,7 +198,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 					},
 				})
 				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
-				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
+				mockStore.EXPECT().GetReplicatedID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")

@@ -1,10 +1,10 @@
 apiVersion: v2
 appVersion: 1.16.0
-description: A test Helm chart with Replicated SDK as a subchart
+description: A test Helm chart with Replicated as a subchart
 name: test-chart
 type: application
 version: 0.1.0
 dependencies:
-- name: ${REPLICATED_SDK_IMAGE_NAME}
-  repository: ${REPLICATED_SDK_REPOSITORY}
-  version: ${REPLICATED_SDK_VERSION}
+- name: ${REPLICATED_IMAGE_NAME}
+  repository: ${REPLICATED_REPOSITORY}
+  version: ${REPLICATED_VERSION}

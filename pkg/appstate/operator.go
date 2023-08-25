@@ -28,7 +28,6 @@ type Operator struct {
 }
 
 // NewOperator creates and initializes a new Operator.
-// If targetNamespace is empty, the operator will watch all namespaces.
 func InitOperator(clientset kubernetes.Interface, targetNamespace string) *Operator {
 	operator = &Operator{
 		clientset:       clientset,

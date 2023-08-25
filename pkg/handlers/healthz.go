@@ -11,7 +11,6 @@ type HealthzResponse struct {
 }
 
 func Healthz(w http.ResponseWriter, r *http.Request) {
-
 	healthzResponse := HealthzResponse{
 		Version: buildversion.Version(),
 	}

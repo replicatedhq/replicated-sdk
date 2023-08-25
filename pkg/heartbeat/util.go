@@ -53,7 +53,7 @@ func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1
 		return false, errors.Wrap(err, "failed to get replicated-sdk deployment")
 	}
 
-	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), os.Getenv("REPLICATED_SDK_POD_NAME"), metav1.GetOptions{})
+	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), os.Getenv("REPLICATED_POD_NAME"), metav1.GetOptions{})
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get replicated-sdk pod")
 	}

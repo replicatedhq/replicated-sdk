@@ -18,55 +18,71 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	replicatedConfigMapName  = "replicated-sdk"
-	replicatedDeploymentName = "replicated-sdk"
-)
+func GetReplicatedSecretName() string {
+	if sn := os.Getenv("REPLICATED_SECRET_NAME"); sn != "" {
+		return sn
+	}
+	return "replicated"
+}
 
-func GetReplicatedSDKAndAppIDs(namespace string) (string, string, error) {
+func GetReplicatedConfigMapName() string {
+	if cmn := os.Getenv("REPLICATED_CONFIGMAP_NAME"); cmn != "" {
+		return cmn
+	}
+	return "replicated"
+}
+
+func GetReplicatedDeploymentName() string {
+	if dn := os.Getenv("REPLICATED_DEPLOYMENT_NAME"); dn != "" {
+		return dn
+	}
+	return "replicated"
+}
+
+func GetReplicatedAndAppIDs(namespace string) (string, string, error) {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to get clientset")
 	}
 
-	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), replicatedConfigMapName, metav1.GetOptions{})
+	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), GetReplicatedConfigMapName(), metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
-		return "", "", errors.Wrap(err, "failed to get replicated-sdk configmap")
+		return "", "", errors.Wrap(err, "failed to get replicated configmap")
 	}
 
-	replicatedSDKID := ""
+	replicatedID := ""
 	appID := ""
 
 	if kuberneteserrors.IsNotFound(err) {
-		d, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), replicatedDeploymentName, metav1.GetOptions{})
+		d, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), GetReplicatedDeploymentName(), metav1.GetOptions{})
 		if err != nil {
-			return "", "", errors.Wrap(err, "failed to get replicated-sdk deployment")
+			return "", "", errors.Wrap(err, "failed to get replicated deployment")
 		}
-		replicatedSDKID = string(d.ObjectMeta.UID)
+		replicatedID = string(d.ObjectMeta.UID)
 		appID = string(d.ObjectMeta.UID)
 	} else {
-		replicatedSDKID = cm.Data["replicated-sdk-id"]
+		replicatedID = cm.Data["replicated-id"]
 		appID = cm.Data["app-id"]
 	}
 
-	return replicatedSDKID, appID, nil
+	return replicatedID, appID, nil
 }
 
-func WarnOnOutdatedSDKVersion() error {
+func WarnOnOutdatedReplicatedVersion() error {
 	currSemver, err := semver.ParseTolerant(buildversion.Version())
 	if err != nil {
-		logger.Infof("Not checking for outdated sdk version because the current version (%s) is not a valid semver", buildversion.Version())
+		logger.Infof("Not checking for outdated Replicated version because the current version (%s) is not a valid semver", buildversion.Version())
 		return nil
 	}
 
-	latestVersion, err := getLatestSDKVersion()
+	latestVersion, err := getLatestReplicatedVersion()
 	if err != nil {
-		return errors.Wrap(err, "failed to get latest sdk version")
+		return errors.Wrap(err, "failed to get latest replicated version")
 	}
 
 	latestSemver, err := semver.ParseTolerant(latestVersion)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse latest sdk version")
+		return errors.Wrap(err, "failed to parse latest replicated version")
 	}
 
 	if currSemver.LT(latestSemver) {
@@ -81,7 +97,7 @@ func WarnOnOutdatedSDKVersion() error {
 		fmtColumns := "%s\t%s\t%s\n"
 		fmt.Fprintf(w, fmtColumns, "", "", "")
 		fmt.Fprintf(w, fmtColumns, "!", "", "!")
-		fmt.Fprintf(w, fmtColumns, "!", fmt.Sprintf(" You are running an outdated version of the Replicated SDK (%s). The latest version is %s. ", buildversion.Version(), latestVersion), "!")
+		fmt.Fprintf(w, fmtColumns, "!", fmt.Sprintf(" You are running an outdated version of Replicated (%s). The latest version is %s. ", buildversion.Version(), latestVersion), "!")
 		fmt.Fprintf(w, fmtColumns, "!", "", "!")
 		fmt.Fprintf(w, fmtColumns, "", "", "")
 	}
@@ -89,7 +105,7 @@ func WarnOnOutdatedSDKVersion() error {
 	return nil
 }
 
-func getLatestSDKVersion() (string, error) {
+func getLatestReplicatedVersion() (string, error) {
 	resp, err := http.Get("https://api.github.com/repos/replicatedhq/replicated-sdk/tags")
 	if err != nil {
 		return "", err

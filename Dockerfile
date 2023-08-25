@@ -17,14 +17,14 @@ COPY pkg ./pkg
 ARG git_tag
 ENV GIT_TAG=${git_tag}
 
-RUN make build && mv ./bin/replicated-sdk /replicated-sdk
+RUN make build && mv ./bin/replicated /replicated
 
 FROM cgr.dev/chainguard/static:latest
 
-COPY --from=builder /replicated-sdk /replicated-sdk
+COPY --from=builder /replicated /replicated
 
 WORKDIR /
 
 EXPOSE 3000
-ENTRYPOINT ["/replicated-sdk"]
+ENTRYPOINT ["/replicated"]
 CMD ["api"]

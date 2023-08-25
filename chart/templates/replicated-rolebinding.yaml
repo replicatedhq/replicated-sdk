@@ -1,0 +1,17 @@
+{{ if not .Values.serviceAccountName }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: {{ include "replicated.roleBindingName" . }}
+  namespace: {{ include "replicated.namespace" . | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "replicated.roleName" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "replicated.serviceAccountName" . }}
+  namespace: {{ include "replicated.namespace" . | quote }}
+{{ end }}

@@ -39,33 +39,33 @@ func APICmd() *cobra.Command {
 			}
 
 			var err error
-			var replicatedSDKConfig = new(config.ReplicatedSDKConfig)
+			var replicatedConfig = new(config.ReplicatedConfig)
 			if configFilePath != "" {
 				configFile, err := os.ReadFile(configFilePath)
 				if err != nil {
 					return errors.Wrap(err, "failed to read config file")
 				}
 
-				if replicatedSDKConfig, err = config.ParseReplicatedSDKConfig(configFile); err != nil {
+				if replicatedConfig, err = config.ParseReplicatedConfig(configFile); err != nil {
 					return errors.Wrap(err, "failed to parse config file")
 				}
 			}
 
-			if replicatedSDKConfig.License == "" && integrationLicenseID == "" {
+			if replicatedConfig.License == "" && integrationLicenseID == "" {
 				return errors.New("either license in the config file or integration license id must be specified")
 			}
 
-			if replicatedSDKConfig.License != "" && integrationLicenseID != "" {
+			if replicatedConfig.License != "" && integrationLicenseID != "" {
 				return errors.New("only one of license in the config file or integration license id can be specified")
 			}
 
 			var license *kotsv1beta1.License
-			if replicatedSDKConfig.License != "" {
-				if license, err = sdklicense.LoadLicenseFromBytes([]byte(replicatedSDKConfig.License)); err != nil {
+			if replicatedConfig.License != "" {
+				if license, err = sdklicense.LoadLicenseFromBytes([]byte(replicatedConfig.License)); err != nil {
 					return errors.Wrap(err, "failed to parse license from base64")
 				}
 			} else if integrationLicenseID != "" {
-				if license, err = sdklicense.GetLicenseByID(integrationLicenseID, replicatedSDKConfig.ReplicatedAppEndpoint); err != nil {
+				if license, err = sdklicense.GetLicenseByID(integrationLicenseID, replicatedConfig.ReplicatedAppEndpoint); err != nil {
 					return errors.Wrap(err, "failed to get license by id for integration license id")
 				}
 				if license.Spec.LicenseType != "dev" {
@@ -76,17 +76,17 @@ func APICmd() *cobra.Command {
 			params := apiserver.APIServerParams{
 				Context:               cmd.Context(),
 				License:               license,
-				LicenseFields:         replicatedSDKConfig.LicenseFields,
-				AppName:               replicatedSDKConfig.AppName,
-				ChannelID:             replicatedSDKConfig.ChannelID,
-				ChannelName:           replicatedSDKConfig.ChannelName,
-				ChannelSequence:       replicatedSDKConfig.ChannelSequence,
-				ReleaseSequence:       replicatedSDKConfig.ReleaseSequence,
-				ReleaseCreatedAt:      replicatedSDKConfig.ReleaseCreatedAt,
-				ReleaseNotes:          replicatedSDKConfig.ReleaseNotes,
-				VersionLabel:          replicatedSDKConfig.VersionLabel,
-				ReplicatedAppEndpoint: replicatedSDKConfig.ReplicatedAppEndpoint,
-				StatusInformers:       replicatedSDKConfig.StatusInformers,
+				LicenseFields:         replicatedConfig.LicenseFields,
+				AppName:               replicatedConfig.AppName,
+				ChannelID:             replicatedConfig.ChannelID,
+				ChannelName:           replicatedConfig.ChannelName,
+				ChannelSequence:       replicatedConfig.ChannelSequence,
+				ReleaseSequence:       replicatedConfig.ReleaseSequence,
+				ReleaseCreatedAt:      replicatedConfig.ReleaseCreatedAt,
+				ReleaseNotes:          replicatedConfig.ReleaseNotes,
+				VersionLabel:          replicatedConfig.VersionLabel,
+				ReplicatedAppEndpoint: replicatedConfig.ReplicatedAppEndpoint,
+				StatusInformers:       replicatedConfig.StatusInformers,
 				Namespace:             namespace,
 			}
 			apiserver.Start(params)
@@ -95,8 +95,8 @@ func APICmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("config-file", "", "path to the replicated sdk config file")
-	cmd.Flags().String("namespace", "", "the namespace where the sdk/application is installed")
+	cmd.Flags().String("config-file", "", "path to the replicated config file")
+	cmd.Flags().String("namespace", "", "the namespace where replicated/application is installed")
 	cmd.Flags().String("integration-license-id", "", "the id of the license to use")
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
