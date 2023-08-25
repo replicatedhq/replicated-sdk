@@ -109,7 +109,8 @@ jobs:
       env: 
         REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
         REPLICATED_REGISTRY: ghcr.io/replicatedhq # TODO: move to docker.io
-        CHART_VERSION: ${{needs.get-tags.outputs.tag}}
+        REPLICATED_CHART_NAME: replicated
+        REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
         REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
         REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
@@ -117,6 +118,9 @@ jobs:
       run: |
         docker build --pull -t "$REPLICATED_REGISTRY/replicated:$REPLICATED_TAG" --build-arg git_tag=${{needs.get-tags.outputs.tag}} .
         docker push "$REPLICATED_REGISTRY/replicated:$REPLICATED_TAG"
+
+        # TEMPORARY: for backwards compatibility, create another directory to use for the "replicated-sdk" chart
+        cp -R chart chart-sdk
 
         cd chart
         envsubst < Chart.yaml.tmpl > Chart.yaml
@@ -131,6 +135,21 @@ jobs:
 
         echo pushing ${CHART_NAME} to production
         helm registry login registry.replicated.com --username $REPLICATED_USER_PROD --password $REPLICATED_PASS_PROD
+        helm push $CHART_NAME oci://registry.replicated.com/library
+
+        # TEMPORARY: for backwards compatibility, package and push chart with "replicated-sdk" name
+        cd ../chart-sdk
+        REPLICATED_CHART_NAME=replicated-sdk
+        envsubst < Chart.yaml.tmpl > Chart.yaml
+        envsubst < values.yaml.tmpl > values.yaml
+        rm -f *.tmpl
+
+        export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
+
+        echo pushing ${CHART_NAME} to staging
+        helm push $CHART_NAME oci://registry.staging.replicated.com/library
+
+        echo pushing ${CHART_NAME} to production
         helm push $CHART_NAME oci://registry.replicated.com/library
 
     - name: Pact record-release
