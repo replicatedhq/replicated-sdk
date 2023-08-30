@@ -94,4 +94,4 @@ spec:
             cpu: 100m
             memory: 100Mi
       restartPolicy: Always
-      serviceAccountName: {{ .Values.serviceAccountName | default (include "replicated.serviceAccountName" .) }}
+      serviceAccountName: {{ include "replicated.serviceAccountName" . }}

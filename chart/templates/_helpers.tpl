@@ -84,7 +84,7 @@ Resource Names
 {{- end -}}
 
 {{- define "replicated.serviceAccountName" -}}
-  {{ include "replicated.name" . }}
+  {{ .Values.serviceAccountName | default (include "replicated.name" .) }}
 {{- end -}}
 
 {{- define "replicated.supportBundleName" -}}
