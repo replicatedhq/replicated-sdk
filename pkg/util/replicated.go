@@ -14,11 +14,13 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	replicatedConfigMapName = "replicated-sdk"
+	replicatedConfigMapName  = "replicated-sdk"
+	replicatedDeploymentName = "replicated-sdk"
 )
 
 func GetReplicatedSDKAndAppIDs(namespace string) (string, string, error) {
@@ -28,16 +30,24 @@ func GetReplicatedSDKAndAppIDs(namespace string) (string, string, error) {
 	}
 
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), replicatedConfigMapName, metav1.GetOptions{})
-	if err != nil {
+	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return "", "", errors.Wrap(err, "failed to get replicated-sdk configmap")
 	}
 
-	if cm.Data == nil {
-		cm.Data = map[string]string{}
-	}
+	replicatedSDKID := ""
+	appID := ""
 
-	replicatedSDKID := cm.Data["replicated-sdk-id"]
-	appID := cm.Data["app-id"]
+	if kuberneteserrors.IsNotFound(err) {
+		d, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), replicatedDeploymentName, metav1.GetOptions{})
+		if err != nil {
+			return "", "", errors.Wrap(err, "failed to get replicated-sdk deployment")
+		}
+		replicatedSDKID = string(d.ObjectMeta.UID)
+		appID = string(d.ObjectMeta.UID)
+	} else {
+		replicatedSDKID = cm.Data["replicated-sdk-id"]
+		appID = cm.Data["app-id"]
+	}
 
 	return replicatedSDKID, appID, nil
 }

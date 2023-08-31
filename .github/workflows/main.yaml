@@ -64,10 +64,52 @@ jobs:
             exit 1
           fi
 
+          if echo $output | grep -q 'kind: ConfigMap'; then
+            printf "legacy/deprecated configmap should not exist:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          if ! echo $output | grep -q 'kind: ServiceAccount'; then
+            printf "default service account should exist if user does not set serviceAccountName:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          if ! echo $output | grep -q 'kind: Role'; then
+            printf "default role should exist if user does not set serviceAccountName:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          if ! echo $output | grep -q 'kind: RoleBinding'; then
+            printf "default rolebinding should exist if user does not set serviceAccountName:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
           output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.enabled=true)
 
           if ! echo $output | grep -q integration-enabled; then
             printf "'integration-enabled' key should exist if value is set by the user:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set serviceAccountName=foo)
+
+          if echo $output | grep -q 'kind: ServiceAccount'; then
+            printf "default service account should not exist if user sets serviceAccountName:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          if echo $output | grep -q 'kind: Role'; then
+            printf "default role should not exist if user sets serviceAccountName:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          if echo $output | grep -q 'kind: RoleBinding'; then
+            printf "default rolebinding should not exist if user sets serviceAccountName:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          if ! echo $output | grep -q 'serviceAccountName: foo'; then
+            printf "user-set serviceAccountName reference should exist:\n\n%s\n\n" "$output"
             exit 1
           fi
 
