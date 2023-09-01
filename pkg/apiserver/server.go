@@ -66,6 +66,9 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.GetIntegrationMockData)).Methods("GET")
 	r.HandleFunc("/api/v1/integration/status", handlers.EnforceMockAccess(handlers.GetIntegrationStatus)).Methods("GET")
 
+	// Custom metrics
+	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomApplicationMetrics).Methods("POST")
+
 	srv := &http.Server{
 		Handler: r,
 		Addr:    ":3000",
