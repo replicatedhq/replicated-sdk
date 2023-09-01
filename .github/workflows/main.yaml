@@ -190,7 +190,7 @@ jobs:
           ttl: 2h
           export-kubeconfig: true
 
-      - name: Install as standalone in integration mode
+      - name: Install via Helm as standalone in integration mode
         run: helm install replicated-sdk oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.licenseID=$LICENSE_ID --wait --timeout 2m
 
       - name: Validate endpoints
@@ -200,13 +200,31 @@ jobs:
           license-fields: ${{ env.LICENSE_FIELDS }}
           integration-enabled: 'true'
 
-      - name: Uninstall replicated-sdk
+      - name: Uninstall replicated-sdk via Helm
         run: helm uninstall replicated-sdk --wait --timeout 2m
+
+      - name: Install via kubectl as standalone in integration mode
+        run: |
+          helm template replicated-sdk oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.licenseID=$LICENSE_ID | kubectl apply -f -
+          kubectl rollout status deployment replicated-sdk --timeout=2m
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'true'
+          deployed-via-kubectl: 'true'
+
+      - name: Uninstall replicated-sdk via kubectl
+        run: |
+          helm template replicated-sdk oci://ttl.sh/automated-${{ github.run_id }}/replicated-sdk --version 0.0.0 --set integration.licenseID=$LICENSE_ID | kubectl delete -f -
+          kubectl wait --for=delete deployment/replicated-sdk --timeout=2m
 
       - name: Login to registry
         run: helm registry login registry.replicated.com --username $LICENSE_ID --password $LICENSE_ID
 
-      - name: Install as subchart in integration mode
+      - name: Install via Helm as subchart in integration mode
         run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --wait --timeout 2m
 
       - name: Validate endpoints
@@ -216,11 +234,31 @@ jobs:
           license-fields: ${{ env.LICENSE_FIELDS }}
           integration-enabled: 'true'
 
-      - name: Uninstall test-chart
+      - name: Uninstall test-chart via Helm
         run: helm uninstall test-chart --wait --timeout 2m
 
+      - name: Install via kubectl as subchart in integration mode
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart | kubectl apply -f -
+          kubectl rollout status deployment test-chart --timeout=2m
+          kubeclt rollout status deployment replicated-sdk --timeout=2m
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'true'
+          deployed-via-kubectl: 'true'
+
+      - name: Uninstall test-chart via kubectl
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart | kubectl delete -f -
+          kubectl wait --for=delete deployment/test-chart --timeout=2m
+          kubectl wait --for=delete deployment/replicated-sdk --timeout=2m
+
       # we have to explicitly disable integration mode here because we're using a "dev" license
-      - name: Install as subchart in production mode
+      - name: Install via Helm as subchart in production mode
         run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false --wait --timeout 2m
 
       - name: Validate endpoints
@@ -229,6 +267,30 @@ jobs:
           license-id: ${{ env.LICENSE_ID }}
           license-fields: ${{ env.LICENSE_FIELDS }}
           integration-enabled: 'false'
+
+      - name: Uninstall test-chart via Helm
+        run: helm uninstall test-chart --wait --timeout 2m
+
+      # we have to explicitly disable integration mode here because we're using a "dev" license
+      - name: Install via kubectl as subchart in production mode
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false | kubectl apply -f -
+          kubectl rollout status deployment test-chart --timeout=2m
+          kubeclt rollout status deployment replicated-sdk --timeout=2m
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'false'
+          deployed-via-kubectl: 'true'
+
+      - name: Uninstall test-chart via kubectl
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false | kubectl delete -f -
+          kubectl wait --for=delete deployment/test-chart --timeout=2m
+          kubectl wait --for=delete deployment/replicated-sdk --timeout=2m
 
       - name: Remove Cluster
         uses: replicatedhq/replicated-actions/remove-cluster@v1.1.1
