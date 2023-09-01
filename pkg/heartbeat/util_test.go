@@ -1,7 +1,6 @@
 package heartbeat
 
 import (
-	"os"
 	"testing"
 
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
@@ -111,14 +110,8 @@ func TestCanReport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for k, v := range tt.env {
-				os.Setenv(k, v)
+				t.Setenv(k, v)
 			}
-
-			defer func() {
-				for k := range tt.env {
-					os.Unsetenv(k)
-				}
-			}()
 
 			got, err := canReport(tt.clientset, tt.namespace, nil)
 			if (err != nil) != tt.wantErr {
