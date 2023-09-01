@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -26,6 +27,9 @@ func TestSendAppHeartbeat(t *testing.T) {
 		k8sutil.CreateTestReplicaSet("sdk-heartbeat-replicaset", "sdk-heartbeat-namespace", "1"),
 		k8sutil.CreateTestPod("sdk-heartbeat-pod", "sdk-heartbeat-namespace", "sdk-heartbeat-replicaset", map[string]string{"app": "sdk-heartbeat-app"}),
 	)
+
+	os.Setenv("REPLICATED_SDK_POD_NAME", "sdk-heartbeat-pod")
+	defer os.Unsetenv("REPLICATED_SDK_POD_NAME")
 
 	tests := []struct {
 		name                  string
