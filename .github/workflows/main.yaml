@@ -241,7 +241,7 @@ jobs:
         run: |
           helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
-          kubeclt rollout status deployment replicated-sdk --timeout=2m
+          kubectl rollout status deployment replicated-sdk --timeout=2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -276,7 +276,7 @@ jobs:
         run: |
           helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated-sdk.integration.enabled=false | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
-          kubeclt rollout status deployment replicated-sdk --timeout=2m
+          kubectl rollout status deployment replicated-sdk --timeout=2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
