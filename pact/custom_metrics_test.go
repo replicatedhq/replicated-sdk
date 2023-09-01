@@ -19,6 +19,7 @@ import (
 func TestSendCustomApplicationMetrics(t *testing.T) {
 	// Happy path only
 
+	channelSequence := int64(1)
 	data := map[string]interface{}{
 		"data": map[string]interface{}{
 			"key1_string":         "val1",
@@ -33,6 +34,7 @@ func TestSendCustomApplicationMetrics(t *testing.T) {
 			LicenseID: "sdk-license-customer-0-license",
 			AppSlug:   "sdk-license-app",
 			Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
+			ChannelID: "sdk-license-app-nightly",
 		},
 	}
 
@@ -52,8 +54,10 @@ func TestSendCustomApplicationMetrics(t *testing.T) {
 			WithRequest(dsl.Request{
 				Method: http.MethodPost,
 				Headers: dsl.MapMatcher{
-					"User-Agent":    dsl.String("Replicated-SDK/v0.0.0-unknown"),
-					"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID))))),
+					"User-Agent":                             dsl.String("Replicated-SDK/v0.0.0-unknown"),
+					"Authorization":                          dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID))))),
+					"X-Replicated-DownstreamChannelID":       dsl.String(license.Spec.ChannelID),
+					"X-Replicated-DownstreamChannelSequence": dsl.String(fmt.Sprintf("%d", channelSequence)),
 				},
 				Path: dsl.String("/application/custom-metrics"),
 				Body: data,
@@ -69,6 +73,8 @@ func TestSendCustomApplicationMetrics(t *testing.T) {
 			License:               license,
 			LicenseFields:         nil,
 			ReplicatedAppEndpoint: license.Spec.Endpoint,
+			ChannelID:             license.Spec.ChannelID,
+			ChannelSequence:       channelSequence,
 		}
 		if err := store.InitInMemory(storeOptions); err != nil {
 			t.Fatalf("Error on InitInMemory: %v", err)
