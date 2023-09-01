@@ -10,6 +10,7 @@ metadata:
   labels:
     {{- include "replicated-sdk.labels" . | nindent 4 }}
   name: replicated-sdk
+  namespace: {{ include "replicated-sdk.namespace" . | quote }}
 data:
   replicated-sdk-id: {{ index $data "replicated-sdk-id" }}
   app-id: {{ index $data "app-id" }}

@@ -18,7 +18,12 @@ import (
 func SendAppHeartbeat(sdkStore store.Store) error {
 	license := sdkStore.GetLicense()
 
-	canReport, err := canReport(license)
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		return errors.Wrap(err, "failed to get clientset")
+	}
+
+	canReport, err := canReport(clientset, sdkStore.GetNamespace(), license)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if can report")
 	}

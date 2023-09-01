@@ -2,7 +2,6 @@ package helm
 
 import (
 	"os"
-	"strconv"
 
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
@@ -20,11 +19,6 @@ func GetReleaseName() string {
 
 func GetReleaseNamespace() string {
 	return os.Getenv("HELM_RELEASE_NAMESPACE")
-}
-
-func GetReleaseRevision() int {
-	hr, _ := strconv.Atoi(os.Getenv("HELM_RELEASE_REVISION"))
-	return hr
 }
 
 func GetParentChartURL() string {

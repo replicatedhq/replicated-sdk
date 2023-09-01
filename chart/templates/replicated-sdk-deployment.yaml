@@ -13,6 +13,7 @@ metadata:
   labels:
     {{- include "replicated-sdk.labels" . | nindent 4 }}
   name: replicated-sdk
+  namespace: {{ include "replicated-sdk.namespace" . | quote }}
 spec:
   selector:
     matchLabels:
@@ -60,8 +61,6 @@ spec:
           value: {{ .Release.Name }}
         - name: HELM_RELEASE_NAMESPACE
           value: {{ .Release.Namespace }}
-        - name: HELM_RELEASE_REVISION
-          value: {{ .Release.Revision | quote }}
         - name: HELM_PARENT_CHART_URL
           value: {{ .Values.parentChartURL | default "" | quote }}
         - name: HELM_DRIVER

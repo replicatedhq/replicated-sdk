@@ -9,11 +9,10 @@ import (
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
-	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.HeartbeatInfo) {
@@ -39,13 +38,8 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 	}
 }
 
-func canReport(license *kotsv1beta1.License) (bool, error) {
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		return false, errors.Wrap(err, "failed to get clientset")
-	}
-
-	deployment, err := clientset.AppsV1().Deployments(store.GetStore().GetNamespace()).Get(context.TODO(), "replicated-sdk", metav1.GetOptions{})
+func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "replicated-sdk", metav1.GetOptions{})
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get replicated-sdk deployment")
 	}
@@ -55,7 +49,7 @@ func canReport(license *kotsv1beta1.License) (bool, error) {
 		return false, errors.Wrap(err, "failed to get pod selector from deployment")
 	}
 
-	podList, err := clientset.CoreV1().Pods(store.GetStore().GetNamespace()).List(context.TODO(), metav1.ListOptions{
+	podList, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: podSelector.String(),
 	})
 	if err != nil {
@@ -73,7 +67,7 @@ func canReport(license *kotsv1beta1.License) (bool, error) {
 				continue
 			}
 
-			replicaSet, err := clientset.AppsV1().ReplicaSets(store.GetStore().GetNamespace()).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+			replicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
 			if err != nil {
 				return false, errors.Wrapf(err, "failed to get replicaset %s", owner.Name)
 			}

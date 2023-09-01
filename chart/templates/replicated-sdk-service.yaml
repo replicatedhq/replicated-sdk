@@ -4,6 +4,7 @@ metadata:
   labels:
     {{- include "replicated-sdk.labels" . | nindent 4 }}
   name: replicated-sdk
+  namespace: {{ include "replicated-sdk.namespace" . | quote }}
 spec:
   ports:
   - name: http

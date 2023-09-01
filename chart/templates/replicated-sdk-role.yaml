@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "replicated-sdk.labels" . | nindent 4 }}
   name: replicated-sdk-role
+  namespace: {{ include "replicated-sdk.namespace" . | quote }}
 rules:
 - apiGroups:
   - '*'
