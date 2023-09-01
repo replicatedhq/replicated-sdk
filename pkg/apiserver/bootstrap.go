@@ -122,11 +122,13 @@ func bootstrap(params APIServerParams) error {
 			return errors.Wrap(err, "failed to get helm release")
 		}
 
-		i, err := appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
-		if err != nil {
-			return errors.Wrap(err, "failed to generate status informers")
+		if helmRelease != nil {
+			i, err := appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
+			if err != nil {
+				return errors.Wrap(err, "failed to generate status informers")
+			}
+			informers = i
 		}
-		informers = i
 	}
 
 	appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{

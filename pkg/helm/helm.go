@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 func IsHelmManaged() bool {
@@ -48,6 +49,9 @@ func GetRelease(releaseName string) (*release.Release, error) {
 	client := action.NewGet(cfg)
 	release, err := client.Run(releaseName)
 	if err != nil {
+		if errors.Cause(err) == driver.ErrReleaseNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrap(err, "failed to get release")
 	}
 
