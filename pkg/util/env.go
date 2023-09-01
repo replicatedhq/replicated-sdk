@@ -16,6 +16,9 @@ func IsDevEnv() bool {
 }
 
 func IsDevLicense(license *kotsv1beta1.License) bool {
+	if license == nil {
+		return false
+	}
 	result, _ := regexp.MatchString(`replicated-app`, license.Spec.Endpoint)
 	return result
 }

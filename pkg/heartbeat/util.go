@@ -1,15 +1,18 @@
 package heartbeat
 
 import (
+	"context"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.HeartbeatInfo) {
@@ -35,29 +38,62 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 	}
 }
 
-func canReport(license *kotsv1beta1.License) (bool, error) {
-	if helm.IsHelmManaged() {
-		sdkHelmRevision := helm.GetReleaseRevision()
-
-		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
-		if err != nil {
-			return false, errors.Wrap(err, "failed to get release")
-		}
-
-		// don't report from sdk instances that are not associated with the current helm release revision.
-		// this can happen during a helm upgrade/rollback when a rolling update of the replicated-sdk deployment is in progress.
-		if sdkHelmRevision != helmRelease.Version {
-			logger.Debugf("not reporting from sdk instance with helm revision %d because current helm release revision is %d\n", sdkHelmRevision, helmRelease.Version)
-			return false, nil
-		}
-	}
-
+func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
 	if util.IsAirgap() {
 		return false, nil
 	}
 
 	if util.IsDevEnv() && !util.IsDevLicense(license) {
 		// don't send reports from our dev env to our production services even if this is a production license
+		return false, nil
+	}
+
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "replicated-sdk", metav1.GetOptions{})
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get replicated-sdk deployment")
+	}
+
+	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), os.Getenv("REPLICATED_SDK_POD_NAME"), metav1.GetOptions{})
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get replicated-sdk pod")
+	}
+
+	var podRevision int
+	for _, owner := range pod.ObjectMeta.OwnerReferences {
+		if owner.APIVersion != "apps/v1" || owner.Kind != "ReplicaSet" {
+			continue
+		}
+
+		replicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to get replicaset %s", owner.Name)
+		}
+
+		revision, ok := replicaSet.Annotations["deployment.kubernetes.io/revision"]
+		if !ok {
+			continue
+		}
+
+		parsed, err := strconv.Atoi(revision)
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to parse revision annotation for replicaset %s", replicaSet.Name)
+		}
+		podRevision = parsed
+	}
+
+	var deploymentRevision int
+	if drv, ok := deployment.Annotations["deployment.kubernetes.io/revision"]; ok {
+		parsed, err := strconv.Atoi(drv)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to parse revision annotation for deployment")
+		}
+		deploymentRevision = parsed
+	}
+
+	if podRevision != deploymentRevision {
+		// don't report from sdk instances that are not associated with the current deployment revision.
+		// this can happen when a rolling update of the replicated-sdk deployment is in progress and the pod is terminating.
+		logger.Infof("not reporting from sdk instance with deployment reversion (%d) because a newer deployment reversion (%d) was found", podRevision, deploymentRevision)
 		return false, nil
 	}
 

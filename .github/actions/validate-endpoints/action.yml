@@ -12,6 +12,10 @@ inputs:
     description: 'If integration mode is enabled or not'
     required: false
     default: 'false'
+  deployed-via-kubectl:
+    description: 'If the chart was deployed via kubectl after running helm template'
+    required: false
+    default: 'false'
 runs:
   using: "composite"
   steps:
@@ -113,7 +117,14 @@ runs:
       run: |
         historyLength=$(curl -s --fail --show-error localhost:8888/api/v1/app/history | jq '.releases | length' | tr -d '\n')
 
-        if [ $historyLength -lt 1 ]; then
-          echo "No app history found."
-          exit 1
+        if [ "${{ inputs.deployed-via-kubectl }}" == "true" ] && [ "${{ inputs.integration-enabled }}" == "false" ]; then
+          if [ $historyLength -ne 0 ]; then
+            echo "Expected app history to be 0 when deployed via kubectl and integration is disabled, but is '$historyLength'."
+            exit 1
+          fi
+        else
+          if [ $historyLength -lt 1 ]; then
+            echo "No app history found."
+            exit 1
+          fi
         fi

@@ -13,12 +13,13 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	"k8s.io/client-go/kubernetes"
 )
 
-func SendAppHeartbeat(sdkStore store.Store) error {
+func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) error {
 	license := sdkStore.GetLicense()
 
-	canReport, err := canReport(license)
+	canReport, err := canReport(clientset, sdkStore.GetNamespace(), license)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if can report")
 	}

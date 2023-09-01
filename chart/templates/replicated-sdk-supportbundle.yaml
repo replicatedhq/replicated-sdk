@@ -9,6 +9,7 @@ metadata:
     {{- include "replicated-sdk.labels" . | nindent 4 }}
     troubleshoot.io/kind: support-bundle
   name: replicated-sdk-supportbundle
+  namespace: {{ include "replicated-sdk.namespace" . | quote }}
 stringData:
   support-bundle-spec: |-
     apiVersion: troubleshoot.sh/v1beta2

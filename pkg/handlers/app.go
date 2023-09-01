@@ -104,10 +104,12 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.CurrentRelease.HelmReleaseName = helmRelease.Name
-		response.CurrentRelease.HelmReleaseRevision = helmRelease.Version
-		response.CurrentRelease.HelmReleaseNamespace = helmRelease.Namespace
-		response.CurrentRelease.DeployedAt = helmRelease.Info.LastDeployed.Format(time.RFC3339)
+		if helmRelease != nil {
+			response.CurrentRelease.HelmReleaseName = helmRelease.Name
+			response.CurrentRelease.HelmReleaseRevision = helmRelease.Version
+			response.CurrentRelease.HelmReleaseNamespace = helmRelease.Namespace
+			response.CurrentRelease.DeployedAt = helmRelease.Info.LastDeployed.Format(time.RFC3339)
+		}
 	}
 
 	JSON(w, http.StatusOK, response)

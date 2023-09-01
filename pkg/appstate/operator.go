@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -103,6 +104,20 @@ func (o *Operator) ApplyAppInformers(args types.AppInformersArgs) {
 		informers = append(informers, informer)
 	}
 
+	if len(informers) == 0 {
+		// no informers, set state to ready and return
+		defaultReadyStatus := types.AppStatus{
+			AppSlug:   appSlug,
+			UpdatedAt: time.Now(),
+			State:     types.StateReady,
+			Sequence:  sequence,
+		}
+		if err := o.setAppStatus(defaultReadyStatus); err != nil {
+			log.Printf("error updating app status: %v", err)
+		}
+		return
+	}
+
 	o.appStateMonitor.Apply(appSlug, sequence, informers)
 }
 
@@ -113,8 +128,12 @@ func (o *Operator) setAppStatus(newAppStatus types.AppStatus) error {
 	if newAppStatus.State != currentAppStatus.State {
 		log.Printf("app state changed from %s to %s", currentAppStatus.State, newAppStatus.State)
 		go func() {
-			err := heartbeat.SendAppHeartbeat(store.GetStore())
+			clientset, err := k8sutil.GetClientset()
 			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to get clientset to send heartbeat"))
+				return
+			}
+			if err := heartbeat.SendAppHeartbeat(clientset, store.GetStore()); err != nil {
 				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
 			}
 		}()

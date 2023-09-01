@@ -11,13 +11,23 @@ import (
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestSendAppHeartbeat(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
 	mockStore := mock_store.NewMockStore(ctrl)
+	clientset := fake.NewSimpleClientset(
+		k8sutil.CreateTestDeployment("replicated-sdk", "sdk-heartbeat-namespace", "1", map[string]string{"app": "sdk-heartbeat-app"}),
+		k8sutil.CreateTestReplicaSet("sdk-heartbeat-replicaset", "sdk-heartbeat-namespace", "1"),
+		k8sutil.CreateTestPod("sdk-heartbeat-pod", "sdk-heartbeat-namespace", "sdk-heartbeat-replicaset", map[string]string{"app": "sdk-heartbeat-app"}),
+	)
+
+	t.Setenv("REPLICATED_SDK_POD_NAME", "sdk-heartbeat-pod")
 
 	tests := []struct {
 		name                  string
@@ -34,6 +44,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
+				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
 				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-nightly")
@@ -84,6 +95,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
+				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
 				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-beta")
@@ -134,6 +146,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
+				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
 				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-beta")
@@ -184,6 +197,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
+				mockStore.EXPECT().GetNamespace().Return("sdk-heartbeat-namespace")
 				mockStore.EXPECT().GetReplicatedSDKID().Return("sdk-heartbeat-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("sdk-heartbeat-app")
 				mockStore.EXPECT().GetChannelID().Return("sdk-heartbeat-app-nightly")
@@ -230,7 +244,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 			tt.mockStoreExpectations()
 			tt.pactInteraction()
 			if err := pact.Verify(func() error {
-				if err := heartbeat.SendAppHeartbeat(mockStore); (err != nil) != tt.wantErr {
+				if err := heartbeat.SendAppHeartbeat(clientset, mockStore); (err != nil) != tt.wantErr {
 					t.Errorf("SendAppHeartbeat() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				return nil

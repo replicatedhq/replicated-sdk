@@ -2,11 +2,11 @@ package helm
 
 import (
 	"os"
-	"strconv"
 
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 func IsHelmManaged() bool {
@@ -21,11 +21,6 @@ func GetReleaseNamespace() string {
 	return os.Getenv("HELM_RELEASE_NAMESPACE")
 }
 
-func GetReleaseRevision() int {
-	hr, _ := strconv.Atoi(os.Getenv("HELM_RELEASE_REVISION"))
-	return hr
-}
-
 func GetParentChartURL() string {
 	return os.Getenv("HELM_PARENT_CHART_URL")
 }
@@ -38,6 +33,9 @@ func GetReleaseHistory() ([]*release.Release, error) {
 	client := action.NewHistory(cfg)
 	releases, err := client.Run(GetReleaseName())
 	if err != nil {
+		if errors.Cause(err) == driver.ErrReleaseNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrap(err, "failed to list releases")
 	}
 
@@ -48,6 +46,9 @@ func GetRelease(releaseName string) (*release.Release, error) {
 	client := action.NewGet(cfg)
 	release, err := client.Run(releaseName)
 	if err != nil {
+		if errors.Cause(err) == driver.ErrReleaseNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrap(err, "failed to get release")
 	}
 
