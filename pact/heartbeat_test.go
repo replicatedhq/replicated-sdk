@@ -22,9 +22,9 @@ func TestSendAppHeartbeat(t *testing.T) {
 
 	mockStore := mock_store.NewMockStore(ctrl)
 	clientset := fake.NewSimpleClientset(
-		k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "1", map[string]string{"app": "test-app"}),
-		k8sutil.CreateTestReplicaSet("test-replicaset", "test-namespace", "1"),
-		k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset", map[string]string{"app": "test-app"}),
+		k8sutil.CreateTestDeployment("replicated-sdk", "sdk-heartbeat-namespace", "1", map[string]string{"app": "sdk-heartbeat-app"}),
+		k8sutil.CreateTestReplicaSet("sdk-heartbeat-replicaset", "sdk-heartbeat-namespace", "1"),
+		k8sutil.CreateTestPod("sdk-heartbeat-pod", "sdk-heartbeat-namespace", "sdk-heartbeat-replicaset", map[string]string{"app": "sdk-heartbeat-app"}),
 	)
 
 	tests := []struct {
