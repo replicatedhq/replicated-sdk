@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
@@ -63,8 +64,12 @@ func Start() error {
 		}
 
 		go func() {
-			err := SendAppHeartbeat(store.GetStore())
+			clientset, err := k8sutil.GetClientset()
 			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to get clientset to send heartbeat"))
+				return
+			}
+			if err := SendAppHeartbeat(clientset, store.GetStore()); err != nil {
 				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
 			}
 		}()

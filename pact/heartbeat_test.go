@@ -11,13 +11,21 @@ import (
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestSendAppHeartbeat(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
 	mockStore := mock_store.NewMockStore(ctrl)
+	clientset := fake.NewSimpleClientset(
+		k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "1", map[string]string{"app": "test-app"}),
+		k8sutil.CreateTestReplicaSet("test-replicaset", "test-namespace", "1"),
+		k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset", map[string]string{"app": "test-app"}),
+	)
 
 	tests := []struct {
 		name                  string
@@ -234,7 +242,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 			tt.mockStoreExpectations()
 			tt.pactInteraction()
 			if err := pact.Verify(func() error {
-				if err := heartbeat.SendAppHeartbeat(mockStore); (err != nil) != tt.wantErr {
+				if err := heartbeat.SendAppHeartbeat(clientset, mockStore); (err != nil) != tt.wantErr {
 					t.Errorf("SendAppHeartbeat() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				return nil

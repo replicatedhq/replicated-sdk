@@ -4,9 +4,7 @@ import (
 	"os"
 	"testing"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -25,9 +23,9 @@ func TestCanReport(t *testing.T) {
 				"REPLICATED_SDK_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				createTestDeployment("replicated-sdk", "test-namespace", "1"),
-				createTestReplicaSet("test-replicaset", "test-namespace", "1"),
-				createTestPod("test-pod", "test-namespace", "test-replicaset"),
+				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "1", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestReplicaSet("test-replicaset", "test-namespace", "1"),
+				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset", map[string]string{"app": "test-app"}),
 			),
 			namespace: "test-namespace",
 			want:      true,
@@ -39,9 +37,9 @@ func TestCanReport(t *testing.T) {
 				"REPLICATED_SDK_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				createTestDeployment("replicated-sdk", "test-namespace", "2"),
-				createTestReplicaSet("test-replicaset", "test-namespace", "1"),
-				createTestPod("test-pod", "test-namespace", "test-replicaset"),
+				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestReplicaSet("test-replicaset", "test-namespace", "1"),
+				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset", map[string]string{"app": "test-app"}),
 			),
 			namespace: "test-namespace",
 			want:      false,
@@ -53,10 +51,10 @@ func TestCanReport(t *testing.T) {
 				"REPLICATED_SDK_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				createTestDeployment("replicated-sdk", "test-namespace", "2"),
-				createTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
-				createTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
-				createTestPod("test-pod", "test-namespace", "test-replicaset-bar"),
+				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
+				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
+				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset-bar", map[string]string{"app": "test-app"}),
 			),
 			namespace: "test-namespace",
 			want:      true,
@@ -68,10 +66,10 @@ func TestCanReport(t *testing.T) {
 				"REPLICATED_SDK_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				createTestDeployment("replicated-sdk", "test-namespace", "2"),
-				createTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
-				createTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
-				createTestPod("test-pod", "test-namespace", "test-replicaset-foo"),
+				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
+				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
+				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset-foo", map[string]string{"app": "test-app"}),
 			),
 			namespace: "test-namespace",
 			want:      false,
@@ -83,11 +81,11 @@ func TestCanReport(t *testing.T) {
 				"REPLICATED_SDK_POD_NAME": "test-pod-bar",
 			},
 			clientset: fake.NewSimpleClientset(
-				createTestDeployment("replicated-sdk", "test-namespace", "2"),
-				createTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
-				createTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
-				createTestPod("test-pod-foo", "test-namespace", "test-replicaset-foo"),
-				createTestPod("test-pod-bar", "test-namespace", "test-replicaset-bar"),
+				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
+				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
+				k8sutil.CreateTestPod("test-pod-foo", "test-namespace", "test-replicaset-foo", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestPod("test-pod-bar", "test-namespace", "test-replicaset-bar", map[string]string{"app": "test-app"}),
 			),
 			namespace: "test-namespace",
 			want:      true,
@@ -99,11 +97,11 @@ func TestCanReport(t *testing.T) {
 				"REPLICATED_SDK_POD_NAME": "test-pod-foo",
 			},
 			clientset: fake.NewSimpleClientset(
-				createTestDeployment("replicated-sdk", "test-namespace", "2"),
-				createTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
-				createTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
-				createTestPod("test-pod-foo", "test-namespace", "test-replicaset-foo"),
-				createTestPod("test-pod-bar", "test-namespace", "test-replicaset-bar"),
+				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
+				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
+				k8sutil.CreateTestPod("test-pod-foo", "test-namespace", "test-replicaset-foo", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestPod("test-pod-bar", "test-namespace", "test-replicaset-bar", map[string]string{"app": "test-app"}),
 			),
 			namespace: "test-namespace",
 			want:      false,
@@ -130,53 +128,5 @@ func TestCanReport(t *testing.T) {
 				t.Errorf("canReport() = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func createTestDeployment(name string, namespace string, revision string) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				"deployment.kubernetes.io/revision": revision,
-			},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"app": "test-app"},
-			},
-		},
-	}
-}
-
-func createTestReplicaSet(name string, namespace string, revision string) *appsv1.ReplicaSet {
-	return &appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				"deployment.kubernetes.io/revision": revision,
-			},
-		},
-	}
-}
-
-func createTestPod(name string, namespace string, replicaSetName string) *corev1.Pod {
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app": "test-app",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: "apps/v1",
-					Kind:       "ReplicaSet",
-					Name:       replicaSetName,
-				},
-			},
-		},
 	}
 }

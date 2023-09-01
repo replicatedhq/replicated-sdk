@@ -215,10 +215,10 @@ spec:
 			if err := pact.Verify(func() error {
 				got, err := license.GetLatestLicense(tt.args.license, tt.args.endpoint)
 				if (err != nil) != tt.wantErr {
-					t.Errorf("SendAppHeartbeat() error = %v, wantErr %v", err, tt.wantErr)
+					t.Errorf("GetLatestLicense() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				if !reflect.DeepEqual(got, tt.want) {
-					t.Errorf("SendAppHeartbeat() got = %v, want %v", got, tt.want)
+					t.Errorf("GetLatestLicense() got = %v, want %v", got, tt.want)
 				}
 				return nil
 			}); err != nil {

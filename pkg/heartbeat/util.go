@@ -39,6 +39,15 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 }
 
 func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
+	if util.IsAirgap() {
+		return false, nil
+	}
+
+	if util.IsDevEnv() && !util.IsDevLicense(license) {
+		// don't send reports from our dev env to our production services even if this is a production license
+		return false, nil
+	}
+
 	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "replicated-sdk", metav1.GetOptions{})
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get replicated-sdk deployment")
@@ -85,15 +94,6 @@ func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1
 		// don't report from sdk instances that are not associated with the current deployment revision.
 		// this can happen when a rolling update of the replicated-sdk deployment is in progress and the pod is terminating.
 		logger.Infof("not reporting from sdk instance with deployment reversion (%d) because a newer deployment reversion (%d) was found", podRevision, deploymentRevision)
-		return false, nil
-	}
-
-	if util.IsAirgap() {
-		return false, nil
-	}
-
-	if util.IsDevEnv() && !util.IsDevLicense(license) {
-		// don't send reports from our dev env to our production services even if this is a production license
 		return false, nil
 	}
 
