@@ -33,6 +33,9 @@ func GetReleaseHistory() ([]*release.Release, error) {
 	client := action.NewHistory(cfg)
 	releases, err := client.Run(GetReleaseName())
 	if err != nil {
+		if errors.Cause(err) == driver.ErrReleaseNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrap(err, "failed to list releases")
 	}
 

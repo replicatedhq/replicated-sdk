@@ -44,45 +44,32 @@ func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1
 		return false, errors.Wrap(err, "failed to get replicated-sdk deployment")
 	}
 
-	podSelector, err := metav1.LabelSelectorAsSelector(deployment.Spec.Selector)
+	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), os.Getenv("REPLICATED_SDK_POD_NAME"), metav1.GetOptions{})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to get pod selector from deployment")
-	}
-
-	podList, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: podSelector.String(),
-	})
-	if err != nil {
-		return false, errors.Wrap(err, "failed to list pods")
+		return false, errors.Wrap(err, "failed to get replicated-sdk pod")
 	}
 
 	var podRevision int
-	for _, pod := range podList.Items {
-		if pod.Name != os.Getenv("REPLICATED_SDK_POD_NAME") {
+	for _, owner := range pod.ObjectMeta.OwnerReferences {
+		if owner.APIVersion != "apps/v1" || owner.Kind != "ReplicaSet" {
 			continue
 		}
 
-		for _, owner := range pod.ObjectMeta.OwnerReferences {
-			if owner.APIVersion != "apps/v1" || owner.Kind != "ReplicaSet" {
-				continue
-			}
-
-			replicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
-			if err != nil {
-				return false, errors.Wrapf(err, "failed to get replicaset %s", owner.Name)
-			}
-
-			revision, ok := replicaSet.Annotations["deployment.kubernetes.io/revision"]
-			if !ok {
-				continue
-			}
-
-			parsed, err := strconv.Atoi(revision)
-			if err != nil {
-				return false, errors.Wrapf(err, "failed to parse revision annotation for replicaset %s", replicaSet.Name)
-			}
-			podRevision = parsed
+		replicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.TODO(), owner.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to get replicaset %s", owner.Name)
 		}
+
+		revision, ok := replicaSet.Annotations["deployment.kubernetes.io/revision"]
+		if !ok {
+			continue
+		}
+
+		parsed, err := strconv.Atoi(revision)
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to parse revision annotation for replicaset %s", replicaSet.Name)
+		}
+		podRevision = parsed
 	}
 
 	var deploymentRevision int

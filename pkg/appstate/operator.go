@@ -103,6 +103,20 @@ func (o *Operator) ApplyAppInformers(args types.AppInformersArgs) {
 		informers = append(informers, informer)
 	}
 
+	if len(informers) == 0 {
+		// no informers, set state to ready and return
+		defaultReadyStatus := types.AppStatus{
+			AppSlug:   appSlug,
+			UpdatedAt: time.Now(),
+			State:     types.StateReady,
+			Sequence:  sequence,
+		}
+		if err := o.setAppStatus(defaultReadyStatus); err != nil {
+			log.Printf("error updating app status: %v", err)
+		}
+		return
+	}
+
 	o.appStateMonitor.Apply(appSlug, sequence, informers)
 }
 
