@@ -125,7 +125,7 @@ jobs:
 
       - name: Package test chart
         env:
-          REPLICATED_SDK_IMAGE_NAME: replicated-sdk
+          REPLICATED_SDK_IMAGE_NAME: replicated
           REPLICATED_SDK_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}
           REPLICATED_SDK_VERSION: 0.0.0
         run: |

@@ -1,4 +1,4 @@
-name: 'Validate SDK Endpoints'
+name: 'Validate Replicated API Endpoints'
 description: 'Composite action for validating the Replicated SDK endpoints'
 inputs:
   license-id:
