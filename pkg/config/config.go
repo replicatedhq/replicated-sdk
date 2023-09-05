@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ReplicatedSDKConfig struct {
+type ReplicatedConfig struct {
 	License               string                               `yaml:"license"`
 	LicenseFields         sdklicensetypes.LicenseFields        `yaml:"licenseFields"`
 	AppName               string                               `yaml:"appName"`
@@ -22,8 +22,8 @@ type ReplicatedSDKConfig struct {
 	StatusInformers       []appstatetypes.StatusInformerString `yaml:"statusInformers"`
 }
 
-func ParseReplicatedSDKConfig(config []byte) (*ReplicatedSDKConfig, error) {
-	var rc ReplicatedSDKConfig
+func ParseReplicatedConfig(config []byte) (*ReplicatedConfig, error) {
+	var rc ReplicatedConfig
 	err := yaml.Unmarshal(config, &rc)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal config file")

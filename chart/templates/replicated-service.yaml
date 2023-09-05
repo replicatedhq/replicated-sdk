@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: {{ include "replicated.serviceName" . }}
+  namespace: {{ include "replicated.namespace" . | quote }}
+spec:
+  ports:
+  - name: http
+    port: {{ .Values.service.port }}
+    targetPort: 3000
+  selector:
+    {{- include "replicated.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.service.type }}

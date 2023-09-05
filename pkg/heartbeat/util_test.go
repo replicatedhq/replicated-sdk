@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -19,10 +20,10 @@ func TestCanReport(t *testing.T) {
 		{
 			name: "one pod, one replicaset, revision matches deployment revision",
 			env: map[string]string{
-				"REPLICATED_SDK_POD_NAME": "test-pod",
+				"REPLICATED_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "1", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "1", map[string]string{"app": "test-app"}),
 				k8sutil.CreateTestReplicaSet("test-replicaset", "test-namespace", "1"),
 				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset", map[string]string{"app": "test-app"}),
 			),
@@ -33,10 +34,10 @@ func TestCanReport(t *testing.T) {
 		{
 			name: "one pod, one replicaset, revision does not match deployment revision",
 			env: map[string]string{
-				"REPLICATED_SDK_POD_NAME": "test-pod",
+				"REPLICATED_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "2", map[string]string{"app": "test-app"}),
 				k8sutil.CreateTestReplicaSet("test-replicaset", "test-namespace", "1"),
 				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset", map[string]string{"app": "test-app"}),
 			),
@@ -47,10 +48,10 @@ func TestCanReport(t *testing.T) {
 		{
 			name: "one pod, two replicasets, revision matches deployment revision",
 			env: map[string]string{
-				"REPLICATED_SDK_POD_NAME": "test-pod",
+				"REPLICATED_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "2", map[string]string{"app": "test-app"}),
 				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
 				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
 				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset-bar", map[string]string{"app": "test-app"}),
@@ -62,10 +63,10 @@ func TestCanReport(t *testing.T) {
 		{
 			name: "one pod, two replicasets, revision does not match deployment revision",
 			env: map[string]string{
-				"REPLICATED_SDK_POD_NAME": "test-pod",
+				"REPLICATED_POD_NAME": "test-pod",
 			},
 			clientset: fake.NewSimpleClientset(
-				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "2", map[string]string{"app": "test-app"}),
 				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
 				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
 				k8sutil.CreateTestPod("test-pod", "test-namespace", "test-replicaset-foo", map[string]string{"app": "test-app"}),
@@ -77,10 +78,10 @@ func TestCanReport(t *testing.T) {
 		{
 			name: "two pods, two replicasets, revision matches deployment revision",
 			env: map[string]string{
-				"REPLICATED_SDK_POD_NAME": "test-pod-bar",
+				"REPLICATED_POD_NAME": "test-pod-bar",
 			},
 			clientset: fake.NewSimpleClientset(
-				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "2", map[string]string{"app": "test-app"}),
 				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
 				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
 				k8sutil.CreateTestPod("test-pod-foo", "test-namespace", "test-replicaset-foo", map[string]string{"app": "test-app"}),
@@ -93,10 +94,10 @@ func TestCanReport(t *testing.T) {
 		{
 			name: "two pods, two replicasets, revision does not match deployment revision",
 			env: map[string]string{
-				"REPLICATED_SDK_POD_NAME": "test-pod-foo",
+				"REPLICATED_POD_NAME": "test-pod-foo",
 			},
 			clientset: fake.NewSimpleClientset(
-				k8sutil.CreateTestDeployment("replicated-sdk", "test-namespace", "2", map[string]string{"app": "test-app"}),
+				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "2", map[string]string{"app": "test-app"}),
 				k8sutil.CreateTestReplicaSet("test-replicaset-foo", "test-namespace", "1"),
 				k8sutil.CreateTestReplicaSet("test-replicaset-bar", "test-namespace", "2"),
 				k8sutil.CreateTestPod("test-pod-foo", "test-namespace", "test-replicaset-foo", map[string]string{"app": "test-app"}),

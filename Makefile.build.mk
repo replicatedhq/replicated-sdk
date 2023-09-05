@@ -23,7 +23,7 @@ define GIT_SHA
 endef
 endif
 
-ifeq ("$(DEBUG_REPLICATED_SDK)", "1")
+ifeq ("$(DEBUG_REPLICATED)", "1")
 define LDFLAGS
 -ldflags "\
 	-X ${VERSION_PACKAGE}.version=${VERSION} \

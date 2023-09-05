@@ -33,7 +33,7 @@ type APIServerParams struct {
 }
 
 func Start(params APIServerParams) {
-	log.Println("Replicated SDK version:", buildversion.Version())
+	log.Println("Replicated version:", buildversion.Version())
 
 	backoffDuration := 10 * time.Second
 	bootstrapFn := func() error {
@@ -74,7 +74,7 @@ func Start(params APIServerParams) {
 		Addr:    ":3000",
 	}
 
-	log.Printf("Starting Replicated SDK API on port %d...\n", 3000)
+	log.Printf("Starting Replicated API on port %d...\n", 3000)
 
 	log.Fatal(srv.ListenAndServe())
 }

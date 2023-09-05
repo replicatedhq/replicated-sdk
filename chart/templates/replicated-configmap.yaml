@@ -1,0 +1,17 @@
+{{/*
+This is a legacy/deprecated configmap.
+The replicated API will use the deployment uid as the app-id and replicated-id if the configmap does not exist.
+*/}}
+{{- $data := (lookup "v1" "ConfigMap" .Release.Namespace "replicated").data }}
+{{- if $data }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "replicated.labels" . | nindent 4 }}
+  name: {{ include "replicated.configMapName" . }}
+  namespace: {{ include "replicated.namespace" . | quote }}
+data:
+  replicated-id: {{ index $data "replicated-id" }}
+  app-id: {{ index $data "app-id" }}
+{{- end }}

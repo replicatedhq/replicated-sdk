@@ -41,13 +41,13 @@ func bootstrap(params APIServerParams) error {
 		return backoff.Permanent(errors.New("License is expired"))
 	}
 
-	// retrieve replicated sdk and app ids
-	replicatedSDKID, appID, err := util.GetReplicatedSDKAndAppIDs(params.Namespace)
+	// retrieve replicated and app ids
+	replicatedID, appID, err := util.GetReplicatedAndAppIDs(params.Namespace)
 	if err != nil {
-		return errors.Wrap(err, "failed to get replicated sdk and app ids")
+		return errors.Wrap(err, "failed to get replicated and app ids")
 	}
-	if replicatedSDKID == "" {
-		return backoff.Permanent(errors.New("Replicated SDK ID not found"))
+	if replicatedID == "" {
+		return backoff.Permanent(errors.New("Replicated ID not found"))
 	}
 	if appID == "" {
 		return backoff.Permanent(errors.New("App ID not found"))
@@ -64,7 +64,7 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	storeOptions := store.InitInMemoryStoreOptions{
-		ReplicatedSDKID:       replicatedSDKID,
+		ReplicatedID:          replicatedID,
 		AppID:                 appID,
 		License:               verifiedLicense,
 		LicenseFields:         params.LicenseFields,
@@ -107,11 +107,7 @@ func bootstrap(params APIServerParams) error {
 		store.GetStore().SetUpdates(updates)
 	}
 
-	targetNamespace := params.Namespace
-	if k8sutil.IsReplicatedClusterScoped(params.Context, clientset, params.Namespace) {
-		targetNamespace = "" // watch all namespaces
-	}
-	appStateOperator := appstate.InitOperator(clientset, targetNamespace)
+	appStateOperator := appstate.InitOperator(clientset, params.Namespace)
 	appStateOperator.Start()
 
 	// if no status informers are provided, generate them from the helm release
@@ -144,8 +140,8 @@ func bootstrap(params APIServerParams) error {
 	// this is at the end of the bootstrap function so that it doesn't re-run on retry
 	if !util.IsAirgap() && store.GetStore().IsDevLicense() {
 		go func() {
-			if err := util.WarnOnOutdatedSDKVersion(); err != nil {
-				logger.Infof("Failed to check if running an outdated sdk version: %v", err)
+			if err := util.WarnOnOutdatedReplicatedVersion(); err != nil {
+				logger.Infof("Failed to check if running an outdated replicated version: %v", err)
 			}
 		}()
 	}

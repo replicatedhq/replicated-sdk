@@ -10,6 +10,7 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -56,7 +57,7 @@ func TestMock_GetMockData(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSDKSecretName,
+							Name:      util.GetReplicatedSecretName(),
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
@@ -103,7 +104,7 @@ func TestMock_SetMockData(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "updates the replicated-sdk secret with the mock data",
+			name: "updates the replicated secret with the mock data",
 			fields: fields{
 				clientset: fake.NewSimpleClientset(&corev1.SecretList{
 					TypeMeta: metav1.TypeMeta{},
@@ -111,7 +112,7 @@ func TestMock_SetMockData(t *testing.T) {
 					Items: []corev1.Secret{{
 						TypeMeta: metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      replicatedSDKSecretName,
+							Name:      util.GetReplicatedSecretName(),
 							Namespace: "default",
 						},
 						Data: map[string][]byte{},
@@ -134,7 +135,7 @@ func TestMock_SetMockData(t *testing.T) {
 				return
 			}
 
-			secret, err := tt.fields.clientset.CoreV1().Secrets(tt.fields.namespace).Get(context.Background(), replicatedSDKSecretName, metav1.GetOptions{})
+			secret, err := tt.fields.clientset.CoreV1().Secrets(tt.fields.namespace).Get(context.Background(), util.GetReplicatedSecretName(), metav1.GetOptions{})
 			require.NoError(t, err)
 
 			var got integrationtypes.MockData

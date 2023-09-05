@@ -14,7 +14,7 @@ var (
 )
 
 type Store interface {
-	GetReplicatedSDKID() string
+	GetReplicatedID() string
 	GetAppID() string
 	GetLicense() *kotsv1beta1.License
 	SetLicense(license *kotsv1beta1.License)

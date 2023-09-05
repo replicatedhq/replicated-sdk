@@ -48,14 +48,14 @@ func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1
 		return false, nil
 	}
 
-	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "replicated-sdk", metav1.GetOptions{})
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), util.GetReplicatedDeploymentName(), metav1.GetOptions{})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to get replicated-sdk deployment")
+		return false, errors.Wrap(err, "failed to get replicated deployment")
 	}
 
-	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), os.Getenv("REPLICATED_SDK_POD_NAME"), metav1.GetOptions{})
+	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), os.Getenv("REPLICATED_POD_NAME"), metav1.GetOptions{})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to get replicated-sdk pod")
+		return false, errors.Wrap(err, "failed to get replicated pod")
 	}
 
 	var podRevision int
@@ -92,7 +92,7 @@ func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1
 
 	if podRevision != deploymentRevision {
 		// don't report from sdk instances that are not associated with the current deployment revision.
-		// this can happen when a rolling update of the replicated-sdk deployment is in progress and the pod is terminating.
+		// this can happen when a rolling update of the replicated deployment is in progress and the pod is terminating.
 		logger.Infof("not reporting from sdk instance with deployment reversion (%d) because a newer deployment reversion (%d) was found", podRevision, deploymentRevision)
 		return false, nil
 	}

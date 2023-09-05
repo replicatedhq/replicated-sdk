@@ -1,39 +1,21 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "replicated-sdk.name" -}}
+{{- define "replicated.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "replicated-sdk.fullname" -}}
-  {{- if .Values.fullnameOverride }}
-    {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-  {{- else }}
-    {{- $name := default .Chart.Name .Values.nameOverride }}
-    {{- if contains $name .Release.Name }}
-      {{- .Release.Name | trunc 63 | trimSuffix "-" }}
-    {{- else }}
-      {{- printf "%s" $name | trunc 63 | trimSuffix "-" }}
-    {{- end }}
-  {{- end }}
 {{- end }}
 
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "replicated-sdk.chart" -}}
+{{- define "replicated.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Allow the release namespace to be overridden for multi-namespace deployments.
 */}}
-{{- define "replicated-sdk.namespace" -}}
+{{- define "replicated.namespace" -}}
 {{- if .Values.namespaceOverride -}}
 {{- .Values.namespaceOverride -}}
 {{- else -}}
@@ -44,9 +26,9 @@ Allow the release namespace to be overridden for multi-namespace deployments.
 {{/*
 Common labels
 */}}
-{{- define "replicated-sdk.labels" -}}
-helm.sh/chart: {{ include "replicated-sdk.chart" . }}
-{{ include "replicated-sdk.selectorLabels" . }}
+{{- define "replicated.labels" -}}
+helm.sh/chart: {{ include "replicated.chart" . }}
+{{ include "replicated.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -56,15 +38,15 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "replicated-sdk.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "replicated-sdk.name" . }}
+{{- define "replicated.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "replicated.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 License Fields
 */}}
-{{- define "replicated-sdk.licenseFields" -}}
+{{- define "replicated.licenseFields" -}}
   {{- if (((.Values.global).replicated).licenseFields) -}}
     {{- .Values.global.replicated.licenseFields | toYaml -}}
   {{- else if .Values.licenseFields -}}
@@ -75,7 +57,7 @@ License Fields
 {{/*
 Is OpenShift
 */}}
-{{- define "replicated-sdk.isOpenShift" -}}
+{{- define "replicated.isOpenShift" -}}
   {{- $isOpenShift := false }}
   {{- range .Capabilities.APIVersions -}}
     {{- if hasPrefix "apps.openshift.io/" . -}}
@@ -84,3 +66,38 @@ Is OpenShift
   {{- end -}}
   {{- $isOpenShift }}
 {{- end }}
+
+{{/*
+Resource Names
+*/}}
+{{- define "replicated.configMapName" -}}
+  {{ include "replicated.name" . }}
+{{- end -}}
+
+{{- define "replicated.deploymentName" -}}
+  {{ include "replicated.name" . }}
+{{- end -}}
+
+{{- define "replicated.roleName" -}}
+  {{ include "replicated.name" . }}-role
+{{- end -}}
+
+{{- define "replicated.roleBindingName" -}}
+  {{ include "replicated.name" . }}-rolebinding
+{{- end -}}
+
+{{- define "replicated.secretName" -}}
+  {{ include "replicated.name" . }}
+{{- end -}}
+
+{{- define "replicated.serviceName" -}}
+  {{ include "replicated.name" . }}
+{{- end -}}
+
+{{- define "replicated.serviceAccountName" -}}
+  {{ .Values.serviceAccountName | default (include "replicated.name" .) }}
+{{- end -}}
+
+{{- define "replicated.supportBundleName" -}}
+  {{ include "replicated.name" . }}-supportbundle
+{{- end -}}
