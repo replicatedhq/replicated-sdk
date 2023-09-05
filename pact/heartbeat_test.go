@@ -13,6 +13,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -22,7 +23,7 @@ func TestSendAppHeartbeat(t *testing.T) {
 
 	mockStore := mock_store.NewMockStore(ctrl)
 	clientset := fake.NewSimpleClientset(
-		k8sutil.CreateTestDeployment("replicated-sdk", "sdk-heartbeat-namespace", "1", map[string]string{"app": "sdk-heartbeat-app"}),
+		k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "sdk-heartbeat-namespace", "1", map[string]string{"app": "sdk-heartbeat-app"}),
 		k8sutil.CreateTestReplicaSet("sdk-heartbeat-replicaset", "sdk-heartbeat-namespace", "1"),
 		k8sutil.CreateTestPod("sdk-heartbeat-pod", "sdk-heartbeat-namespace", "sdk-heartbeat-replicaset", map[string]string{"app": "sdk-heartbeat-app"}),
 	)
