@@ -125,9 +125,9 @@ jobs:
 
       - name: Package test chart
         env:
-          REPLICATED_IMAGE_NAME: replicated
+          REPLICATED_CHART_NAME: replicated
           REPLICATED_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}
-          REPLICATED_VERSION: 0.0.0
+          REPLICATED_CHART_VERSION: 0.0.0
         run: |
           cd test-chart
           envsubst < Chart.yaml.tmpl > Chart.yaml
