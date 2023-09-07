@@ -70,10 +70,6 @@ Is OpenShift
 {{/*
 Resource Names
 */}}
-{{- define "replicated.configMapName" -}}
-  {{ include "replicated.name" . }}
-{{- end -}}
-
 {{- define "replicated.deploymentName" -}}
   {{ include "replicated.name" . }}
 {{- end -}}

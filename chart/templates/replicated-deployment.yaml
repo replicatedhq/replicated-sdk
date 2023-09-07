@@ -67,8 +67,6 @@ spec:
           value: secret # TODO: support other drivers
         - name: REPLICATED_SECRET_NAME
           value: {{ include "replicated.secretName" . }}
-        - name: REPLICATED_CONFIGMAP_NAME
-          value: {{ include "replicated.configMapName" . }}
         - name: REPLICATED_DEPLOYMENT_NAME
           value: {{ include "replicated.deploymentName" . }}
         - name: REPLICATED_CONFIG_FILE
