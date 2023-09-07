@@ -2,7 +2,7 @@
 This is a legacy/deprecated configmap.
 The replicated API will use the deployment uid as the app-id and replicated-id if the configmap does not exist.
 */}}
-{{- $data := (lookup "v1" "ConfigMap" .Release.Namespace "replicated").data }}
+{{- $data := (lookup "v1" "ConfigMap" .Release.Namespace (include "replicated.configMapName" .)).data }}
 {{- if $data }}
 apiVersion: v1
 kind: ConfigMap
