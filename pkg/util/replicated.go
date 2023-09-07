@@ -18,16 +18,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func GetLegacyReplicatedConfigMapName() string {
+	return "replicated-sdk"
+}
+
 func GetReplicatedSecretName() string {
 	if sn := os.Getenv("REPLICATED_SECRET_NAME"); sn != "" {
 		return sn
-	}
-	return "replicated"
-}
-
-func GetReplicatedConfigMapName() string {
-	if cmn := os.Getenv("REPLICATED_CONFIGMAP_NAME"); cmn != "" {
-		return cmn
 	}
 	return "replicated"
 }
@@ -45,9 +42,9 @@ func GetReplicatedAndAppIDs(namespace string) (string, string, error) {
 		return "", "", errors.Wrap(err, "failed to get clientset")
 	}
 
-	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), GetReplicatedConfigMapName(), metav1.GetOptions{})
+	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), GetLegacyReplicatedConfigMapName(), metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
-		return "", "", errors.Wrap(err, "failed to get replicated configmap")
+		return "", "", errors.Wrap(err, "failed to get replicated-sdk configmap")
 	}
 
 	replicatedID := ""
@@ -61,7 +58,7 @@ func GetReplicatedAndAppIDs(namespace string) (string, string, error) {
 		replicatedID = string(d.ObjectMeta.UID)
 		appID = string(d.ObjectMeta.UID)
 	} else {
-		replicatedID = cm.Data["replicated-id"]
+		replicatedID = cm.Data["replicated-sdk-id"]
 		appID = cm.Data["app-id"]
 	}
 
