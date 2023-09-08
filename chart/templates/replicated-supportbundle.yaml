@@ -23,5 +23,26 @@ stringData:
             selector:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
-              {{- end }} 
+              {{- end }}
             name: replicated/logs
+        - http:
+            collectorName: replicated-sdk-app-info
+            get:
+              url: http://replicated-sdk.{{ include "replicated.namespace" . | quote }}:3000/api/v1/app/info
+        - http:
+            collectorName: replicated-sdk-license-info
+            get:
+              url: http://replicated-sdk.{{ include "replicated.namespace" . | quote }}:3000/api/v1/license/info
+      analyzers:
+        - jsonCompare:
+            checkName: Replicated SDK App Status
+            fileName: replicated-sdk-app-info.json
+            path: "appStatus"
+            value: "ready"
+            outcomes:
+              - warn:
+                  when: "false"
+                  message: Replicated SDK App status is not ready.
+              - pass:
+                  when: "true"
+                  message: Replicated SDK App status is not ready.
