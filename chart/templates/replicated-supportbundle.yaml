@@ -29,10 +29,16 @@ stringData:
             collectorName: replicated-sdk-app-info
             get:
               url: http://replicated-sdk.{{ include "replicated.namespace" . }}:3000/api/v1/app/info
+              headers:
+                User-Agent: "troubleshoot.sh/support-bundle"
+              timeout: 5s
         - http:
             collectorName: replicated-sdk-license-info
             get:
               url: http://replicated-sdk.{{ include "replicated.namespace" . }}:3000/api/v1/license/info
+              headers:
+                User-Agent: "troubleshoot.sh/support-bundle"
+              timeout: 5s
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status
