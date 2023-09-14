@@ -7,7 +7,7 @@ kind: Secret
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
-    troubleshoot.io/kind: support-bundle
+    troubleshoot.sh/kind: support-bundle
   name: {{ include "replicated.supportBundleName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 stringData:
@@ -19,12 +19,12 @@ stringData:
     spec:
       collectors:
         - logs:
-            collectorName: replicated-logs
+            collectorName: replicated-sdk-logs
             selector:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
               {{- end }}
-            name: replicated/logs
+            name: replicated-sdk/logs
         - http:
             collectorName: replicated-sdk-app-info
             get:
