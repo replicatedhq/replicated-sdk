@@ -41,9 +41,6 @@ func TestSendCustomApplicationMetrics(t *testing.T) {
 	clientWriter := httptest.NewRecorder()
 	clientRequest := &http.Request{
 		Body: io.NopCloser(bytes.NewBuffer(customMetricsData)),
-		Header: http.Header{
-			"Authorization": []string{license.Spec.LicenseID},
-		},
 	}
 
 	pactInteraction := func() {

@@ -20,10 +20,6 @@ type ApplicationMetricsData map[string]interface{}
 
 func SendCustomApplicationMetrics(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
-	if r.Header.Get("Authorization") != license.Spec.LicenseID {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 
 	if util.IsAirgap() {
 		JSON(w, http.StatusForbidden, "This request cannot be satisfied in airgap mode")
