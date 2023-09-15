@@ -7,7 +7,7 @@ kind: Secret
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
-    troubleshoot.io/kind: support-bundle
+    troubleshoot.sh/kind: support-bundle
   name: {{ include "replicated.supportBundleName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 stringData:
@@ -23,5 +23,32 @@ stringData:
             selector:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
-              {{- end }} 
+              {{- end }}
             name: replicated/logs
+        - http:
+            collectorName: replicated-app-info
+            get:
+              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info
+              headers:
+                User-Agent: "troubleshoot.sh/support-bundle"
+              timeout: 5s
+        - http:
+            collectorName: replicated-license-info
+            get:
+              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info
+              headers:
+                User-Agent: "troubleshoot.sh/support-bundle"
+              timeout: 5s
+      analyzers:
+        - jsonCompare:
+            checkName: Replicated SDK App Status
+            fileName: replicated-app-info.json
+            path: "appStatus"
+            value: "ready"
+            outcomes:
+              - warn:
+                  when: "false"
+                  message: Replicated SDK App status is not ready.
+              - pass:
+                  when: "true"
+                  message: Replicated SDK App status is not ready.
