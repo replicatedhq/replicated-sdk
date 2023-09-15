@@ -19,30 +19,30 @@ stringData:
     spec:
       collectors:
         - logs:
-            collectorName: replicated-sdk-logs
+            collectorName: replicated-logs
             selector:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
               {{- end }}
-            name: replicated-sdk/logs
+            name: replicated/logs
         - http:
-            collectorName: replicated-sdk-app-info
+            collectorName: replicated-app-info
             get:
-              url: http://replicated-sdk.{{ include "replicated.namespace" . }}:3000/api/v1/app/info
+              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info
               headers:
                 User-Agent: "troubleshoot.sh/support-bundle"
               timeout: 5s
         - http:
-            collectorName: replicated-sdk-license-info
+            collectorName: replicated-license-info
             get:
-              url: http://replicated-sdk.{{ include "replicated.namespace" . }}:3000/api/v1/license/info
+              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info
               headers:
                 User-Agent: "troubleshoot.sh/support-bundle"
               timeout: 5s
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status
-            fileName: replicated-sdk-app-info.json
+            fileName: replicated-app-info.json
             path: "appStatus"
             value: "ready"
             outcomes:
