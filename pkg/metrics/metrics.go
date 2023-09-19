@@ -44,7 +44,7 @@ func SendApplicationMetricsData(sdkStore store.Store, license *kotsv1beta1.Licen
 		return errors.Wrap(err, "marshal data")
 	}
 
-	req, err := util.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	req, err := util.NewRequest("POST", url, bytes.NewBuffer(reqBody), sdkStore.GetUserAgent())
 	if err != nil {
 		return errors.Wrap(err, "call newrequest")
 	}

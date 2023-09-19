@@ -73,9 +73,7 @@ func TestSendCustomApplicationMetrics(t *testing.T) {
 			ChannelID:             license.Spec.ChannelID,
 			ChannelSequence:       channelSequence,
 		}
-		if err := store.InitInMemory(storeOptions); err != nil {
-			t.Fatalf("Error on InitInMemory: %v", err)
-		}
+		store.InitInMemory(storeOptions)
 		defer store.SetStore(nil)
 
 		if err := pact.Verify(func() error {

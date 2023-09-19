@@ -41,7 +41,7 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 		return errors.Wrap(err, "failed to marshal request payload")
 	}
 
-	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", license.Spec.Endpoint), bytes.NewBuffer(reqBody))
+	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", license.Spec.Endpoint), bytes.NewBuffer(reqBody), sdkStore.GetUserAgent())
 	if err != nil {
 		return errors.Wrap(err, "failed to create http request")
 	}

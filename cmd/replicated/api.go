@@ -5,10 +5,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/apiserver"
 	"github.com/replicatedhq/replicated-sdk/pkg/config"
-	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,7 +36,6 @@ func APICmd() *cobra.Command {
 				return errors.New("either config file or integration license id must be specified")
 			}
 
-			var err error
 			var replicatedConfig = new(config.ReplicatedConfig)
 			if configFilePath != "" {
 				configFile, err := os.ReadFile(configFilePath)
@@ -59,23 +56,10 @@ func APICmd() *cobra.Command {
 				return errors.New("only one of license in the config file or integration license id can be specified")
 			}
 
-			var license *kotsv1beta1.License
-			if replicatedConfig.License != "" {
-				if license, err = sdklicense.LoadLicenseFromBytes([]byte(replicatedConfig.License)); err != nil {
-					return errors.Wrap(err, "failed to parse license from base64")
-				}
-			} else if integrationLicenseID != "" {
-				if license, err = sdklicense.GetLicenseByID(integrationLicenseID, replicatedConfig.ReplicatedAppEndpoint); err != nil {
-					return errors.Wrap(err, "failed to get license by id for integration license id")
-				}
-				if license.Spec.LicenseType != "dev" {
-					return errors.New("integration license must be a dev license")
-				}
-			}
-
 			params := apiserver.APIServerParams{
 				Context:               cmd.Context(),
-				License:               license,
+				LicenseBytes:          []byte(replicatedConfig.License),
+				IntegrationLicenseID:  integrationLicenseID,
 				LicenseFields:         replicatedConfig.LicenseFields,
 				AppName:               replicatedConfig.AppName,
 				ChannelID:             replicatedConfig.ChannelID,
@@ -87,6 +71,9 @@ func APICmd() *cobra.Command {
 				VersionLabel:          replicatedConfig.VersionLabel,
 				ReplicatedAppEndpoint: replicatedConfig.ReplicatedAppEndpoint,
 				StatusInformers:       replicatedConfig.StatusInformers,
+				UserAgent:             replicatedConfig.UserAgent,
+				ReplicatedID:          replicatedConfig.ReplicatedID,
+				AppID:                 replicatedConfig.AppID,
 				Namespace:             namespace,
 			}
 			apiserver.Start(params)

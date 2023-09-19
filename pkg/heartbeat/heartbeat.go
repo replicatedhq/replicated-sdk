@@ -56,7 +56,7 @@ func Start() error {
 	_, err := job.AddFunc(cronSpec, func() {
 		logger.Debugf("sending a heartbeat for app %s", appSlug)
 
-		licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+		licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetUserAgent())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 		} else {
