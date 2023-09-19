@@ -117,13 +117,8 @@ func bootstrap(params APIServerParams) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to get helm release")
 		}
-
 		if helmRelease != nil {
-			i, err := appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
-			if err != nil {
-				return errors.Wrap(err, "failed to generate status informers")
-			}
-			informers = i
+			informers = appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
 		}
 	}
 

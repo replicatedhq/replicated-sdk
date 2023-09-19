@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes/scheme"
 )
@@ -61,18 +61,26 @@ func resourceStatesApplyNew(resourceStates types.ResourceStates, resourceState t
 	return
 }
 
-func GenerateStatusInformersForManifest(manifest string) ([]types.StatusInformerString, error) {
+func GenerateStatusInformersForManifest(manifest string) []types.StatusInformerString {
 	informers := []types.StatusInformerString{}
 
 	for _, doc := range strings.Split(manifest, "\n---\n") {
-		if doc == "" {
+		// check if the document is empty
+		var obj map[string]interface{}
+		err := yaml.Unmarshal([]byte(doc), &obj)
+		if err != nil {
+			logger.Debugf("Failed to unmarshal document to generate a status informer: %v: %v", doc, err)
+			continue
+		}
+		if len(obj) == 0 {
 			continue
 		}
 
 		unstructured := &unstructured.Unstructured{}
 		_, gvk, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(doc), nil, unstructured)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to decode document")
+			logger.Debugf("Failed to decode document to generate a status informer: %v: %v", doc, err)
+			continue
 		}
 
 		namespace := unstructured.GetNamespace()
@@ -91,5 +99,5 @@ func GenerateStatusInformersForManifest(manifest string) ([]types.StatusInformer
 		}
 	}
 
-	return informers, nil
+	return informers
 }
