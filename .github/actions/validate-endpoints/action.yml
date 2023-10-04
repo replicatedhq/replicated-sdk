@@ -8,6 +8,10 @@ inputs:
     description: 'License fields to validate'
     required: false
     default: '[]'
+  version-label:
+    description: 'Version label to validate'
+    required: false
+    default: ''
   integration-enabled:
     description: 'If integration mode is enabled or not'
     required: false
@@ -87,12 +91,23 @@ runs:
 
     - name: Validate /app/info endpoint
       shell: bash
+      env:
+        VERSION_LABEL: ${{ inputs.version-label }}
       run: |
         appStatus=$(curl -s --fail --show-error localhost:8888/api/v1/app/info | jq -r .appStatus | tr -d '\n')
 
         if [ "$appStatus" != "ready" ]; then
           echo "Expected app status to be 'ready', but is set to '$appStatus'."
           exit 1
+        fi
+
+        if [ -n "$VERSION_LABEL" ]; then
+          versionLabel=$(curl -s --fail --show-error localhost:8888/api/v1/app/info | jq -r .currentRelease.versionLabel | tr -d '\n')
+
+          if [ "$versionLabel" != "$VERSION_LABEL" ]; then
+            echo "Expected version label to be '$VERSION_LABEL', but is '$versionLabel'."
+            exit 1
+          fi
         fi
 
     - name: Validate /app/updates endpoint

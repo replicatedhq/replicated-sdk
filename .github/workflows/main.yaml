@@ -136,7 +136,7 @@ jobs:
 
       - name: Create release
         id: create-release
-        uses: replicatedhq/replicated-actions/create-release@v1.1.1
+        uses: replicatedhq/replicated-actions/create-release@v1.5.2
         with:
           app-slug: ${{ env.APP_SLUG }}
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
@@ -266,6 +266,18 @@ jobs:
         with:
           license-id: ${{ env.LICENSE_ID }}
           license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'false'
+
+      - name: Upgrade via Helm as subchart in production mode to a new version
+        run: |
+          helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 --wait --timeout 2m
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          version-label: '1.0.0'
           integration-enabled: 'false'
 
       - name: Uninstall test-chart via Helm
