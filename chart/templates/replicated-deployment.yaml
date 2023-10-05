@@ -20,6 +20,8 @@ spec:
       {{- include "replicated.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/replicated-secret: {{ include (print $.Template.BasePath "/replicated-secret.yaml") . | sha256sum }}
       labels:
         {{- include "replicated.labels" . | nindent 8 }}
     spec:

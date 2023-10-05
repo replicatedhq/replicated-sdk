@@ -136,7 +136,7 @@ jobs:
 
       - name: Create release
         id: create-release
-        uses: replicatedhq/replicated-actions/create-release@v1.1.1
+        uses: replicatedhq/replicated-actions/create-release@v1.5.2
         with:
           app-slug: ${{ env.APP_SLUG }}
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
@@ -268,6 +268,30 @@ jobs:
           license-fields: ${{ env.LICENSE_FIELDS }}
           integration-enabled: 'false'
 
+      - name: Upgrade via Helm as subchart in production mode to a new version
+        run: |
+          oldpodname=$(kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}')
+          
+          helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 --wait --timeout 2m
+
+          COUNTER=1
+          while [ kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}' | grep -q $oldpodname ]; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Pod did not restart after upgrade"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          version-label: '1.0.0'
+          integration-enabled: 'false'
+
       - name: Uninstall test-chart via Helm
         run: helm uninstall test-chart --wait --timeout 2m
 
@@ -284,6 +308,33 @@ jobs:
           license-id: ${{ env.LICENSE_ID }}
           license-fields: ${{ env.LICENSE_FIELDS }}
           integration-enabled: 'false'
+          deployed-via-kubectl: 'true'
+
+      - name: Upgrade via kubectl as subchart in production mode
+        run: |
+          oldpodname=$(kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}')
+
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 | kubectl apply -f -
+          kubectl rollout status deployment test-chart --timeout=2m
+          kubectl rollout status deployment replicated --timeout=2m
+
+          COUNTER=1
+          while [ kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}' | grep -q $oldpodname ]; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Pod did not restart after upgrade"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'false'
+          version-label: '1.0.0'
           deployed-via-kubectl: 'true'
 
       - name: Uninstall test-chart via kubectl
