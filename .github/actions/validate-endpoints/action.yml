@@ -91,8 +91,6 @@ runs:
 
     - name: Validate /app/info endpoint
       shell: bash
-      env:
-        VERSION_LABEL: ${{ inputs.version-label }}
       run: |
         appStatus=$(curl -s --fail --show-error localhost:8888/api/v1/app/info | jq -r .appStatus | tr -d '\n')
 
@@ -101,11 +99,12 @@ runs:
           exit 1
         fi
 
-        if [ -n "$VERSION_LABEL" ]; then
+        # TODO: add more validation here if needed
+        if [ -n "${{ inputs.version-label }}" ]; then
           versionLabel=$(curl -s --fail --show-error localhost:8888/api/v1/app/info | jq -r .currentRelease.versionLabel | tr -d '\n')
 
-          if [ "$versionLabel" != "$VERSION_LABEL" ]; then
-            echo "Expected version label to be '$VERSION_LABEL', but is '$versionLabel'."
+          if [ "$versionLabel" != "${{ inputs.version-label }}" ]; then
+            echo "Expected version label to be '${{ inputs.version-label }}', but is '$versionLabel'."
             exit 1
           fi
         fi
