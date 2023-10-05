@@ -113,6 +113,19 @@ jobs:
             exit 1
           fi
 
+          cat << EOF >> test-values.yaml
+          extraEnv:
+          - name: TEST_EXTRA_ENV
+            value: test-extra-env
+          EOF
+
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
+
+          if ! echo $output | grep -q 'TEST_EXTRA_ENV'; then
+            printf "user-set extraEnv should exist:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
   create-test-release:
     runs-on: ubuntu-22.04
     needs: [ build-and-push-e2e ]
