@@ -22,7 +22,6 @@ type InMemoryStore struct {
 	releaseNotes          string
 	versionLabel          string
 	replicatedAppEndpoint string
-	userAgent             string
 	namespace             string
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
