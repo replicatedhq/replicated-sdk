@@ -61,7 +61,7 @@ spec:
             fieldRef:
               fieldPath: metadata.name
         - name: DISABLE_OUTBOUND_CONNECTIONS
-          value: {{ .Values.airgap | default "false" | quote }}
+          value: {{ .Values.isAirgap | default "false" | quote }}
         - name: IS_HELM_MANAGED
           value: "true"
         - name: HELM_RELEASE_NAME

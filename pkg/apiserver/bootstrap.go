@@ -51,10 +51,10 @@ func bootstrap(params APIServerParams) error {
 		if err != nil {
 			return backoff.Permanent(errors.Wrap(err, "failed to get license by id for integration license id"))
 		}
-		unverifiedLicense = l
-		if unverifiedLicense.Spec.LicenseType != "dev" {
+		if l.Spec.LicenseType != "dev" {
 			return errors.New("integration license must be a dev license")
 		}
+		unverifiedLicense = l
 	}
 
 	verifiedLicense, err := sdklicense.VerifySignature(unverifiedLicense)
