@@ -63,7 +63,7 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 		return nil, errors.Wrap(err, "failed to marshal request payload")
 	}
 
-	req, err := util.NewRequest("POST", url, bytes.NewBuffer(reqBody), sdkStore.GetUserAgent())
+	req, err := util.NewRequest("POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call newrequest")
 	}

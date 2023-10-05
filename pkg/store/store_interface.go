@@ -31,7 +31,6 @@ type Store interface {
 	GetReleaseNotes() string
 	GetVersionLabel() string
 	GetReplicatedAppEndpoint() string
-	GetUserAgent() string
 	GetNamespace() string
 	GetAppStatus() appstatetypes.AppStatus
 	SetAppStatus(status appstatetypes.AppStatus)

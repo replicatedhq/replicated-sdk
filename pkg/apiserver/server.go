@@ -29,7 +29,6 @@ type APIServerParams struct {
 	VersionLabel          string
 	ReplicatedAppEndpoint string
 	StatusInformers       []appstatetypes.StatusInformerString
-	UserAgent             string
 	ReplicatedID          string
 	AppID                 string
 	Namespace             string

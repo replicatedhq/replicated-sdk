@@ -3,7 +3,6 @@ package store
 import (
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
@@ -43,7 +42,6 @@ type InitInMemoryStoreOptions struct {
 	ReleaseNotes          string
 	VersionLabel          string
 	ReplicatedAppEndpoint string
-	UserAgent             string
 	Namespace             string
 }
 
@@ -63,7 +61,6 @@ func InitInMemory(options InitInMemoryStoreOptions) {
 		releaseNotes:          options.ReleaseNotes,
 		versionLabel:          options.VersionLabel,
 		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
-		userAgent:             options.UserAgent,
 		namespace:             options.Namespace,
 	})
 }
@@ -144,13 +141,6 @@ func (s *InMemoryStore) GetVersionLabel() string {
 
 func (s *InMemoryStore) GetReplicatedAppEndpoint() string {
 	return s.replicatedAppEndpoint
-}
-
-func (s *InMemoryStore) GetUserAgent() string {
-	if s.userAgent != "" {
-		return s.userAgent
-	}
-	return buildversion.GetUserAgent()
 }
 
 func (s *InMemoryStore) GetNamespace() string {

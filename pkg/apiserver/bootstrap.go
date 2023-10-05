@@ -47,7 +47,7 @@ func bootstrap(params APIServerParams) error {
 		}
 		unverifiedLicense = l
 	} else if params.IntegrationLicenseID != "" {
-		l, err := sdklicense.GetLicenseByID(params.IntegrationLicenseID, params.ReplicatedAppEndpoint, params.UserAgent)
+		l, err := sdklicense.GetLicenseByID(params.IntegrationLicenseID, params.ReplicatedAppEndpoint)
 		if err != nil {
 			return backoff.Permanent(errors.Wrap(err, "failed to get license by id for integration license id"))
 		}
@@ -64,7 +64,7 @@ func bootstrap(params APIServerParams) error {
 
 	if !util.IsAirgap() {
 		// sync license
-		licenseData, err := sdklicense.GetLatestLicense(verifiedLicense, params.ReplicatedAppEndpoint, params.UserAgent)
+		licenseData, err := sdklicense.GetLatestLicense(verifiedLicense, params.ReplicatedAppEndpoint)
 		if err != nil {
 			return errors.Wrap(err, "failed to get latest license")
 		}
@@ -102,7 +102,6 @@ func bootstrap(params APIServerParams) error {
 		ReleaseNotes:          params.ReleaseNotes,
 		VersionLabel:          params.VersionLabel,
 		ReplicatedAppEndpoint: params.ReplicatedAppEndpoint,
-		UserAgent:             params.UserAgent,
 		Namespace:             params.Namespace,
 		ReplicatedID:          replicatedID,
 		AppID:                 appID,

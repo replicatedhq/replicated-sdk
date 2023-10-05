@@ -42,9 +42,8 @@ spec:
 	}
 
 	type args struct {
-		license   *v1beta1.License
-		endpoint  string
-		userAgent string
+		license  *v1beta1.License
+		endpoint string
 	}
 	tests := []struct {
 		name            string
@@ -63,7 +62,6 @@ spec:
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
-				userAgent: "Replicated-SDK/v0.0.0-unknown",
 			},
 			pactInteraction: func() {
 				pact.
@@ -99,7 +97,6 @@ spec:
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
-				userAgent: "Replicated-SDK/v0.0.0-unknown",
 			},
 			pactInteraction: func() {
 				pact.
@@ -130,7 +127,6 @@ spec:
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
-				userAgent: "Replicated-SDK/v0.0.0-unknown",
 			},
 			pactInteraction: func() {
 				pact.
@@ -161,7 +157,6 @@ spec:
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
-				userAgent: "Replicated-SDK/v0.0.0-unknown",
 			},
 			pactInteraction: func() {
 				pact.
@@ -193,7 +188,6 @@ spec:
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
-				userAgent: "Replicated-SDK/v0.0.0-unknown",
 			},
 			pactInteraction: func() {
 				pact.
@@ -219,7 +213,7 @@ spec:
 		t.Run(tt.name, func(t *testing.T) {
 			tt.pactInteraction()
 			if err := pact.Verify(func() error {
-				got, err := license.GetLatestLicense(tt.args.license, tt.args.endpoint, tt.args.userAgent)
+				got, err := license.GetLatestLicense(tt.args.license, tt.args.endpoint)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("GetLatestLicense() error = %v, wantErr %v", err, tt.wantErr)
 				}

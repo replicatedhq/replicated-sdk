@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/license/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
@@ -23,13 +22,13 @@ type LicenseData struct {
 	License      *kotsv1beta1.License
 }
 
-func GetLicenseByID(licenseID string, endpoint string, userAgent string) (*kotsv1beta1.License, error) {
+func GetLicenseByID(licenseID string, endpoint string) (*kotsv1beta1.License, error) {
 	if endpoint == "" {
 		endpoint = defaultReplicatedAppEndpoint
 	}
 	url := fmt.Sprintf("%s/license", endpoint)
 
-	licenseData, err := getLicenseFromAPI(url, licenseID, userAgent)
+	licenseData, err := getLicenseFromAPI(url, licenseID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get license from api")
 	}
@@ -37,13 +36,13 @@ func GetLicenseByID(licenseID string, endpoint string, userAgent string) (*kotsv
 	return licenseData.License, nil
 }
 
-func GetLatestLicense(license *kotsv1beta1.License, endpoint string, userAgent string) (*LicenseData, error) {
+func GetLatestLicense(license *kotsv1beta1.License, endpoint string) (*LicenseData, error) {
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
 	}
 	url := fmt.Sprintf("%s/license/%s", endpoint, license.Spec.AppSlug)
 
-	licenseData, err := getLicenseFromAPI(url, license.Spec.LicenseID, userAgent)
+	licenseData, err := getLicenseFromAPI(url, license.Spec.LicenseID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get license from api")
 	}
@@ -51,8 +50,8 @@ func GetLatestLicense(license *kotsv1beta1.License, endpoint string, userAgent s
 	return licenseData, nil
 }
 
-func getLicenseFromAPI(url string, licenseID string, userAgent string) (*LicenseData, error) {
-	req, err := util.NewRequest("GET", url, nil, userAgent)
+func getLicenseFromAPI(url string, licenseID string) (*LicenseData, error) {
+	req, err := util.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call newrequest")
 	}
@@ -105,13 +104,13 @@ func LicenseIsExpired(license *kotsv1beta1.License) (bool, error) {
 	return partsed.Before(time.Now()), nil
 }
 
-func GetLatestLicenseFields(sdkStore store.Store, license *kotsv1beta1.License, endpoint string) (types.LicenseFields, error) {
+func GetLatestLicenseFields(license *kotsv1beta1.License, endpoint string) (types.LicenseFields, error) {
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
 	}
 	url := fmt.Sprintf("%s/license/fields", endpoint)
 
-	req, err := util.NewRequest("GET", url, nil, sdkStore.GetUserAgent())
+	req, err := util.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call newrequest")
 	}
@@ -141,13 +140,13 @@ func GetLatestLicenseFields(sdkStore store.Store, license *kotsv1beta1.License, 
 	return licenseFields, nil
 }
 
-func GetLatestLicenseField(sdkStore store.Store, license *kotsv1beta1.License, endpoint string, fieldName string) (*types.LicenseField, error) {
+func GetLatestLicenseField(license *kotsv1beta1.License, endpoint string, fieldName string) (*types.LicenseField, error) {
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
 	}
 	url := fmt.Sprintf("%s/license/field/%s", endpoint, fieldName)
 
-	req, err := util.NewRequest("GET", url, nil, sdkStore.GetUserAgent())
+	req, err := util.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call newrequest")
 	}

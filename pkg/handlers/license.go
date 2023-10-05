@@ -26,7 +26,7 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 
 	if !util.IsAirgap() {
-		l, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetUserAgent())
+		l, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 			JSONCached(w, http.StatusOK, licenseInfoFromLicense(license))
@@ -44,7 +44,7 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 	licenseFields := store.GetStore().GetLicenseFields()
 
 	if !util.IsAirgap() {
-		fields, err := sdklicense.GetLatestLicenseFields(store.GetStore(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+		fields, err := sdklicense.GetLatestLicenseFields(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
 			JSONCached(w, http.StatusOK, licenseFields)
@@ -67,7 +67,7 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !util.IsAirgap() {
-		field, err := sdklicense.GetLatestLicenseField(store.GetStore(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), fieldName)
+		field, err := sdklicense.GetLatestLicenseField(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), fieldName)
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license field"))
 			if lf, ok := licenseFields[fieldName]; !ok {

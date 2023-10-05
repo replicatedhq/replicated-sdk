@@ -71,7 +71,6 @@ func APICmd() *cobra.Command {
 				VersionLabel:          replicatedConfig.VersionLabel,
 				ReplicatedAppEndpoint: replicatedConfig.ReplicatedAppEndpoint,
 				StatusInformers:       replicatedConfig.StatusInformers,
-				UserAgent:             replicatedConfig.UserAgent,
 				ReplicatedID:          replicatedConfig.ReplicatedID,
 				AppID:                 replicatedConfig.AppID,
 				Namespace:             namespace,
