@@ -136,7 +136,7 @@ jobs:
 
       - name: Create release
         id: create-release
-        uses: replicatedhq/replicated-actions/create-release@v1.1.1
+        uses: replicatedhq/replicated-actions/create-release@v1.5.2
         with:
           app-slug: ${{ env.APP_SLUG }}
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
