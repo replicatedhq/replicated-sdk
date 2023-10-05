@@ -39,7 +39,6 @@ func TestSendAppHeartbeat(t *testing.T) {
 		{
 			name: "successful heartbeat",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetUserAgent().Return("Replicated-SDK/v0.0.0-unknown")
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "sdk-heartbeat-customer-0-license",
@@ -91,7 +90,6 @@ func TestSendAppHeartbeat(t *testing.T) {
 		{
 			name: "expired license heartbeat should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetUserAgent().Return("Replicated-SDK/v0.0.0-unknown")
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "sdk-heartbeat-customer-2-license",
@@ -143,7 +141,6 @@ func TestSendAppHeartbeat(t *testing.T) {
 		{
 			name: "nonexistent license heartbeat should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetUserAgent().Return("Replicated-SDK/v0.0.0-unknown")
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "sdk-heartbeat-customer-nonexistent-license",
@@ -195,7 +192,6 @@ func TestSendAppHeartbeat(t *testing.T) {
 		{
 			name: "unauthenticated heartbeat should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetUserAgent().Return("Replicated-SDK/v0.0.0-unknown")
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "sdk-heartbeat-customer-0-license",
