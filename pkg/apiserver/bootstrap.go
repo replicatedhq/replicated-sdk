@@ -3,6 +3,7 @@ package apiserver
 import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
+	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
@@ -18,7 +19,45 @@ import (
 )
 
 func bootstrap(params APIServerParams) error {
-	verifiedLicense, err := sdklicense.VerifySignature(params.License)
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		return errors.Wrap(err, "failed to get clientset")
+	}
+
+	replicatedID, appID := params.ReplicatedID, params.AppID
+	if replicatedID == "" || appID == "" {
+		// retrieve replicated and app ids
+		replicatedID, appID, err = util.GetReplicatedAndAppIDs(clientset, params.Namespace)
+		if err != nil {
+			return errors.Wrap(err, "failed to get replicated and app ids")
+		}
+	}
+	if replicatedID == "" {
+		return backoff.Permanent(errors.New("Replicated ID not found"))
+	}
+	if appID == "" {
+		return backoff.Permanent(errors.New("App ID not found"))
+	}
+
+	var unverifiedLicense *kotsv1beta1.License
+	if len(params.LicenseBytes) > 0 {
+		l, err := sdklicense.LoadLicenseFromBytes(params.LicenseBytes)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse license from base64")
+		}
+		unverifiedLicense = l
+	} else if params.IntegrationLicenseID != "" {
+		l, err := sdklicense.GetLicenseByID(params.IntegrationLicenseID, params.ReplicatedAppEndpoint)
+		if err != nil {
+			return backoff.Permanent(errors.Wrap(err, "failed to get license by id for integration license id"))
+		}
+		if l.Spec.LicenseType != "dev" {
+			return errors.New("integration license must be a dev license")
+		}
+		unverifiedLicense = l
+	}
+
+	verifiedLicense, err := sdklicense.VerifySignature(unverifiedLicense)
 	if err != nil {
 		return backoff.Permanent(errors.Wrap(err, "failed to verify license signature"))
 	}
@@ -41,18 +80,6 @@ func bootstrap(params APIServerParams) error {
 		return backoff.Permanent(errors.New("License is expired"))
 	}
 
-	// retrieve replicated and app ids
-	replicatedID, appID, err := util.GetReplicatedAndAppIDs(params.Namespace)
-	if err != nil {
-		return errors.Wrap(err, "failed to get replicated and app ids")
-	}
-	if replicatedID == "" {
-		return backoff.Permanent(errors.New("Replicated ID not found"))
-	}
-	if appID == "" {
-		return backoff.Permanent(errors.New("App ID not found"))
-	}
-
 	channelID := params.ChannelID
 	if channelID == "" {
 		channelID = verifiedLicense.Spec.ChannelID
@@ -64,8 +91,6 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	storeOptions := store.InitInMemoryStoreOptions{
-		ReplicatedID:          replicatedID,
-		AppID:                 appID,
 		License:               verifiedLicense,
 		LicenseFields:         params.LicenseFields,
 		AppName:               params.AppName,
@@ -78,15 +103,10 @@ func bootstrap(params APIServerParams) error {
 		VersionLabel:          params.VersionLabel,
 		ReplicatedAppEndpoint: params.ReplicatedAppEndpoint,
 		Namespace:             params.Namespace,
+		ReplicatedID:          replicatedID,
+		AppID:                 appID,
 	}
-	if err := store.InitInMemory(storeOptions); err != nil {
-		return errors.Wrap(err, "failed to init store")
-	}
-
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		return errors.Wrap(err, "failed to get clientset")
-	}
+	store.InitInMemory(storeOptions)
 
 	isIntegrationModeEnabled, err := integration.IsEnabled(params.Context, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
 	if err != nil {

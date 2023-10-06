@@ -20,6 +20,8 @@ type ReplicatedConfig struct {
 	VersionLabel          string                               `yaml:"versionLabel"`
 	ReplicatedAppEndpoint string                               `yaml:"replicatedAppEndpoint"`
 	StatusInformers       []appstatetypes.StatusInformerString `yaml:"statusInformers"`
+	ReplicatedID          string                               `yaml:"replicatedID"`
+	AppID                 string                               `yaml:"appID"`
 }
 
 func ParseReplicatedConfig(config []byte) (*ReplicatedConfig, error) {

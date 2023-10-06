@@ -12,10 +12,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
-	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 func GetLegacyReplicatedConfigMapName() string {
@@ -36,12 +36,7 @@ func GetReplicatedDeploymentName() string {
 	return "replicated"
 }
 
-func GetReplicatedAndAppIDs(namespace string) (string, string, error) {
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		return "", "", errors.Wrap(err, "failed to get clientset")
-	}
-
+func GetReplicatedAndAppIDs(clientset kubernetes.Interface, namespace string) (string, string, error) {
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), GetLegacyReplicatedConfigMapName(), metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return "", "", errors.Wrap(err, "failed to get replicated-sdk configmap")

@@ -44,13 +44,13 @@ type InitInMemoryStoreOptions struct {
 	Namespace             string
 }
 
-func InitInMemory(options InitInMemoryStoreOptions) error {
+func InitInMemory(options InitInMemoryStoreOptions) {
 	SetStore(&InMemoryStore{
 		replicatedID:          options.ReplicatedID,
 		appID:                 options.AppID,
+		appSlug:               options.License.Spec.AppSlug,
 		license:               options.License,
 		licenseFields:         options.LicenseFields,
-		appSlug:               options.License.Spec.AppSlug,
 		appName:               options.AppName,
 		channelID:             options.ChannelID,
 		channelName:           options.ChannelName,
@@ -62,8 +62,6 @@ func InitInMemory(options InitInMemoryStoreOptions) error {
 		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
 		namespace:             options.Namespace,
 	})
-
-	return nil
 }
 
 func (s *InMemoryStore) GetReplicatedID() string {

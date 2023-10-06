@@ -60,6 +60,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: DISABLE_OUTBOUND_CONNECTIONS
+          value: {{ .Values.isAirgap | default "false" | quote }}
         - name: IS_HELM_MANAGED
           value: "true"
         - name: HELM_RELEASE_NAME
@@ -83,6 +85,8 @@ spec:
               name: {{ include "replicated.secretName" . }}
               key: integration-license-id
         {{- end }}
+        - name: REPLICATED_USER_AGENT
+          value: {{ .Values.userAgent | default "" | quote }}
         ports:
         - containerPort: 3000
           name: http

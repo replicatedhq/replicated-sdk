@@ -8,7 +8,6 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gorilla/mux"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
@@ -17,7 +16,8 @@ import (
 
 type APIServerParams struct {
 	Context               context.Context
-	License               *kotsv1beta1.License
+	LicenseBytes          []byte
+	IntegrationLicenseID  string
 	LicenseFields         sdklicensetypes.LicenseFields
 	AppName               string
 	ChannelID             string
@@ -29,6 +29,8 @@ type APIServerParams struct {
 	VersionLabel          string
 	ReplicatedAppEndpoint string
 	StatusInformers       []appstatetypes.StatusInformerString
+	ReplicatedID          string
+	AppID                 string
 	Namespace             string
 }
 
