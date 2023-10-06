@@ -43,6 +43,14 @@ func Test_validateCustomMetricsData(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "nil value",
+			data: ApplicationMetricsData{
+				"key1": nil,
+				"key2": 4,
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, test := range tests {
