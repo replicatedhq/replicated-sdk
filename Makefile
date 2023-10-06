@@ -67,3 +67,12 @@ build-ttl.sh:
 mock:
 	go install github.com/golang/mock/mockgen@v1.6.0
 	mockgen -source=pkg/store/store_interface.go -destination=pkg/store/mock/mock_store.go
+
+.PHONY: scan
+scan:
+	trivy fs \
+		--scanners vuln \
+		--exit-code=1 \
+		--severity="CRITICAL,HIGH,MEDIUM" \
+		--ignore-unfixed \
+		./
