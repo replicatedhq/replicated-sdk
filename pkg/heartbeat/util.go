@@ -36,6 +36,13 @@ func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.Heartbea
 	if heartbeatInfo.K8sDistribution != "" {
 		req.Header.Set("X-Replicated-K8sDistribution", heartbeatInfo.K8sDistribution)
 	}
+
+	for k, v := range heartbeatInfo.AdditionalMetrics {
+		if req.Header.Get(k) != "" {
+			continue
+		}
+		req.Header.Set(k, v)
+	}
 }
 
 func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {

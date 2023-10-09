@@ -15,23 +15,24 @@ import (
 )
 
 type APIServerParams struct {
-	Context               context.Context
-	LicenseBytes          []byte
-	IntegrationLicenseID  string
-	LicenseFields         sdklicensetypes.LicenseFields
-	AppName               string
-	ChannelID             string
-	ChannelName           string
-	ChannelSequence       int64
-	ReleaseSequence       int64
-	ReleaseCreatedAt      string
-	ReleaseNotes          string
-	VersionLabel          string
-	ReplicatedAppEndpoint string
-	StatusInformers       []appstatetypes.StatusInformerString
-	ReplicatedID          string
-	AppID                 string
-	Namespace             string
+	Context                   context.Context
+	LicenseBytes              []byte
+	IntegrationLicenseID      string
+	LicenseFields             sdklicensetypes.LicenseFields
+	AppName                   string
+	ChannelID                 string
+	ChannelName               string
+	ChannelSequence           int64
+	ReleaseSequence           int64
+	ReleaseCreatedAt          string
+	ReleaseNotes              string
+	VersionLabel              string
+	ReplicatedAppEndpoint     string
+	StatusInformers           []appstatetypes.StatusInformerString
+	ReplicatedID              string
+	AppID                     string
+	AdditionalMetricsEndpoint string
+	Namespace                 string
 }
 
 func Start(params APIServerParams) {

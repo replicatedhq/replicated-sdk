@@ -170,7 +170,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 		ChannelName:     store.GetStore().GetChannelName(),
 		ChannelSequence: store.GetStore().GetChannelSequence(),
 	}
-	us, err := upstream.GetUpdates(store.GetStore(), license, currentCursor)
+	us, err := upstream.GetUpdates(store.GetStore(), clientset, license, currentCursor)
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get updates"))
 		JSONCached(w, http.StatusOK, updates)

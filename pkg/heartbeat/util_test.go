@@ -1,8 +1,10 @@
 package heartbeat
 
 import (
+	"net/http"
 	"testing"
 
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes/fake"
@@ -120,6 +122,63 @@ func TestCanReport(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("canReport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInjectHeartbeatInfoHeaders(t *testing.T) {
+	type args struct {
+		req           *http.Request
+		heartbeatInfo *types.HeartbeatInfo
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantHeaders map[string]string
+	}{
+		{
+			name: "no heartbeat info",
+			args: args{
+				req: &http.Request{
+					Header: map[string][]string{
+						"X-Replicated-Test": {"foo"},
+					},
+				},
+				heartbeatInfo: nil,
+			},
+			wantHeaders: map[string]string{
+				"X-Replicated-Test": "foo",
+			},
+		},
+		{
+			name: "additional metrics",
+			args: args{
+				req: &http.Request{
+					Header: map[string][]string{
+						"X-Replicated-Test": {"foo"},
+					},
+				},
+				heartbeatInfo: &types.HeartbeatInfo{
+					AdditionalMetrics: types.AdditionalMetrics{
+						"X-Replicated-Test":           "bar",
+						"X-Replicated-TestAdditional": "baz",
+					},
+				},
+			},
+			wantHeaders: map[string]string{
+				"X-Replicated-Test":           "foo",
+				"X-Replicated-TestAdditional": "baz",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			InjectHeartbeatInfoHeaders(tt.args.req, tt.args.heartbeatInfo)
+			for k, v := range tt.wantHeaders {
+				if tt.args.req.Header.Get(k) != v {
+					t.Errorf("InjectHeartbeatInfoHeaders() = got %v: %v, want %v: %v", k, tt.args.req.Header.Get(k), k, v)
+				}
 			}
 		})
 	}

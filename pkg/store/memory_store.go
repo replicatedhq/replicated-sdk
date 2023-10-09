@@ -8,59 +8,62 @@ import (
 )
 
 type InMemoryStore struct {
-	replicatedID          string
-	appID                 string
-	license               *kotsv1beta1.License
-	licenseFields         sdklicensetypes.LicenseFields
-	appSlug               string
-	appName               string
-	channelID             string
-	channelName           string
-	channelSequence       int64
-	releaseSequence       int64
-	releaseCreatedAt      string
-	releaseNotes          string
-	versionLabel          string
-	replicatedAppEndpoint string
-	namespace             string
-	appStatus             appstatetypes.AppStatus
-	updates               []upstreamtypes.ChannelRelease
+	replicatedID              string
+	appID                     string
+	license                   *kotsv1beta1.License
+	licenseFields             sdklicensetypes.LicenseFields
+	appSlug                   string
+	appName                   string
+	channelID                 string
+	channelName               string
+	channelSequence           int64
+	releaseSequence           int64
+	releaseCreatedAt          string
+	releaseNotes              string
+	versionLabel              string
+	replicatedAppEndpoint     string
+	additionalMetricsEndpoint string
+	namespace                 string
+	appStatus                 appstatetypes.AppStatus
+	updates                   []upstreamtypes.ChannelRelease
 }
 
 type InitInMemoryStoreOptions struct {
-	ReplicatedID          string
-	AppID                 string
-	License               *kotsv1beta1.License
-	LicenseFields         sdklicensetypes.LicenseFields
-	AppName               string
-	ChannelID             string
-	ChannelName           string
-	ChannelSequence       int64
-	ReleaseSequence       int64
-	ReleaseCreatedAt      string
-	ReleaseNotes          string
-	VersionLabel          string
-	ReplicatedAppEndpoint string
-	Namespace             string
+	ReplicatedID              string
+	AppID                     string
+	License                   *kotsv1beta1.License
+	LicenseFields             sdklicensetypes.LicenseFields
+	AppName                   string
+	ChannelID                 string
+	ChannelName               string
+	ChannelSequence           int64
+	ReleaseSequence           int64
+	ReleaseCreatedAt          string
+	ReleaseNotes              string
+	VersionLabel              string
+	ReplicatedAppEndpoint     string
+	AdditionalMetricsEndpoint string
+	Namespace                 string
 }
 
 func InitInMemory(options InitInMemoryStoreOptions) {
 	SetStore(&InMemoryStore{
-		replicatedID:          options.ReplicatedID,
-		appID:                 options.AppID,
-		appSlug:               options.License.Spec.AppSlug,
-		license:               options.License,
-		licenseFields:         options.LicenseFields,
-		appName:               options.AppName,
-		channelID:             options.ChannelID,
-		channelName:           options.ChannelName,
-		channelSequence:       options.ChannelSequence,
-		releaseSequence:       options.ReleaseSequence,
-		releaseCreatedAt:      options.ReleaseCreatedAt,
-		releaseNotes:          options.ReleaseNotes,
-		versionLabel:          options.VersionLabel,
-		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
-		namespace:             options.Namespace,
+		replicatedID:              options.ReplicatedID,
+		appID:                     options.AppID,
+		appSlug:                   options.License.Spec.AppSlug,
+		license:                   options.License,
+		licenseFields:             options.LicenseFields,
+		appName:                   options.AppName,
+		channelID:                 options.ChannelID,
+		channelName:               options.ChannelName,
+		channelSequence:           options.ChannelSequence,
+		releaseSequence:           options.ReleaseSequence,
+		releaseCreatedAt:          options.ReleaseCreatedAt,
+		releaseNotes:              options.ReleaseNotes,
+		versionLabel:              options.VersionLabel,
+		replicatedAppEndpoint:     options.ReplicatedAppEndpoint,
+		additionalMetricsEndpoint: options.AdditionalMetricsEndpoint,
+		namespace:                 options.Namespace,
 	})
 }
 
@@ -140,6 +143,10 @@ func (s *InMemoryStore) GetVersionLabel() string {
 
 func (s *InMemoryStore) GetReplicatedAppEndpoint() string {
 	return s.replicatedAppEndpoint
+}
+
+func (s *InMemoryStore) GetAdditionalMetricsEndpoint() string {
+	return s.additionalMetricsEndpoint
 }
 
 func (s *InMemoryStore) GetNamespace() string {

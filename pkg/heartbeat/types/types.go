@@ -24,16 +24,17 @@ const (
 )
 
 type HeartbeatInfo struct {
-	InstanceID      string                       `json:"instance_id"`
-	ClusterID       string                       `json:"cluster_id"`
-	ChannelID       string                       `json:"channel_id"`
-	ChannelName     string                       `json:"channel_name"`
-	ChannelSequence int64                        `json:"channel_sequence"`
-	ReleaseSequence int64                        `json:"release_sequence"`
-	AppStatus       string                       `json:"app_status"`
-	ResourceStates  appstatetypes.ResourceStates `json:"resource_states"`
-	K8sVersion      string                       `json:"k8s_version"`
-	K8sDistribution string                       `json:"k8s_distribution"`
+	InstanceID        string                       `json:"instance_id"`
+	ClusterID         string                       `json:"cluster_id"`
+	ChannelID         string                       `json:"channel_id"`
+	ChannelName       string                       `json:"channel_name"`
+	ChannelSequence   int64                        `json:"channel_sequence"`
+	ReleaseSequence   int64                        `json:"release_sequence"`
+	AppStatus         string                       `json:"app_status"`
+	ResourceStates    appstatetypes.ResourceStates `json:"resource_states"`
+	K8sVersion        string                       `json:"k8s_version"`
+	K8sDistribution   string                       `json:"k8s_distribution"`
+	AdditionalMetrics AdditionalMetrics            `json:"additional_metrics"`
 }
 
 func (d Distribution) String() string {
@@ -67,3 +68,5 @@ func (d Distribution) String() string {
 	}
 	return "unknown"
 }
+
+type AdditionalMetrics map[string]string

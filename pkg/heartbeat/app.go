@@ -27,7 +27,7 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 		return nil
 	}
 
-	heartbeatInfo := GetHeartbeatInfo(sdkStore)
+	heartbeatInfo := GetHeartbeatInfo(sdkStore, clientset)
 
 	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 	if err != nil {
@@ -63,7 +63,7 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 	return nil
 }
 
-func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
+func GetHeartbeatInfo(sdkStore store.Store, clientset kubernetes.Interface) *types.HeartbeatInfo {
 	r := types.HeartbeatInfo{
 		ClusterID:       sdkStore.GetReplicatedID(),
 		InstanceID:      sdkStore.GetAppID(),
@@ -74,10 +74,7 @@ func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 		ResourceStates:  sdkStore.GetAppStatus().ResourceStates,
 	}
 
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		logger.Debugf("failed to get clientset: %v", err.Error())
-	} else {
+	if clientset != nil {
 		k8sVersion, err := k8sutil.GetK8sVersion(clientset)
 		if err != nil {
 			logger.Debugf("failed to get k8s version: %v", err.Error())
@@ -90,5 +87,40 @@ func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 		}
 	}
 
+	if sdkStore.GetAdditionalMetricsEndpoint() != "" {
+		additionalMetrics, err := getAdditionalMetrics(sdkStore.GetAdditionalMetricsEndpoint(), sdkStore.GetLicense().Spec.LicenseID)
+		if err != nil {
+			logger.Errorf("failed to get additional metrics: %v", err.Error())
+		} else {
+			r.AdditionalMetrics = additionalMetrics
+		}
+	}
+
 	return &r
+}
+
+func getAdditionalMetrics(endpoint string, licenseID string) (types.AdditionalMetrics, error) {
+	req, err := util.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create http request")
+	}
+
+	req.Header.Set("Authorization", licenseID)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, errors.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	var additionalMetrics types.AdditionalMetrics
+	if err := json.NewDecoder(resp.Body).Decode(&additionalMetrics); err != nil {
+		return nil, errors.Wrap(err, "failed to decode response body")
+	}
+
+	return additionalMetrics, nil
 }

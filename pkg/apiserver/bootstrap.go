@@ -91,20 +91,21 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	storeOptions := store.InitInMemoryStoreOptions{
-		License:               verifiedLicense,
-		LicenseFields:         params.LicenseFields,
-		AppName:               params.AppName,
-		ChannelID:             channelID,
-		ChannelName:           channelName,
-		ChannelSequence:       params.ChannelSequence,
-		ReleaseSequence:       params.ReleaseSequence,
-		ReleaseCreatedAt:      params.ReleaseCreatedAt,
-		ReleaseNotes:          params.ReleaseNotes,
-		VersionLabel:          params.VersionLabel,
-		ReplicatedAppEndpoint: params.ReplicatedAppEndpoint,
-		Namespace:             params.Namespace,
-		ReplicatedID:          replicatedID,
-		AppID:                 appID,
+		License:                   verifiedLicense,
+		LicenseFields:             params.LicenseFields,
+		AppName:                   params.AppName,
+		ChannelID:                 channelID,
+		ChannelName:               channelName,
+		ChannelSequence:           params.ChannelSequence,
+		ReleaseSequence:           params.ReleaseSequence,
+		ReleaseCreatedAt:          params.ReleaseCreatedAt,
+		ReleaseNotes:              params.ReleaseNotes,
+		VersionLabel:              params.VersionLabel,
+		ReplicatedAppEndpoint:     params.ReplicatedAppEndpoint,
+		Namespace:                 params.Namespace,
+		ReplicatedID:              replicatedID,
+		AppID:                     appID,
+		AdditionalMetricsEndpoint: params.AdditionalMetricsEndpoint,
 	}
 	store.InitInMemory(storeOptions)
 
@@ -120,7 +121,7 @@ func bootstrap(params APIServerParams) error {
 			ChannelName:     store.GetStore().GetChannelName(),
 			ChannelSequence: store.GetStore().GetChannelSequence(),
 		}
-		updates, err := upstream.GetUpdates(store.GetStore(), store.GetStore().GetLicense(), currentCursor)
+		updates, err := upstream.GetUpdates(store.GetStore(), clientset, store.GetStore().GetLicense(), currentCursor)
 		if err != nil {
 			return errors.Wrap(err, "failed to get updates")
 		}

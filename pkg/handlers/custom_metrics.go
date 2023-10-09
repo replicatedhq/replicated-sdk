@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/metrics"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
@@ -39,7 +40,14 @@ func SendCustomApplicationMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := metrics.SendApplicationMetricsData(store.GetStore(), license, request.Data)
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = metrics.SendApplicationMetricsData(store.GetStore(), clientset, license, request.Data)
 	if err != nil {
 		logger.Error(errors.Wrap(err, "set application data"))
 		w.WriteHeader(http.StatusBadRequest)
