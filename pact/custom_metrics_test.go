@@ -16,7 +16,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
-func TestSendCustomApplicationMetrics(t *testing.T) {
+func TestSendCustomAppMetrics(t *testing.T) {
 	// Happy path only
 
 	channelSequence := int64(1)
@@ -77,7 +77,7 @@ func TestSendCustomApplicationMetrics(t *testing.T) {
 		defer store.SetStore(nil)
 
 		if err := pact.Verify(func() error {
-			handlers.SendCustomApplicationMetrics(clientWriter, clientRequest)
+			handlers.SendCustomAppMetrics(clientWriter, clientRequest)
 			if clientWriter.Code != http.StatusOK {
 				return fmt.Errorf("expected status code %d but got %d", http.StatusOK, clientWriter.Code)
 			}

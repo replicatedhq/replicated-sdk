@@ -15,7 +15,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
-func SendApplicationMetricsData(sdkStore store.Store, license *kotsv1beta1.License, data map[string]interface{}) error {
+func SendCustomAppMetricsData(sdkStore store.Store, license *kotsv1beta1.License, data map[string]interface{}) error {
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint

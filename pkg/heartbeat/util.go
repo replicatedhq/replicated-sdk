@@ -16,26 +16,38 @@ import (
 )
 
 func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.HeartbeatInfo) {
+	headers := GetHeartbeatInfoHeaders(heartbeatInfo)
+
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+}
+
+func GetHeartbeatInfoHeaders(heartbeatInfo *types.HeartbeatInfo) map[string]string {
+	headers := make(map[string]string)
+
 	if heartbeatInfo == nil {
-		return
+		return headers
 	}
 
-	req.Header.Set("X-Replicated-K8sVersion", heartbeatInfo.K8sVersion)
-	req.Header.Set("X-Replicated-AppStatus", heartbeatInfo.AppStatus)
-	req.Header.Set("X-Replicated-ClusterID", heartbeatInfo.ClusterID)
-	req.Header.Set("X-Replicated-InstanceID", heartbeatInfo.InstanceID)
+	headers["X-Replicated-K8sVersion"] = heartbeatInfo.K8sVersion
+	headers["X-Replicated-AppStatus"] = heartbeatInfo.AppStatus
+	headers["X-Replicated-ClusterID"] = heartbeatInfo.ClusterID
+	headers["X-Replicated-InstanceID"] = heartbeatInfo.InstanceID
 
 	if heartbeatInfo.ChannelID != "" {
-		req.Header.Set("X-Replicated-DownstreamChannelID", heartbeatInfo.ChannelID)
+		headers["X-Replicated-DownstreamChannelID"] = heartbeatInfo.ChannelID
 	} else if heartbeatInfo.ChannelName != "" {
-		req.Header.Set("X-Replicated-DownstreamChannelName", heartbeatInfo.ChannelName)
+		headers["X-Replicated-DownstreamChannelName"] = heartbeatInfo.ChannelName
 	}
 
-	req.Header.Set("X-Replicated-DownstreamChannelSequence", strconv.FormatInt(heartbeatInfo.ChannelSequence, 10))
+	headers["X-Replicated-DownstreamChannelSequence"] = strconv.FormatInt(heartbeatInfo.ChannelSequence, 10)
 
 	if heartbeatInfo.K8sDistribution != "" {
-		req.Header.Set("X-Replicated-K8sDistribution", heartbeatInfo.K8sDistribution)
+		headers["X-Replicated-K8sDistribution"] = heartbeatInfo.K8sDistribution
 	}
+
+	return headers
 }
 
 func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
