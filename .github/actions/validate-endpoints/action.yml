@@ -146,7 +146,7 @@ runs:
     - name: Validate /app/metrics endpoint
       shell: bash
       run: |
-        appStatusMetric=$(curl -H 'Authorization: ${{ inputs.license-id }}' -s --fail --show-error localhost:8888/api/v1/app/metrics | jq '."X-Replicated-AppStatus"' | tr -d '\n')
+        appStatusMetric=$(curl -H 'Authorization: ${{ inputs.license-id }}' -s --fail --show-error localhost:8888/api/v1/app/metrics | jq -r '."X-Replicated-AppStatus"' | tr -d '\n')
 
         if [ "$appStatusMetric" != "ready" ]; then
           echo "Expected app status metric 'X-Replicated-AppStatus' to be 'ready', but is set to '$appStatusMetric'."
