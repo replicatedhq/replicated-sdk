@@ -3,10 +3,41 @@ package heartbeat
 import (
 	"testing"
 
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
 )
+
+func TestGetHeartbeatInfoHeaders(t *testing.T) {
+	heartbeatInfo := &types.HeartbeatInfo{
+		AppStatus:       "ready",
+		ClusterID:       "cluster-123",
+		InstanceID:      "instance-456",
+		ChannelID:       "channel-789",
+		ChannelSequence: 42,
+		K8sVersion:      "v1.20.2+k3s1",
+		K8sDistribution: "k3s",
+	}
+
+	headers := GetHeartbeatInfoHeaders(heartbeatInfo)
+
+	expectedHeaders := map[string]string{
+		"X-Replicated-K8sVersion":                "v1.20.2+k3s1",
+		"X-Replicated-AppStatus":                 "ready",
+		"X-Replicated-ClusterID":                 "cluster-123",
+		"X-Replicated-InstanceID":                "instance-456",
+		"X-Replicated-DownstreamChannelID":       "channel-789",
+		"X-Replicated-DownstreamChannelSequence": "42",
+		"X-Replicated-K8sDistribution":           "k3s",
+	}
+
+	assert.Equal(t, expectedHeaders, headers)
+
+	nilHeaders := GetHeartbeatInfoHeaders(nil)
+	assert.Empty(t, nilHeaders)
+}
 
 func TestCanReport(t *testing.T) {
 	tests := []struct {

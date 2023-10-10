@@ -142,3 +142,13 @@ runs:
             exit 1
           fi
         fi
+
+    - name: Validate /app/metrics endpoint
+      shell: bash
+      run: |
+        appStatusMetric=$(curl -s --fail --show-error localhost:8888/api/v1/app/metrics | jq '."X-Replicated-AppStatus"' | tr -d '\n')
+
+        if [ "$appStatusMetric" != "ready" ]; then
+          echo "Expected app status metric 'X-Replicated-AppStatus' to be 'ready', but is set to '$appStatusMetric'."
+          exit 1
+        fi
