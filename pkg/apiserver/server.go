@@ -51,6 +51,10 @@ func Start(params APIServerParams) {
 	r := mux.NewRouter()
 	r.Use(handlers.CorsMiddleware)
 
+	// TODO: make all routes authenticated
+	authRouter := r.NewRoute().Subrouter()
+	authRouter.Use(handlers.RequireValidLicenseIDMiddleware)
+
 	r.HandleFunc("/healthz", handlers.Healthz)
 
 	// license
@@ -62,14 +66,13 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
+	authRouter.HandleFunc("/api/v1/app/metrics", handlers.GetAppMetrics).Methods("GET")
+	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST")
 
 	// integration
 	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.PostIntegrationMockData)).Methods("POST")
 	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.GetIntegrationMockData)).Methods("GET")
 	r.HandleFunc("/api/v1/integration/status", handlers.EnforceMockAccess(handlers.GetIntegrationStatus)).Methods("GET")
-
-	// Custom metrics
-	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomApplicationMetrics).Methods("POST")
 
 	srv := &http.Server{
 		Handler: r,

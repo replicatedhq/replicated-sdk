@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/replicatedhq/replicated-sdk/pkg/handlers/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
@@ -23,4 +24,23 @@ func EnforceMockAccess(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next.ServeHTTP(w, r)
 	}
+}
+
+func RequireValidLicenseIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		licenseID := r.Header.Get("authorization")
+		if licenseID == "" {
+			response := types.ErrorResponse{Error: "missing authorization header"}
+			JSON(w, http.StatusUnauthorized, response)
+			return
+		}
+
+		if store.GetStore().GetLicense().Spec.LicenseID != licenseID {
+			response := types.ErrorResponse{Error: "license ID is not valid"}
+			JSON(w, http.StatusUnauthorized, response)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

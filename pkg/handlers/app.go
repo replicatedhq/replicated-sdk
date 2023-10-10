@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -9,12 +11,14 @@ import (
 	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/config"
+	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
 	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/metrics"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -45,6 +49,12 @@ type AppRelease struct {
 	HelmReleaseRevision  int    `json:"helmReleaseRevision,omitempty"`
 	HelmReleaseNamespace string `json:"helmReleaseNamespace,omitempty"`
 }
+
+type SendCustomAppMetricsRequest struct {
+	Data CustomAppMetricsData `json:"data"`
+}
+
+type CustomAppMetricsData map[string]interface{}
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	clientset, err := k8sutil.GetClientset()
@@ -314,4 +324,66 @@ func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppReleas
 	}
 
 	return appRelease
+}
+
+func GetAppMetrics(w http.ResponseWriter, r *http.Request) {
+	heartbeatInfo := heartbeat.GetHeartbeatInfo(store.GetStore())
+	headers := heartbeat.GetHeartbeatInfoHeaders(heartbeatInfo)
+
+	JSON(w, http.StatusOK, headers)
+}
+
+func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
+	license := store.GetStore().GetLicense()
+
+	if util.IsAirgap() {
+		JSON(w, http.StatusForbidden, "This request cannot be satisfied in airgap mode")
+		return
+	}
+
+	request := SendCustomAppMetricsRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		logger.Error(errors.Wrap(err, "decode request"))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := validateCustomAppMetricsData(request.Data); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	err := metrics.SendCustomAppMetricsData(store.GetStore(), license, request.Data)
+	if err != nil {
+		logger.Error(errors.Wrap(err, "set application data"))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	JSON(w, http.StatusOK, "")
+}
+
+func validateCustomAppMetricsData(data CustomAppMetricsData) error {
+	if len(data) == 0 {
+		return errors.New("no data provided")
+	}
+
+	for key, val := range data {
+		valType := reflect.TypeOf(val)
+		if valType == nil {
+			return errors.Errorf("%s value is nil, only scalar values are allowed", key)
+		}
+
+		switch valType.Kind() {
+		case reflect.Slice:
+			return errors.Errorf("%s value is an array, only scalar values are allowed", key)
+		case reflect.Array:
+			return errors.Errorf("%s value is an array, only scalar values are allowed", key)
+		case reflect.Map:
+			return errors.Errorf("%s value is a map, only scalar values are allowed", key)
+		}
+	}
+
+	return nil
 }
