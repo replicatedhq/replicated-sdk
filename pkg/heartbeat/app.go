@@ -29,12 +29,10 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 
 	heartbeatInfo := GetHeartbeatInfo(sdkStore)
 
-	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal resource states")
-	}
-	reqPayload := map[string]interface{}{
-		"resource_states": string(marshalledRS),
+	// build the request body
+	reqPayload := map[string]interface{}{}
+	if err := InjectHeartbeatInfoPayload(reqPayload, heartbeatInfo); err != nil {
+		return errors.Wrap(err, "failed to inject heartbeat info payload")
 	}
 	reqBody, err := json.Marshal(reqPayload)
 	if err != nil {

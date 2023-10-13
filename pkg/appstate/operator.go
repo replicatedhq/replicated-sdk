@@ -106,10 +106,11 @@ func (o *Operator) ApplyAppInformers(args types.AppInformersArgs) {
 	if len(informers) == 0 {
 		// no informers, set state to ready and return
 		defaultReadyStatus := types.AppStatus{
-			AppSlug:   appSlug,
-			UpdatedAt: time.Now(),
-			State:     types.StateReady,
-			Sequence:  sequence,
+			AppSlug:        appSlug,
+			ResourceStates: types.ResourceStates{},
+			UpdatedAt:      time.Now(),
+			State:          types.StateReady,
+			Sequence:       sequence,
 		}
 		if err := o.setAppStatus(defaultReadyStatus); err != nil {
 			log.Printf("error updating app status: %v", err)
@@ -125,7 +126,7 @@ func (o *Operator) setAppStatus(newAppStatus types.AppStatus) error {
 	store.GetStore().SetAppStatus(newAppStatus)
 
 	if newAppStatus.State != currentAppStatus.State {
-		log.Printf("app state changed from %s to %s", currentAppStatus.State, newAppStatus.State)
+		log.Printf("app state changed from %q to %q", currentAppStatus.State, newAppStatus.State)
 		go func() {
 			clientset, err := k8sutil.GetClientset()
 			if err != nil {

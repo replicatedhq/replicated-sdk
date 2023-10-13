@@ -90,7 +90,7 @@ func bootstrap(params APIServerParams) error {
 		channelName = verifiedLicense.Spec.ChannelName
 	}
 
-	storeOptions := store.InitInMemoryStoreOptions{
+	store.InitInMemory(store.InitInMemoryStoreOptions{
 		License:               verifiedLicense,
 		LicenseFields:         params.LicenseFields,
 		AppName:               params.AppName,
@@ -105,8 +105,7 @@ func bootstrap(params APIServerParams) error {
 		Namespace:             params.Namespace,
 		ReplicatedID:          replicatedID,
 		AppID:                 appID,
-	}
-	store.InitInMemory(storeOptions)
+	})
 
 	isIntegrationModeEnabled, err := integration.IsEnabled(params.Context, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
 	if err != nil {

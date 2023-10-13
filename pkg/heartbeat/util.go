@@ -2,6 +2,7 @@ package heartbeat
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,6 +15,38 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+func InjectHeartbeatInfoPayload(reqPayload map[string]interface{}, heartbeatInfo *types.HeartbeatInfo) error {
+	payload, err := GetHeartbeatInfoPayload(heartbeatInfo)
+	if err != nil {
+		return errors.Wrap(err, "failed to get heartbeat info payload")
+	}
+
+	for key, value := range payload {
+		reqPayload[key] = value
+	}
+
+	return nil
+}
+
+func GetHeartbeatInfoPayload(heartbeatInfo *types.HeartbeatInfo) (map[string]interface{}, error) {
+	payload := make(map[string]interface{})
+
+	if heartbeatInfo == nil {
+		return payload, nil
+	}
+
+	// only include app status related information if it's been initialized
+	if heartbeatInfo.AppStatus != "" {
+		marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to marshal resource states")
+		}
+		payload["resource_states"] = string(marshalledRS)
+	}
+
+	return payload, nil
+}
 
 func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.HeartbeatInfo) {
 	headers := GetHeartbeatInfoHeaders(heartbeatInfo)
@@ -31,9 +64,13 @@ func GetHeartbeatInfoHeaders(heartbeatInfo *types.HeartbeatInfo) map[string]stri
 	}
 
 	headers["X-Replicated-K8sVersion"] = heartbeatInfo.K8sVersion
-	headers["X-Replicated-AppStatus"] = heartbeatInfo.AppStatus
 	headers["X-Replicated-ClusterID"] = heartbeatInfo.ClusterID
 	headers["X-Replicated-InstanceID"] = heartbeatInfo.InstanceID
+
+	// only include app status related information if it's been initialized
+	if heartbeatInfo.AppStatus != "" {
+		headers["X-Replicated-AppStatus"] = heartbeatInfo.AppStatus
+	}
 
 	if heartbeatInfo.ChannelID != "" {
 		headers["X-Replicated-DownstreamChannelID"] = heartbeatInfo.ChannelID
