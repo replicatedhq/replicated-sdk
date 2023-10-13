@@ -85,6 +85,11 @@ jobs:
             exit 1
           fi
 
+          if ! echo $output | grep -q 'statusInformers: null'; then
+            printf "default statusInformers should be null:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
           output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.enabled=true)
 
           if ! echo $output | grep -q integration-enabled; then
@@ -154,6 +159,17 @@ jobs:
             exit 1
           fi
 
+
+          cat << EOF > test-values.yaml
+          statusInformers: []
+          EOF
+
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
+
+          if ! echo $output | grep -q 'statusInformers: \[\]'; then
+            printf "user-set empty statusInformers should exist:\n\n%s\n\n" "$output"
+            exit 1
+          fi
 
   create-test-release:
     runs-on: ubuntu-22.04
@@ -317,7 +333,7 @@ jobs:
           helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 --wait --timeout 2m
 
           COUNTER=1
-          while [ kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}' | grep -q $oldpodname ]; do
+          while kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}' | grep -q $oldpodname; do
             ((COUNTER += 1))
             if [ $COUNTER -gt 60 ]; then
               echo "Pod did not restart after upgrade"
@@ -361,7 +377,7 @@ jobs:
           kubectl rollout status deployment replicated --timeout=2m
 
           COUNTER=1
-          while [ kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}' | grep -q $oldpodname ]; do
+          while kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}' | grep -q $oldpodname; do
             ((COUNTER += 1))
             if [ $COUNTER -gt 60 ]; then
               echo "Pod did not restart after upgrade"
@@ -382,6 +398,70 @@ jobs:
       - name: Uninstall test-chart via kubectl
         run: |
           helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false | kubectl delete -f -
+          kubectl wait --for=delete deployment/test-chart --timeout=2m
+          kubectl wait --for=delete deployment/replicated --timeout=2m
+
+      # validate status informers
+      - name: Create empty status informers for validation
+        run: |
+          cat << EOF > test-values.yaml
+          replicated:
+            statusInformers: []
+          EOF
+    
+      - name: Install via Helm as subchart in production mode and pass empty status informers
+        run: |
+          helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml --wait --timeout 2m
+
+          COUNTER=1
+          while ! kubectl logs deploy/replicated | grep -qv 'Generating status informers from Helm release'; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Did not receive empty status informers"
+              kubectl logs deploy/replicated
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Upgrade via Helm as subchart in production mode to use default status informers
+        run: |
+          helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --wait --timeout 2m
+
+          COUNTER=1
+          while ! kubectl logs deploy/replicated | grep -q 'Generating status informers from Helm release'; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Did not receive default status informers"
+              kubectl logs deploy/replicated
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Uninstall test-chart via Helm
+        run: helm uninstall test-chart --wait --timeout 2m
+
+      - name: Install via kubectl as subchart in production mode and pass empty status informers
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml | kubectl apply -f -
+          kubectl rollout status deployment test-chart --timeout=2m
+          kubectl rollout status deployment replicated --timeout=2m
+
+          COUNTER=1
+          while ! kubectl logs deploy/replicated | grep -qv 'Generating status informers from Helm release'; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Did not receive empty status informers"
+              kubectl logs deploy/replicated
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Uninstall test-chart via kubectl
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml | kubectl delete -f -
           kubectl wait --for=delete deployment/test-chart --timeout=2m
           kubectl wait --for=delete deployment/replicated --timeout=2m
 

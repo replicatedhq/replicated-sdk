@@ -62,6 +62,8 @@ func resourceStatesApplyNew(resourceStates types.ResourceStates, resourceState t
 }
 
 func GenerateStatusInformersForManifest(manifest string) []types.StatusInformerString {
+	logger.Info("Generating status informers from Helm release")
+
 	informers := []types.StatusInformerString{}
 
 	for _, doc := range strings.Split(manifest, "\n---\n") {
