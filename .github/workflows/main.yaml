@@ -393,7 +393,7 @@ jobs:
           helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml --wait --timeout 2m
 
           COUNTER=1
-          while ! kubectl logs deploy/replicated | grep -qv 'Generated informers from Helm release'; do
+          while ! kubectl logs deploy/replicated | grep -qv 'Generating status informers from Helm release'; do
             ((COUNTER += 1))
             if [ $COUNTER -gt 60 ]; then
               echo "Did not receive empty status informers"
@@ -408,7 +408,7 @@ jobs:
           helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --wait --timeout 2m
 
           COUNTER=1
-          while ! kubectl logs deploy/replicated | grep -q 'Generated informers from Helm release'; do
+          while ! kubectl logs deploy/replicated | grep -q 'Generating status informers from Helm release'; do
             ((COUNTER += 1))
             if [ $COUNTER -gt 60 ]; then
               echo "Did not receive default status informers"
@@ -428,27 +428,10 @@ jobs:
           kubectl rollout status deployment replicated --timeout=2m
 
           COUNTER=1
-          while ! kubectl logs deploy/replicated | grep -qv 'Generated informers from Helm release'; do
+          while ! kubectl logs deploy/replicated | grep -qv 'Generating status informers from Helm release'; do
             ((COUNTER += 1))
             if [ $COUNTER -gt 60 ]; then
               echo "Did not receive empty status informers"
-              kubectl logs deploy/replicated
-              exit 1
-            fi
-            sleep 1
-          done
-
-      - name: Upgrade via kubectl as subchart in production mode to use default status informers
-        run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false | kubectl apply -f -
-          kubectl rollout status deployment test-chart --timeout=2m
-          kubectl rollout status deployment replicated --timeout=2m
-
-          COUNTER=1
-          while ! kubectl logs deploy/replicated | grep -qv 'Generated informers from Helm release'; do
-            ((COUNTER += 1))
-            if [ $COUNTER -gt 60 ]; then
-              echo "Did not receive default status informers"
               kubectl logs deploy/replicated
               exit 1
             fi

@@ -99,5 +99,7 @@ func GenerateStatusInformersForManifest(manifest string) []types.StatusInformerS
 		}
 	}
 
+	logger.Infof("Generating status informers from Helm release: %v", informers)
+
 	return informers
 }

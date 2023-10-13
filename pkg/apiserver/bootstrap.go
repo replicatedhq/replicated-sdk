@@ -132,17 +132,13 @@ func bootstrap(params APIServerParams) error {
 
 	// if no status informers are provided, generate them from the helm release
 	informers := params.StatusInformers
-	if informers == nil {
-		informers = []appstatetypes.StatusInformerString{}
-		if helm.IsHelmManaged() {
-			helmRelease, err := helm.GetRelease(helm.GetReleaseName())
-			if err != nil {
-				return errors.Wrap(err, "failed to get helm release")
-			}
-			if helmRelease != nil {
-				informers = appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
-				logger.Infof("Generated informers from Helm release: %v", informers)
-			}
+	if informers == nil && helm.IsHelmManaged() {
+		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
+		if err != nil {
+			return errors.Wrap(err, "failed to get helm release")
+		}
+		if helmRelease != nil {
+			informers = appstate.GenerateStatusInformersForManifest(helmRelease.Manifest)
 		}
 	}
 
