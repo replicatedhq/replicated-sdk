@@ -48,15 +48,12 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 
 	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, license.Spec.AppSlug, urlValues.Encode())
 
-	// build the request body
 	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore)
 
-	marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal resource states")
-	}
-	reqPayload := map[string]interface{}{
-		"resource_states": string(marshalledRS),
+	// build the request body
+	reqPayload := map[string]interface{}{}
+	if err := heartbeat.InjectHeartbeatInfoPayload(reqPayload, heartbeatInfo); err != nil {
+		return nil, errors.Wrap(err, "failed to inject heartbeat info payload")
 	}
 	reqBody, err := json.Marshal(reqPayload)
 	if err != nil {

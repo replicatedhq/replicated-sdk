@@ -3,12 +3,63 @@ package heartbeat
 import (
 	"testing"
 
+	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
 )
+
+func TestInjectHeartbeatInfoPayload(t *testing.T) {
+	heartbeatInfo := &types.HeartbeatInfo{
+		AppStatus: "ready",
+		ResourceStates: appstatetypes.ResourceStates{
+			{
+				Kind:      "Deployment",
+				Name:      "test-deployment",
+				Namespace: "test-namespace",
+				State:     appstatetypes.StateDegraded,
+			},
+			{
+				Kind:      "Service",
+				Name:      "test-service",
+				Namespace: "test-namespace",
+				State:     appstatetypes.StateUnavailable,
+			},
+		},
+	}
+
+	reqPayload := make(map[string]interface{})
+
+	err := InjectHeartbeatInfoPayload(reqPayload, heartbeatInfo)
+	assert.NoError(t, err)
+
+	expectedPayload := map[string]interface{}{
+		"resource_states": `[{"kind":"Deployment","name":"test-deployment","namespace":"test-namespace","state":"degraded"},{"kind":"Service","name":"test-service","namespace":"test-namespace","state":"unavailable"}]`,
+	}
+	assert.Equal(t, expectedPayload, reqPayload)
+
+	// test nil heartbeat info
+	reqPayload = make(map[string]interface{})
+
+	err = InjectHeartbeatInfoPayload(reqPayload, nil)
+	assert.NoError(t, err)
+
+	expectedPayload = map[string]interface{}{}
+	assert.Equal(t, expectedPayload, reqPayload)
+
+	// test empty app status
+	reqPayload = make(map[string]interface{})
+
+	err = InjectHeartbeatInfoPayload(reqPayload, &types.HeartbeatInfo{
+		AppStatus: "",
+	})
+	assert.NoError(t, err)
+
+	expectedPayload = map[string]interface{}{}
+	assert.Equal(t, expectedPayload, reqPayload)
+}
 
 func TestGetHeartbeatInfoHeaders(t *testing.T) {
 	heartbeatInfo := &types.HeartbeatInfo{
@@ -32,11 +83,18 @@ func TestGetHeartbeatInfoHeaders(t *testing.T) {
 		"X-Replicated-DownstreamChannelSequence": "42",
 		"X-Replicated-K8sDistribution":           "k3s",
 	}
-
 	assert.Equal(t, expectedHeaders, headers)
 
+	// nil heartbeat info
 	nilHeaders := GetHeartbeatInfoHeaders(nil)
 	assert.Empty(t, nilHeaders)
+
+	// empty app status
+	emptyAppStatusHeaders := GetHeartbeatInfoHeaders(&types.HeartbeatInfo{
+		AppStatus: "",
+	})
+	_, appStatusOk := emptyAppStatusHeaders["X-Replicated-AppStatus"]
+	assert.False(t, appStatusOk)
 }
 
 func TestCanReport(t *testing.T) {
