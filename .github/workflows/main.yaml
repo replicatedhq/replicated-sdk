@@ -121,7 +121,7 @@ jobs:
             exit 1
           fi
 
-          cat << EOF >> test-values.yaml
+          cat << EOF > test-values.yaml
           extraEnv:
           - name: TEST_EXTRA_ENV
             value: test-extra-env
@@ -133,6 +133,27 @@ jobs:
             printf "user-set extraEnv should exist:\n\n%s\n\n" "$output"
             exit 1
           fi
+          
+          cat << EOF > test-values.yaml 
+          tolerations:
+          - key: "test-toleration-key"
+            operator: "Equal"
+            value: "test-toleration-value"
+            effect: "NoSchedule"
+          EOF
+
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
+
+          if ! echo $output | grep -q 'tolerations:'; then
+            printf "user-set tolerations should exist:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+          if ! echo $output | grep -q 'test-toleration-key'; then
+            printf "user-set tolerations key should exist:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
 
   create-test-release:
     runs-on: ubuntu-22.04
