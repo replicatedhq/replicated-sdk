@@ -180,7 +180,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 		ChannelName:     store.GetStore().GetChannelName(),
 		ChannelSequence: store.GetStore().GetChannelSequence(),
 	}
-	us, err := upstream.GetUpdates(store.GetStore(), license, currentCursor)
+	us, err := upstream.GetUpdates(store.GetStore(), clientset, license, currentCursor)
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get updates"))
 		JSONCached(w, http.StatusOK, updates)
@@ -327,7 +327,14 @@ func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppReleas
 }
 
 func GetAppMetrics(w http.ResponseWriter, r *http.Request) {
-	heartbeatInfo := heartbeat.GetHeartbeatInfo(store.GetStore())
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	heartbeatInfo := heartbeat.GetHeartbeatInfo(store.GetStore(), clientset)
 	headers := heartbeat.GetHeartbeatInfoHeaders(heartbeatInfo)
 
 	JSON(w, http.StatusOK, headers)
@@ -354,7 +361,14 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := metrics.SendCustomAppMetricsData(store.GetStore(), license, request.Data)
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = metrics.SendCustomAppMetricsData(store.GetStore(), clientset, license, request.Data)
 	if err != nil {
 		logger.Error(errors.Wrap(err, "set application data"))
 		w.WriteHeader(http.StatusBadRequest)

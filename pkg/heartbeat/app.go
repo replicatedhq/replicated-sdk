@@ -27,7 +27,7 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 		return nil
 	}
 
-	heartbeatInfo := GetHeartbeatInfo(sdkStore)
+	heartbeatInfo := GetHeartbeatInfo(sdkStore, clientset)
 
 	// build the request body
 	reqPayload := map[string]interface{}{}
@@ -39,7 +39,14 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 		return errors.Wrap(err, "failed to marshal request payload")
 	}
 
-	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", license.Spec.Endpoint), bytes.NewBuffer(reqBody))
+	var endpoint string
+	if util.IsAirgap() {
+		endpoint = util.AirgapHeartbeatEndpoint()
+	} else {
+		endpoint = fmt.Sprintf("%s/kots_metrics/license_instance/info", license.Spec.Endpoint)
+	}
+
+	postReq, err := util.NewRequest("POST", endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return errors.Wrap(err, "failed to create http request")
 	}
@@ -61,7 +68,7 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 	return nil
 }
 
-func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
+func GetHeartbeatInfo(sdkStore store.Store, clientset kubernetes.Interface) *types.HeartbeatInfo {
 	r := types.HeartbeatInfo{
 		ClusterID:       sdkStore.GetReplicatedID(),
 		InstanceID:      sdkStore.GetAppID(),
@@ -72,10 +79,7 @@ func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
 		ResourceStates:  sdkStore.GetAppStatus().ResourceStates,
 	}
 
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		logger.Debugf("failed to get clientset: %v", err.Error())
-	} else {
+	if clientset != nil {
 		k8sVersion, err := k8sutil.GetK8sVersion(clientset)
 		if err != nil {
 			logger.Debugf("failed to get k8s version: %v", err.Error())

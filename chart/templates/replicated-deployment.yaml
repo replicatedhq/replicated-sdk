@@ -66,6 +66,8 @@ spec:
               fieldPath: metadata.name
         - name: DISABLE_OUTBOUND_CONNECTIONS
           value: {{ .Values.isAirgap | default "false" | quote }}
+        - name: REPLICATED_AIRGAP_HEARTBEAT_ENDPOINT
+          value: {{ .Values.airgapHeartbeatEndpoint | default "" | quote }}
         - name: IS_HELM_MANAGED
           value: "true"
         - name: HELM_RELEASE_NAME

@@ -15,9 +15,10 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	"k8s.io/client-go/kubernetes"
 )
 
-func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
+func GetUpdates(sdkStore store.Store, clientset kubernetes.Interface, license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
@@ -48,7 +49,7 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 
 	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, license.Spec.AppSlug, urlValues.Encode())
 
-	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore)
+	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore, clientset)
 
 	// build the request body
 	reqPayload := map[string]interface{}{}

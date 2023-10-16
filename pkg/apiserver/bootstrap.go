@@ -119,7 +119,7 @@ func bootstrap(params APIServerParams) error {
 			ChannelName:     store.GetStore().GetChannelName(),
 			ChannelSequence: store.GetStore().GetChannelSequence(),
 		}
-		updates, err := upstream.GetUpdates(store.GetStore(), store.GetStore().GetLicense(), currentCursor)
+		updates, err := upstream.GetUpdates(store.GetStore(), clientset, store.GetStore().GetLicense(), currentCursor)
 		if err != nil {
 			return errors.Wrap(err, "failed to get updates")
 		}

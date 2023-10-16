@@ -13,9 +13,10 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	"k8s.io/client-go/kubernetes"
 )
 
-func SendCustomAppMetricsData(sdkStore store.Store, license *kotsv1beta1.License, data map[string]interface{}) error {
+func SendCustomAppMetricsData(sdkStore store.Store, clientset kubernetes.Interface, license *kotsv1beta1.License, data map[string]interface{}) error {
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
@@ -52,7 +53,7 @@ func SendCustomAppMetricsData(sdkStore store.Store, license *kotsv1beta1.License
 	req.SetBasicAuth(license.Spec.LicenseID, license.Spec.LicenseID)
 	req.Header.Set("Content-Type", "application/json")
 
-	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore)
+	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore, clientset)
 	heartbeat.InjectHeartbeatInfoHeaders(req, heartbeatInfo)
 
 	resp, err := http.DefaultClient.Do(req)

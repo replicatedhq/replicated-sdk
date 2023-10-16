@@ -11,6 +11,10 @@ func IsAirgap() bool {
 	return os.Getenv("DISABLE_OUTBOUND_CONNECTIONS") == "true"
 }
 
+func AirgapHeartbeatEndpoint() string {
+	return os.Getenv("REPLICATED_AIRGAP_HEARTBEAT_ENDPOINT")
+}
+
 func IsDevEnv() bool {
 	return os.Getenv("REPLICATED_ENV") == "dev"
 }

@@ -25,10 +25,6 @@ var mtx sync.Mutex
 func Start() error {
 	appSlug := store.GetStore().GetAppSlug()
 
-	if util.IsAirgap() {
-		return nil
-	}
-
 	logger.Debugf("starting heartbeat for app %s", appSlug)
 
 	mtx.Lock()
@@ -56,11 +52,13 @@ func Start() error {
 	_, err := job.AddFunc(cronSpec, func() {
 		logger.Debugf("sending a heartbeat for app %s", appSlug)
 
-		licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
-		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get latest license"))
-		} else {
-			store.GetStore().SetLicense(licenseData.License)
+		if !util.IsAirgap() {
+			licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to get latest license"))
+			} else {
+				store.GetStore().SetLicense(licenseData.License)
+			}
 		}
 
 		go func() {
