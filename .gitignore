@@ -41,4 +41,5 @@ cmd/replicated/__debug_bin
 
 # pact
 pact_logs/
+pact/log/
 pacts/

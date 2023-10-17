@@ -10,8 +10,9 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	v1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	types "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	types0 "github.com/replicatedhq/replicated-sdk/pkg/license/types"
-	types1 "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+	types0 "github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
+	types1 "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	types2 "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
 
 // MockStore is a mock of Store interface.
@@ -35,6 +36,20 @@ func NewMockStore(ctrl *gomock.Controller) *MockStore {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
+}
+
+// CreateInstanceReportEvent mocks base method.
+func (m *MockStore) CreateInstanceReportEvent(event types0.InstanceReportEvent) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateInstanceReportEvent", event)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateInstanceReportEvent indicates an expected call of CreateInstanceReportEvent.
+func (mr *MockStoreMockRecorder) CreateInstanceReportEvent(event interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInstanceReportEvent", reflect.TypeOf((*MockStore)(nil).CreateInstanceReportEvent), event)
 }
 
 // GetAppID mocks base method.
@@ -150,10 +165,10 @@ func (mr *MockStoreMockRecorder) GetLicense() *gomock.Call {
 }
 
 // GetLicenseFields mocks base method.
-func (m *MockStore) GetLicenseFields() types0.LicenseFields {
+func (m *MockStore) GetLicenseFields() types1.LicenseFields {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLicenseFields")
-	ret0, _ := ret[0].(types0.LicenseFields)
+	ret0, _ := ret[0].(types1.LicenseFields)
 	return ret0
 }
 
@@ -248,10 +263,10 @@ func (mr *MockStoreMockRecorder) GetReplicatedID() *gomock.Call {
 }
 
 // GetUpdates mocks base method.
-func (m *MockStore) GetUpdates() []types1.ChannelRelease {
+func (m *MockStore) GetUpdates() []types2.ChannelRelease {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUpdates")
-	ret0, _ := ret[0].([]types1.ChannelRelease)
+	ret0, _ := ret[0].([]types2.ChannelRelease)
 	return ret0
 }
 
@@ -259,20 +274,6 @@ func (m *MockStore) GetUpdates() []types1.ChannelRelease {
 func (mr *MockStoreMockRecorder) GetUpdates() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockStore)(nil).GetUpdates))
-}
-
-// GetUserAgent mocks base method.
-func (m *MockStore) GetUserAgent() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserAgent")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetUserAgent indicates an expected call of GetUserAgent.
-func (mr *MockStoreMockRecorder) GetUserAgent() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserAgent", reflect.TypeOf((*MockStore)(nil).GetUserAgent))
 }
 
 // GetVersionLabel mocks base method.
@@ -328,7 +329,7 @@ func (mr *MockStoreMockRecorder) SetLicense(license interface{}) *gomock.Call {
 }
 
 // SetLicenseFields mocks base method.
-func (m *MockStore) SetLicenseFields(licenseFields types0.LicenseFields) {
+func (m *MockStore) SetLicenseFields(licenseFields types1.LicenseFields) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetLicenseFields", licenseFields)
 }
@@ -340,7 +341,7 @@ func (mr *MockStoreMockRecorder) SetLicenseFields(licenseFields interface{}) *go
 }
 
 // SetUpdates mocks base method.
-func (m *MockStore) SetUpdates(updates []types1.ChannelRelease) {
+func (m *MockStore) SetUpdates(updates []types2.ChannelRelease) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetUpdates", updates)
 }

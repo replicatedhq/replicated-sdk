@@ -21,13 +21,8 @@ var mtx sync.Mutex
 // if enabled, and cron job was NOT found: add a new cron job to send heartbeats
 // if enabled, and a cron job was found, update the existing cron job with the latest cron spec
 // if disabled: stop the current running cron job (if exists)
-// no-op for airgap applications
 func Start() error {
 	appSlug := store.GetStore().GetAppSlug()
-
-	if util.IsAirgap() {
-		return nil
-	}
 
 	logger.Debugf("starting heartbeat for app %s", appSlug)
 
@@ -56,11 +51,13 @@ func Start() error {
 	_, err := job.AddFunc(cronSpec, func() {
 		logger.Debugf("sending a heartbeat for app %s", appSlug)
 
-		licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
-		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get latest license"))
-		} else {
-			store.GetStore().SetLicense(licenseData.License)
+		if !util.IsAirgap() {
+			licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to get latest license"))
+			} else {
+				store.GetStore().SetLicense(licenseData.License)
+			}
 		}
 
 		go func() {

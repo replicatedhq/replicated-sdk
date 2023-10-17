@@ -91,6 +91,7 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	store.InitInMemory(store.InitInMemoryStoreOptions{
+		Clientset:             clientset,
 		License:               verifiedLicense,
 		LicenseFields:         params.LicenseFields,
 		AppName:               params.AppName,

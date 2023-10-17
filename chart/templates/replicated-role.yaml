@@ -20,7 +20,14 @@ rules:
   resources:
   - 'secrets'
   verbs:
+  - 'create'
+- apiGroups:
+  - ''
+  resources:
+  - 'secrets'
+  verbs:
   - 'update'
   resourceNames:
   - {{ include "replicated.secretName" . }}
+  - replicated-instance-report
 {{ end }}

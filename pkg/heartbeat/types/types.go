@@ -1,7 +1,12 @@
 package types
 
 import (
+	"encoding/base64"
+	"encoding/json"
+
+	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
 type Distribution int64
@@ -66,4 +71,54 @@ func (d Distribution) String() string {
 		return "tanzu"
 	}
 	return "unknown"
+}
+
+type InstanceReport struct {
+	Events []InstanceReportEvent `json:"events"`
+}
+
+type InstanceReportEvent struct {
+	ReportedAt                int64  `json:"reported_at"`
+	LicenseID                 string `json:"license_id"`
+	InstanceID                string `json:"instance_id"`
+	ClusterID                 string `json:"cluster_id"`
+	AppStatus                 string `json:"app_status,omitempty"`
+	ResourceStates            string `json:"resource_states,omitempty"`
+	K8sVersion                string `json:"k8s_version"`
+	K8sDistribution           string `json:"k8s_distribution,omitempty"`
+	DownstreamChannelID       string `json:"downstream_channel_id,omitempty"`
+	DownstreamChannelSequence int64  `json:"downstream_channel_sequence"`
+	DownstreamChannelName     string `json:"downstream_channel_name,omitempty"`
+}
+
+func (r *InstanceReport) Encode() ([]byte, error) {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal instance report")
+	}
+	compressedData, err := util.GzipData(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to gzip instance report")
+	}
+	encodedData := base64.StdEncoding.EncodeToString(compressedData)
+
+	return []byte(encodedData), nil
+}
+
+func LoadInstanceReport(encodedData []byte) (*InstanceReport, error) {
+	decodedData, err := base64.StdEncoding.DecodeString(string(encodedData))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode instance report")
+	}
+	decompressedData, err := util.GunzipData(decodedData)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to gunzip instance report")
+	}
+
+	instanceReport := InstanceReport{}
+	if err := json.Unmarshal(decompressedData, &instanceReport); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal instance report")
+	}
+
+	return &instanceReport, nil
 }

@@ -3,6 +3,7 @@ package store
 import (
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	heartbeattypes "github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
@@ -36,6 +37,7 @@ type Store interface {
 	SetAppStatus(status appstatetypes.AppStatus)
 	GetUpdates() []upstreamtypes.ChannelRelease
 	SetUpdates(updates []upstreamtypes.ChannelRelease)
+	CreateInstanceReportEvent(event heartbeattypes.InstanceReportEvent) error
 }
 
 func SetStore(s Store) {

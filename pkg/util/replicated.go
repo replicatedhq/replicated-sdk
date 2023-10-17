@@ -15,6 +15,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachinerytypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -34,6 +35,15 @@ func GetReplicatedDeploymentName() string {
 		return dn
 	}
 	return "replicated"
+}
+
+func GetReplicatedDeploymentUID(clientset kubernetes.Interface, namespace string) (apimachinerytypes.UID, error) {
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), GetReplicatedDeploymentName(), metav1.GetOptions{})
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get replicated deployment")
+	}
+
+	return deployment.ObjectMeta.UID, nil
 }
 
 func GetReplicatedAndAppIDs(clientset kubernetes.Interface, namespace string) (string, string, error) {
