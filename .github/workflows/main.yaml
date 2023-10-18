@@ -506,6 +506,7 @@ jobs:
             echo "Did not find replicated-instance-report in support bundle"
             exit 1
           fi
+          rm -rf support-bundle-*
 
       - name: Uninstall test-chart via Helm
         run: |
@@ -554,6 +555,7 @@ jobs:
             echo "Did not find replicated-instance-report in support bundle"
             exit 1
           fi
+          rm -rf support-bundle-*
 
       - name: Uninstall test-chart via kubectl
         run: |
