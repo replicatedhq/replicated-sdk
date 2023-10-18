@@ -66,7 +66,6 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
-	authRouter.HandleFunc("/api/v1/app/metrics", handlers.GetAppMetrics).Methods("GET")
 	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST")
 
 	// integration

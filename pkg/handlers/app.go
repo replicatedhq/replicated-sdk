@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/config"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
 	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
@@ -324,13 +323,6 @@ func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppReleas
 	}
 
 	return appRelease
-}
-
-func GetAppMetrics(w http.ResponseWriter, r *http.Request) {
-	heartbeatInfo := heartbeat.GetHeartbeatInfo(store.GetStore())
-	headers := heartbeat.GetHeartbeatInfoHeaders(heartbeatInfo)
-
-	JSON(w, http.StatusOK, headers)
 }
 
 func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
