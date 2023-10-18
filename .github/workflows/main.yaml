@@ -464,6 +464,52 @@ jobs:
           helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml | kubectl delete -f -
           kubectl wait --for=delete deployment/test-chart --timeout=2m
           kubectl wait --for=delete deployment/replicated --timeout=2m
+      
+      # validate airgap
+      - name: Install via Helm as subchart in production mode
+        run: |
+          helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --wait --timeout 2m
+          
+          kubectl wait --for=condition=exists secret/replicated-instance-report --timeout=1m
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'false'
+          is-airgap: 'true'
+
+      - name: Uninstall test-chart via Helm
+        run: |
+          helm uninstall test-chart --wait --timeout 2m
+          
+          kubectl wait --for=delete secret/replicated-instance-report --timeout=1m
+
+      - name: Install via kubectl as subchart in production mode
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true | kubectl apply -f -
+          kubectl rollout status deployment test-chart --timeout=2m
+          kubectl rollout status deployment replicated --timeout=2m
+          
+          kubectl wait --for=condition=exists secret/replicated-instance-report --timeout=1m
+
+      - name: Validate endpoints
+        uses: ./.github/actions/validate-endpoints
+        with:
+          license-id: ${{ env.LICENSE_ID }}
+          license-fields: ${{ env.LICENSE_FIELDS }}
+          integration-enabled: 'false'
+          deployed-via-kubectl: 'true'
+          is-airgap: 'true'
+
+      - name: Uninstall test-chart via kubectl
+        run: |
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true | kubectl delete -f -
+          kubectl wait --for=delete deployment/test-chart --timeout=2m
+          kubectl wait --for=delete deployment/replicated --timeout=2m
+
+          kubectl wait --for=delete secret/replicated-instance-report --timeout=1m
 
       - name: Remove Cluster
         uses: replicatedhq/replicated-actions/remove-cluster@v1.1.1
