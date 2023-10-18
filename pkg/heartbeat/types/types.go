@@ -105,7 +105,7 @@ func (r *InstanceReport) Encode() ([]byte, error) {
 	return []byte(encodedData), nil
 }
 
-func LoadInstanceReport(encodedData []byte) (*InstanceReport, error) {
+func DecodeInstanceReport(encodedData []byte) (*InstanceReport, error) {
 	decodedData, err := base64.StdEncoding.DecodeString(string(encodedData))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode instance report")

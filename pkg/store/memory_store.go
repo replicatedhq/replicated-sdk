@@ -234,7 +234,7 @@ func (s *InMemoryStore) CreateInstanceReportEvent(event heartbeattypes.InstanceR
 
 	existingInstanceReport := &heartbeattypes.InstanceReport{}
 	if existingSecret.Data[InstanceReportSecretKey] != nil {
-		existingInstanceReport, err = heartbeattypes.LoadInstanceReport(existingSecret.Data[InstanceReportSecretKey])
+		existingInstanceReport, err = heartbeattypes.DecodeInstanceReport(existingSecret.Data[InstanceReportSecretKey])
 		if err != nil {
 			return errors.Wrap(err, "failed to load existing instance report")
 		}
