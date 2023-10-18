@@ -466,6 +466,16 @@ jobs:
           kubectl wait --for=delete deployment/replicated --timeout=2m
       
       # validate airgap
+      - name: Download support-bundle binary
+        run: |
+          RELEASE="$(
+            curl -sfL https://api.github.com/repos/replicatedhq/troubleshoot/releases/latest | \
+            grep '"tag_name":' | \
+            sed -E 's/.*"(v[^"]+)".*/\1/'
+          )"
+          curl -fsLO "https://github.com/replicatedhq/troubleshoot/releases/download/${RELEASE}/support-bundle_linux_amd64.tar.gz"
+          tar xzf support-bundle_linux_amd64.tar.gz
+
       - name: Install via Helm as subchart in production mode
         run: |
           helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --wait --timeout 2m
@@ -479,6 +489,15 @@ jobs:
           license-fields: ${{ env.LICENSE_FIELDS }}
           integration-enabled: 'false'
           is-airgap: 'true'
+
+      - name: Validate support bundle instance report
+        run: |
+          ./support-bundle --load-cluster-specs --interactive=false
+          tar xzf support-bundle-*.tar.gz
+          if ! ls support-bundle-*/secrets/*/replicated-instance-report/report.json; then
+            echo "Did not find replicated-instance-report in support bundle"
+            exit 1
+          fi
 
       - name: Uninstall test-chart via Helm
         run: |
@@ -502,6 +521,15 @@ jobs:
           integration-enabled: 'false'
           deployed-via-kubectl: 'true'
           is-airgap: 'true'
+
+      - name: Validate support bundle instance report
+        run: |
+          ./support-bundle --load-cluster-specs --interactive=false
+          tar xzf support-bundle-*.tar.gz
+          if ! ls support-bundle-*/secrets/*/replicated-instance-report/report.json; then
+            echo "Did not find replicated-instance-report in support bundle"
+            exit 1
+          fi
 
       - name: Uninstall test-chart via kubectl
         run: |
