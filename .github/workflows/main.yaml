@@ -480,7 +480,15 @@ jobs:
         run: |
           helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --wait --timeout 2m
           
-          kubectl wait --for=condition=exists secret/replicated-instance-report --timeout=1m
+          COUNTER=1
+          while ! kubectl get secret/replicated-instance-report; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Did not create replicated-instance-report secret"
+              exit 1
+            fi
+            sleep 1
+          done
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -503,7 +511,15 @@ jobs:
         run: |
           helm uninstall test-chart --wait --timeout 2m
           
-          kubectl wait --for=delete secret/replicated-instance-report --timeout=1m
+          COUNTER=1
+          while kubectl get secret/replicated-instance-report; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Did not delete replicated-instance-report secret"
+              exit 1
+            fi
+            sleep 1
+          done
 
       - name: Install via kubectl as subchart in production mode
         run: |
@@ -511,7 +527,15 @@ jobs:
           kubectl rollout status deployment test-chart --timeout=2m
           kubectl rollout status deployment replicated --timeout=2m
           
-          kubectl wait --for=condition=exists secret/replicated-instance-report --timeout=1m
+          COUNTER=1
+          while ! kubectl get secret/replicated-instance-report; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Did not create replicated-instance-report secret"
+              exit 1
+            fi
+            sleep 1
+          done
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -537,7 +561,15 @@ jobs:
           kubectl wait --for=delete deployment/test-chart --timeout=2m
           kubectl wait --for=delete deployment/replicated --timeout=2m
 
-          kubectl wait --for=delete secret/replicated-instance-report --timeout=1m
+          COUNTER=1
+          while kubectl get secret/replicated-instance-report; do
+            ((COUNTER += 1))
+            if [ $COUNTER -gt 60 ]; then
+              echo "Did not delete replicated-instance-report secret"
+              exit 1
+            fi
+            sleep 1
+          done
 
       - name: Remove Cluster
         uses: replicatedhq/replicated-actions/remove-cluster@v1.1.1
