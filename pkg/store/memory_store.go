@@ -5,11 +5,9 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
-	"k8s.io/client-go/kubernetes"
 )
 
 type InMemoryStore struct {
-	clientset             kubernetes.Interface
 	replicatedID          string
 	appID                 string
 	license               *kotsv1beta1.License
@@ -30,7 +28,6 @@ type InMemoryStore struct {
 }
 
 type InitInMemoryStoreOptions struct {
-	Clientset             kubernetes.Interface
 	ReplicatedID          string
 	AppID                 string
 	License               *kotsv1beta1.License
@@ -49,7 +46,6 @@ type InitInMemoryStoreOptions struct {
 
 func InitInMemory(options InitInMemoryStoreOptions) {
 	SetStore(&InMemoryStore{
-		clientset:             options.Clientset,
 		replicatedID:          options.ReplicatedID,
 		appID:                 options.AppID,
 		appSlug:               options.License.Spec.AppSlug,
