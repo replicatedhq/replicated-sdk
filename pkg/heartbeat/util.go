@@ -36,8 +36,8 @@ func GetHeartbeatInfoPayload(heartbeatInfo *types.HeartbeatInfo) (map[string]int
 		return payload, nil
 	}
 
-	// only include app status related information if it's been initialized
-	if heartbeatInfo.AppStatus != "" {
+	// only include resource states if they have been initialized
+	if heartbeatInfo.ResourceStates != nil {
 		marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to marshal resource states")

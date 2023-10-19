@@ -52,7 +52,7 @@ func SendAirgapHeartbeat(clientset kubernetes.Interface, namespace string, licen
 		DownstreamChannelSequence: heartbeatInfo.ChannelSequence,
 	}
 
-	if heartbeatInfo.AppStatus != "" {
+	if heartbeatInfo.ResourceStates != nil {
 		marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal resource states")
