@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -29,6 +31,43 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 
 	heartbeatInfo := GetHeartbeatInfo(sdkStore)
 
+	if util.IsAirgap() {
+		return SendAirgapHeartbeat(clientset, sdkStore.GetNamespace(), license.Spec.LicenseID, heartbeatInfo)
+	}
+
+	return SendOnlineHeartbeat(license, heartbeatInfo)
+}
+
+func SendAirgapHeartbeat(clientset kubernetes.Interface, namespace string, licenseID string, heartbeatInfo *types.HeartbeatInfo) error {
+	event := types.InstanceReportEvent{
+		ReportedAt:                time.Now().UTC().UnixMilli(),
+		LicenseID:                 licenseID,
+		InstanceID:                heartbeatInfo.InstanceID,
+		ClusterID:                 heartbeatInfo.ClusterID,
+		AppStatus:                 heartbeatInfo.AppStatus,
+		K8sVersion:                heartbeatInfo.K8sVersion,
+		K8sDistribution:           heartbeatInfo.K8sDistribution,
+		DownstreamChannelID:       heartbeatInfo.ChannelID,
+		DownstreamChannelName:     heartbeatInfo.ChannelName,
+		DownstreamChannelSequence: heartbeatInfo.ChannelSequence,
+	}
+
+	if heartbeatInfo.ResourceStates != nil {
+		marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal resource states")
+		}
+		event.ResourceStates = string(marshalledRS)
+	}
+
+	if err := CreateInstanceReportEvent(clientset, namespace, event); err != nil {
+		return errors.Wrap(err, "failed to create airgap heartbeat")
+	}
+
+	return nil
+}
+
+func SendOnlineHeartbeat(license *v1beta1.License, heartbeatInfo *types.HeartbeatInfo) error {
 	// build the request body
 	reqPayload := map[string]interface{}{}
 	if err := InjectHeartbeatInfoPayload(reqPayload, heartbeatInfo); err != nil {

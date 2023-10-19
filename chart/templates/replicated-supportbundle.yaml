@@ -39,6 +39,11 @@ stringData:
               headers:
                 User-Agent: "troubleshoot.sh/support-bundle"
               timeout: 5s
+        - secret:
+            namespace: {{ include "replicated.namespace" . }}
+            name: replicated-instance-report
+            includeValue: true
+            key: report
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status

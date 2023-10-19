@@ -36,8 +36,8 @@ func GetHeartbeatInfoPayload(heartbeatInfo *types.HeartbeatInfo) (map[string]int
 		return payload, nil
 	}
 
-	// only include app status related information if it's been initialized
-	if heartbeatInfo.AppStatus != "" {
+	// only include resource states if they have been initialized
+	if heartbeatInfo.ResourceStates != nil {
 		marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to marshal resource states")
@@ -88,10 +88,6 @@ func GetHeartbeatInfoHeaders(heartbeatInfo *types.HeartbeatInfo) map[string]stri
 }
 
 func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
-	if util.IsAirgap() {
-		return false, nil
-	}
-
 	if util.IsDevEnv() && !util.IsDevLicense(license) {
 		// don't send reports from our dev env to our production services even if this is a production license
 		return false, nil

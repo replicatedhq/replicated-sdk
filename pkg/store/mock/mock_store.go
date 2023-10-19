@@ -261,20 +261,6 @@ func (mr *MockStoreMockRecorder) GetUpdates() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockStore)(nil).GetUpdates))
 }
 
-// GetUserAgent mocks base method.
-func (m *MockStore) GetUserAgent() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserAgent")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetUserAgent indicates an expected call of GetUserAgent.
-func (mr *MockStoreMockRecorder) GetUserAgent() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserAgent", reflect.TypeOf((*MockStore)(nil).GetUserAgent))
-}
-
 // GetVersionLabel mocks base method.
 func (m *MockStore) GetVersionLabel() string {
 	m.ctrl.T.Helper()

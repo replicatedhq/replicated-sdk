@@ -15,6 +15,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachinerytypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -36,6 +37,15 @@ func GetReplicatedDeploymentName() string {
 	return "replicated"
 }
 
+func GetReplicatedDeploymentUID(clientset kubernetes.Interface, namespace string) (apimachinerytypes.UID, error) {
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), GetReplicatedDeploymentName(), metav1.GetOptions{})
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get replicated deployment")
+	}
+
+	return deployment.ObjectMeta.UID, nil
+}
+
 func GetReplicatedAndAppIDs(clientset kubernetes.Interface, namespace string) (string, string, error) {
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), GetLegacyReplicatedConfigMapName(), metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
@@ -46,12 +56,12 @@ func GetReplicatedAndAppIDs(clientset kubernetes.Interface, namespace string) (s
 	appID := ""
 
 	if kuberneteserrors.IsNotFound(err) {
-		d, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), GetReplicatedDeploymentName(), metav1.GetOptions{})
+		uid, err := GetReplicatedDeploymentUID(clientset, namespace)
 		if err != nil {
-			return "", "", errors.Wrap(err, "failed to get replicated deployment")
+			return "", "", errors.Wrap(err, "failed to get replicated deployment uid")
 		}
-		replicatedID = string(d.ObjectMeta.UID)
-		appID = string(d.ObjectMeta.UID)
+		replicatedID = string(uid)
+		appID = string(uid)
 	} else {
 		replicatedID = cm.Data["replicated-sdk-id"]
 		appID = cm.Data["app-id"]
