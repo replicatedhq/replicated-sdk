@@ -21,11 +21,11 @@ const (
 	InstanceReportEventLimit = 4000
 )
 
-var instanceReportLock = sync.Mutex{}
+var instanceReportMtx = sync.Mutex{}
 
 func CreateInstanceReportEvent(clientset kubernetes.Interface, namespace string, event heartbeattypes.InstanceReportEvent) error {
-	instanceReportLock.Lock()
-	defer instanceReportLock.Unlock()
+	instanceReportMtx.Lock()
+	defer instanceReportMtx.Unlock()
 
 	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(context.TODO(), InstanceReportSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
