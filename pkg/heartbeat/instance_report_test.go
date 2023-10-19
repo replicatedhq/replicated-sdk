@@ -1,4 +1,4 @@
-package store
+package heartbeat
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	heartbeattypes "github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/stretchr/testify/require"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
+func Test_CreateInstanceReportEvent(t *testing.T) {
 	testEvent := heartbeattypes.InstanceReportEvent{
 		ReportedAt:                1234567890,
 		LicenseID:                 "test-license-id",
@@ -30,36 +29,33 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 		DownstreamChannelSequence: 1,
 	}
 
-	testReportWithOneEvent := heartbeattypes.InstanceReport{
+	testReportWithOneEvent := &heartbeattypes.InstanceReport{
 		Events: []heartbeattypes.InstanceReportEvent{testEvent},
 	}
-	testReportWithOneEventData, err := testReportWithOneEvent.Encode()
+	testReportWithOneEventData, err := EncodeInstanceReport(testReportWithOneEvent)
 	require.NoError(t, err)
 
-	testReportWithMaxEvents := heartbeattypes.InstanceReport{}
+	testReportWithMaxEvents := &heartbeattypes.InstanceReport{}
 	for i := 0; i < InstanceReportEventLimit; i++ {
 		testReportWithMaxEvents.Events = append(testReportWithMaxEvents.Events, testEvent)
 	}
-	testReportWithMaxEventsData, err := testReportWithMaxEvents.Encode()
+	testReportWithMaxEventsData, err := EncodeInstanceReport(testReportWithMaxEvents)
 	require.NoError(t, err)
 
-	type fields struct {
+	type args struct {
 		clientset kubernetes.Interface
 		namespace string
-	}
-	type args struct {
-		event heartbeattypes.InstanceReportEvent
+		event     heartbeattypes.InstanceReportEvent
 	}
 	tests := []struct {
 		name          string
-		fields        fields
 		args          args
 		wantNumEvents int
 		wantErr       bool
 	}{
 		{
 			name: "secret does not exist",
-			fields: fields{
+			args: args{
 				clientset: fake.NewSimpleClientset(&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      util.GetReplicatedDeploymentName(),
@@ -68,15 +64,13 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 					},
 				}),
 				namespace: "default",
-			},
-			args: args{
-				event: testEvent,
+				event:     testEvent,
 			},
 			wantNumEvents: 1,
 		},
 		{
 			name: "secret exists with an existing event",
-			fields: fields{
+			args: args{
 				clientset: fake.NewSimpleClientset(
 					&appsv1.Deployment{
 						ObjectMeta: metav1.ObjectMeta{
@@ -104,15 +98,13 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 					},
 				),
 				namespace: "default",
-			},
-			args: args{
-				event: testEvent,
+				event:     testEvent,
 			},
 			wantNumEvents: 2,
 		},
 		{
 			name: "secret exists without data",
-			fields: fields{
+			args: args{
 				clientset: fake.NewSimpleClientset(
 					&appsv1.Deployment{
 						ObjectMeta: metav1.ObjectMeta{
@@ -137,15 +129,13 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 					},
 				),
 				namespace: "default",
-			},
-			args: args{
-				event: testEvent,
+				event:     testEvent,
 			},
 			wantNumEvents: 1,
 		},
 		{
 			name: "secret exists with max number of events",
-			fields: fields{
+			args: args{
 				clientset: fake.NewSimpleClientset(
 					&appsv1.Deployment{
 						ObjectMeta: metav1.ObjectMeta{
@@ -173,9 +163,7 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 					},
 				),
 				namespace: "default",
-			},
-			args: args{
-				event: testEvent,
+				event:     testEvent,
 			},
 			wantNumEvents: InstanceReportEventLimit,
 		},
@@ -184,11 +172,7 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := require.New(t)
 
-			s := &InMemoryStore{
-				clientset: tt.fields.clientset,
-				namespace: tt.fields.namespace,
-			}
-			err := s.CreateInstanceReportEvent(tt.args.event)
+			err := CreateInstanceReportEvent(tt.args.clientset, tt.args.namespace, tt.args.event)
 			if tt.wantErr {
 				req.Error(err)
 				return
@@ -196,11 +180,11 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 			req.NoError(err)
 
 			// validate secret exists and has the expected data
-			secret, err := s.clientset.CoreV1().Secrets(s.namespace).Get(context.TODO(), InstanceReportSecretName, metav1.GetOptions{})
+			secret, err := tt.args.clientset.CoreV1().Secrets(tt.args.namespace).Get(context.TODO(), InstanceReportSecretName, metav1.GetOptions{})
 			req.NoError(err)
 			req.NotNil(secret.Data[InstanceReportSecretKey])
 
-			report, err := heartbeattypes.DecodeInstanceReport(secret.Data[InstanceReportSecretKey])
+			report, err := DecodeInstanceReport(secret.Data[InstanceReportSecretKey])
 			req.NoError(err)
 
 			req.Len(report.Events, tt.wantNumEvents)
@@ -210,4 +194,34 @@ func TestInMemoryStore_CreateInstanceReportEvent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_InstanceReportEncodeDecode(t *testing.T) {
+	req := require.New(t)
+
+	testReport := &heartbeattypes.InstanceReport{
+		Events: []heartbeattypes.InstanceReportEvent{
+			{
+				ReportedAt:                1234567890,
+				LicenseID:                 "test-license-id",
+				InstanceID:                "test-instance-id",
+				ClusterID:                 "test-cluster-id",
+				AppStatus:                 "ready",
+				ResourceStates:            "[]",
+				K8sVersion:                "1.29.0",
+				K8sDistribution:           "test-distribution",
+				DownstreamChannelID:       "test-channel-id",
+				DownstreamChannelName:     "test-channel-name",
+				DownstreamChannelSequence: 1,
+			},
+		},
+	}
+
+	encoded, err := EncodeInstanceReport(testReport)
+	req.NoError(err)
+
+	decoded, err := DecodeInstanceReport(encoded)
+	req.NoError(err)
+
+	req.Equal(testReport, decoded)
 }

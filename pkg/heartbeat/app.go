@@ -32,13 +32,13 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 	heartbeatInfo := GetHeartbeatInfo(sdkStore)
 
 	if util.IsAirgap() {
-		return SendAirgapHeartbeat(sdkStore, heartbeatInfo)
+		return SendAirgapHeartbeat(clientset, sdkStore.GetNamespace(), license.Spec.LicenseID, heartbeatInfo)
 	}
 
 	return SendOnlineHeartbeat(license, heartbeatInfo)
 }
 
-func SendAirgapHeartbeat(sdkStore store.Store, heartbeatInfo *types.HeartbeatInfo) error {
+func SendAirgapHeartbeat(clientset kubernetes.Interface, namespace string, licenseID string, heartbeatInfo *types.HeartbeatInfo) error {
 	marshalledResourceStates, err := json.Marshal(heartbeatInfo.ResourceStates)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal resource states")
@@ -46,7 +46,7 @@ func SendAirgapHeartbeat(sdkStore store.Store, heartbeatInfo *types.HeartbeatInf
 
 	event := types.InstanceReportEvent{
 		ReportedAt:                time.Now().UTC().UnixMilli(),
-		LicenseID:                 sdkStore.GetLicense().Spec.LicenseID,
+		LicenseID:                 licenseID,
 		InstanceID:                heartbeatInfo.InstanceID,
 		ClusterID:                 heartbeatInfo.ClusterID,
 		AppStatus:                 heartbeatInfo.AppStatus,
@@ -58,7 +58,7 @@ func SendAirgapHeartbeat(sdkStore store.Store, heartbeatInfo *types.HeartbeatInf
 		DownstreamChannelSequence: heartbeatInfo.ChannelSequence,
 	}
 
-	if err := sdkStore.CreateInstanceReportEvent(event); err != nil {
+	if err := CreateInstanceReportEvent(clientset, namespace, event); err != nil {
 		return errors.Wrap(err, "failed to create airgap heartbeat")
 	}
 

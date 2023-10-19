@@ -95,13 +95,13 @@ func Test_SendAppHeartbeat(t *testing.T) {
 			},
 			isAirgap: true,
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLicense().Times(2).Return(&v1beta1.License{
+				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "test-license-id",
 						Endpoint:  mockServer.URL,
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("test-namespace")
+				mockStore.EXPECT().GetNamespace().Times(2).Return("test-namespace")
 				mockStore.EXPECT().GetReplicatedID().Return("test-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("test-app")
 				mockStore.EXPECT().GetChannelID().Return("test-app-nightly")
@@ -113,8 +113,6 @@ func Test_SendAppHeartbeat(t *testing.T) {
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
-
-				mockStore.EXPECT().CreateInstanceReportEvent(gomock.Any()).Return(nil)
 			},
 		},
 	}

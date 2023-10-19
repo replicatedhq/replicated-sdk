@@ -56,12 +56,12 @@ func GetReplicatedAndAppIDs(clientset kubernetes.Interface, namespace string) (s
 	appID := ""
 
 	if kuberneteserrors.IsNotFound(err) {
-		d, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), GetReplicatedDeploymentName(), metav1.GetOptions{})
+		uid, err := GetReplicatedDeploymentUID(clientset, namespace)
 		if err != nil {
-			return "", "", errors.Wrap(err, "failed to get replicated deployment")
+			return "", "", errors.Wrap(err, "failed to get replicated deployment uid")
 		}
-		replicatedID = string(d.ObjectMeta.UID)
-		appID = string(d.ObjectMeta.UID)
+		replicatedID = string(uid)
+		appID = string(uid)
 	} else {
 		replicatedID = cm.Data["replicated-sdk-id"]
 		appID = cm.Data["app-id"]
