@@ -119,13 +119,6 @@ jobs:
             exit 1
           fi
 
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set userAgent=test-user-agent)
-
-          if ! echo $output | grep -q 'value: "test-user-agent"'; then
-            printf "user-set userAgent should exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
           cat << EOF > test-values.yaml
           extraEnv:
           - name: TEST_EXTRA_ENV

@@ -89,8 +89,6 @@ spec:
               name: {{ include "replicated.secretName" . }}
               key: integration-license-id
         {{- end }}
-        - name: REPLICATED_USER_AGENT
-          value: {{ .Values.userAgent | default "" | quote }}
         ports:
         - containerPort: 3000
           name: http
