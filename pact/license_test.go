@@ -33,6 +33,7 @@ spec:
       value: '2050-01-01T01:23:46Z'
       valueType: String
       signature: {}
+  isNewKotsUiEnabled: true
   isKotsInstallEnabled: true
 `
 

@@ -2,7 +2,6 @@ package buildversion
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"time"
 )
@@ -77,8 +76,5 @@ func getGoInfo() GoInfo {
 }
 
 func GetUserAgent() string {
-	if os.Getenv("REPLICATED_USER_AGENT") != "" {
-		return os.Getenv("REPLICATED_USER_AGENT")
-	}
 	return fmt.Sprintf("Replicated-SDK/%s", Version())
 }
