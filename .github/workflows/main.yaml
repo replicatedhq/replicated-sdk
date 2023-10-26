@@ -30,11 +30,6 @@ jobs:
           cache: false
       - uses: replicatedhq/action-install-pact@v1
       - run: make test
-      - if: github.event_name == 'push' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository )
-        run: make publish-pact
-      - if: github.event_name == 'push' || ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository )
-        run: |
-          make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
 
   build-and-push-e2e:
     runs-on: ubuntu-22.04
