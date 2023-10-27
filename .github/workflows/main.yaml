@@ -92,6 +92,13 @@ jobs:
             exit 1
           fi
 
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set isAirgap=true)
+
+          if ! echo $output | grep -q 'name: DISABLE_OUTBOUND_CONNECTIONS value: "true"'; then
+            printf "'DISABLE_OUTBOUND_CONNECTIONS' env var should be set to to 'true' in airgap mode:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
           output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set serviceAccountName=foo)
 
           if echo $output | grep -q 'kind: ServiceAccount'; then
