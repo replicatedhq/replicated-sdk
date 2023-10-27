@@ -114,7 +114,6 @@ runs:
         fi
 
     - name: Validate /app/updates endpoint
-      if: ${{ inputs.is-airgap == 'false' }}
       shell: bash
       run: |
         updatesLength=$(curl -s --fail --show-error localhost:8888/api/v1/app/updates | jq '. | length' | tr -d '\n')
