@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -44,6 +45,7 @@ func SendAirgapHeartbeat(clientset kubernetes.Interface, namespace string, licen
 		LicenseID:                 licenseID,
 		InstanceID:                heartbeatInfo.InstanceID,
 		ClusterID:                 heartbeatInfo.ClusterID,
+		UserAgent:                 buildversion.GetUserAgent(),
 		AppStatus:                 heartbeatInfo.AppStatus,
 		K8sVersion:                heartbeatInfo.K8sVersion,
 		K8sDistribution:           heartbeatInfo.K8sDistribution,

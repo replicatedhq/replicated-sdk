@@ -77,6 +77,7 @@ type InstanceReportEvent struct {
 	LicenseID                 string `json:"license_id"`
 	InstanceID                string `json:"instance_id"`
 	ClusterID                 string `json:"cluster_id"`
+	UserAgent                 string `json:"user_agent"`
 	AppStatus                 string `json:"app_status,omitempty"`
 	ResourceStates            string `json:"resource_states,omitempty"`
 	K8sVersion                string `json:"k8s_version"`
