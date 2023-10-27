@@ -126,6 +126,11 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
+	if util.IsAirgap() {
+		JSON(w, http.StatusOK, []upstreamtypes.ChannelRelease{})
+		return
+	}
+
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get clientset"))
