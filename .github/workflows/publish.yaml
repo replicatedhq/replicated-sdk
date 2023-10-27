@@ -96,13 +96,7 @@ jobs:
       run: |
         make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
 
-    - uses: docker/login-action@v1
-      with:
-        registry: ghcr.io
-        username: ${{github.actor}}
-        password: ${{secrets.GITHUB_TOKEN}}
-
-    - uses: azure/docker-login@v1
+    - uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USER }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
