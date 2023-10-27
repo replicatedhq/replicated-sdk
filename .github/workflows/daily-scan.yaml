@@ -34,12 +34,12 @@ jobs:
 
       - name: Build replicated image from Dockerfile
         run: |
-          docker build --pull -t replicated/replicated:${{ github.sha }} .
+          docker build --pull -t replicated/replicated-sdk:${{ github.sha }} .
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'replicated/replicated:${{ github.sha }}'
+          image-ref: 'replicated/replicated-sdk:${{ github.sha }}'
           format: 'sarif'          
           output: 'trivy-results.sarif'
           ignore-unfixed: true

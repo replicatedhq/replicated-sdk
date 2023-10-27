@@ -58,8 +58,8 @@ vet:
 
 .PHONY: build-ttl.sh
 build-ttl.sh:
-	docker build -t ttl.sh/${USER}/replicated:24h .
-	docker push ttl.sh/${USER}/replicated:24h
+	docker build -t ttl.sh/${USER}/replicated-sdk:24h .
+	docker push ttl.sh/${USER}/replicated-sdk:24h
 
 	make -C chart build-ttl.sh
 
