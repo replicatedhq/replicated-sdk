@@ -42,7 +42,7 @@ spec:
           secretName: {{ include "replicated.secretName" . }}
       containers:
       - name: replicated
-        image: {{ index .Values.images "replicated" }}
+        image: {{ index .Values.images "replicated-sdk" }}
         imagePullPolicy: IfNotPresent
         {{- if .Values.containerSecurityContext.enabled }}
         securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 10 }}
