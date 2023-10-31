@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+var heartbeatMtx sync.Mutex
+
 func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) error {
 	license := sdkStore.GetLicense()
 
@@ -29,6 +32,13 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 	if !canReport {
 		return nil
 	}
+
+	// make sure events are reported in order
+	heartbeatMtx.Lock()
+	defer func() {
+		time.Sleep(1 * time.Second)
+		heartbeatMtx.Unlock()
+	}()
 
 	heartbeatInfo := GetHeartbeatInfo(sdkStore)
 
