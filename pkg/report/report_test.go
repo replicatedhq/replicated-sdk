@@ -3,7 +3,6 @@ package report
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"testing"
 
@@ -64,6 +63,9 @@ func Test_AppendReport(t *testing.T) {
 	req := require.New(t)
 
 	instanceReportWithMaxEvents := getTestInstanceReportWithMaxEvents()
+	instanceReportWithMaxSize, err := getTestInstanceReportWithMaxSize()
+	req.NoError(err)
+
 	customAppMetricsReportWithMaxEvents := getTestCustomAppMetricsReportWithMaxEvents()
 	customAppMetricsReportWithMaxSize, err := getTestCustomAppMetricsReportWithMaxSize()
 	req.NoError(err)
@@ -158,6 +160,24 @@ func Test_AppendReport(t *testing.T) {
 			},
 		},
 		{
+			name:           "instance report - report exists with max report size",
+			existingReport: instanceReportWithMaxSize,
+			newReport: &InstanceReport{
+				Events: []InstanceReportEvent{
+					createLargeTestInstanceEvent(int64(len(instanceReportWithMaxSize.Events))),
+					createLargeTestInstanceEvent(int64(len(instanceReportWithMaxSize.Events) + 1)),
+					createLargeTestInstanceEvent(int64(len(instanceReportWithMaxSize.Events) + 2)),
+				},
+			},
+			wantReport: &InstanceReport{
+				Events: append(instanceReportWithMaxSize.Events[3:], []InstanceReportEvent{
+					createLargeTestInstanceEvent(int64(len(instanceReportWithMaxSize.Events))),
+					createLargeTestInstanceEvent(int64(len(instanceReportWithMaxSize.Events) + 1)),
+					createLargeTestInstanceEvent(int64(len(instanceReportWithMaxSize.Events) + 2)),
+				}...),
+			},
+		},
+		{
 			name:           "custom app metrics report - no existing report",
 			existingReport: nil,
 			newReport: &CustomAppMetricsReport{
@@ -245,16 +265,16 @@ func Test_AppendReport(t *testing.T) {
 			existingReport: customAppMetricsReportWithMaxSize,
 			newReport: &CustomAppMetricsReport{
 				Events: []map[string]interface{}{
-					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxEvents.Events))),
-					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxEvents.Events) + 1)),
-					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxEvents.Events) + 2)),
+					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxSize.Events))),
+					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxSize.Events) + 1)),
+					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxSize.Events) + 2)),
 				},
 			},
 			wantReport: &CustomAppMetricsReport{
 				Events: append(customAppMetricsReportWithMaxSize.Events[3:], []map[string]interface{}{
-					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxEvents.Events))),
-					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxEvents.Events) + 1)),
-					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxEvents.Events) + 2)),
+					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxSize.Events))),
+					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxSize.Events) + 1)),
+					createLargeTestCustomAppMetricsEvent(int64(len(customAppMetricsReportWithMaxSize.Events) + 2)),
 				}...),
 			},
 		},
@@ -310,6 +330,14 @@ func Test_AppendReport(t *testing.T) {
 			req.NoError(err)
 
 			if tt.wantReport.GetType() == ReportTypeInstance {
+				wantNumOfEvents := len(tt.wantReport.(*InstanceReport).Events)
+				gotNumOfEvents := len(gotReport.(*InstanceReport).Events)
+
+				if wantNumOfEvents != gotNumOfEvents {
+					t.Errorf("want %d events, got %d", wantNumOfEvents, gotNumOfEvents)
+					return
+				}
+
 				req.Equal(tt.wantReport, gotReport)
 			} else {
 				wantNumOfEvents := len(tt.wantReport.(*CustomAppMetricsReport).Events)
@@ -350,6 +378,63 @@ func createTestInstanceEvent(reportedAt int64) InstanceReportEvent {
 	}
 }
 
+func createLargeTestInstanceEvent(seed int64) InstanceReportEvent {
+	r := rand.New(rand.NewSource(seed))
+
+	sizeInBytes := 100 * 1024 // 100KB
+
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+
+	randomBytes := make([]byte, sizeInBytes)
+	for i := 0; i < sizeInBytes; i++ {
+		randomBytes[i] = charset[r.Intn(len(charset))]
+	}
+
+	return InstanceReportEvent{
+		ResourceStates: string(randomBytes), // can use any field here
+	}
+}
+
+func getTestInstanceReportWithMaxEvents() *InstanceReport {
+	report := &InstanceReport{
+		Events: []InstanceReportEvent{},
+	}
+	for i := 0; i < report.GetEventLimit(); i++ {
+		report.Events = append(report.Events, createTestInstanceEvent(int64(i)))
+	}
+	return report
+}
+
+func getTestInstanceReportWithMaxSize() (*InstanceReport, error) {
+	report := &InstanceReport{
+		Events: []InstanceReportEvent{},
+	}
+
+	encoded, err := EncodeReport(report)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encode instance report")
+	}
+
+	for i := 0; len(encoded) <= report.GetSizeLimit(); i++ {
+		seed := int64(i)
+		event := createLargeTestInstanceEvent(seed)
+		eventSize := len(event.ResourceStates)
+
+		if len(encoded)+eventSize > report.GetSizeLimit() {
+			break
+		}
+
+		report.Events = append(report.Events, event)
+
+		encoded, err = EncodeReport(report)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to encode instance report")
+		}
+	}
+
+	return report, nil
+}
+
 func createTestCustomAppMetricsEvent(reportedAt int64) map[string]interface{} {
 	return map[string]interface{}{
 		"reported_at":         reportedAt,
@@ -366,24 +451,16 @@ func createLargeTestCustomAppMetricsEvent(seed int64) map[string]interface{} {
 
 	sizeInBytes := 100 * 1024 // 100KB
 
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+
 	randomBytes := make([]byte, sizeInBytes)
 	for i := 0; i < sizeInBytes; i++ {
-		randomBytes[i] = byte(r.Intn(256))
+		randomBytes[i] = charset[r.Intn(len(charset))]
 	}
 
 	return map[string]interface{}{
-		fmt.Sprintf("%d", seed): randomBytes,
+		"random_bytes": randomBytes,
 	}
-}
-
-func getTestInstanceReportWithMaxEvents() *InstanceReport {
-	report := &InstanceReport{
-		Events: []InstanceReportEvent{},
-	}
-	for i := 0; i < report.GetEventLimit(); i++ {
-		report.Events = append(report.Events, createTestInstanceEvent(int64(i)))
-	}
-	return report
 }
 
 func getTestCustomAppMetricsReportWithMaxEvents() *CustomAppMetricsReport {
@@ -409,7 +486,7 @@ func getTestCustomAppMetricsReportWithMaxSize() (*CustomAppMetricsReport, error)
 	for i := 0; len(encoded) <= report.GetSizeLimit(); i++ {
 		seed := int64(i)
 		event := createLargeTestCustomAppMetricsEvent(seed)
-		eventSize := len(event[fmt.Sprintf("%d", seed)].([]byte))
+		eventSize := len(event["random_bytes"].([]byte))
 
 		if len(encoded)+eventSize > report.GetSizeLimit() {
 			break
