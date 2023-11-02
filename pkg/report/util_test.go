@@ -1,18 +1,18 @@
-package heartbeat
+package report
 
 import (
 	"testing"
 
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestInjectHeartbeatInfoPayload(t *testing.T) {
-	heartbeatInfo := &types.HeartbeatInfo{
+func TestInjectInstanceDataPayload(t *testing.T) {
+	instanceData := &types.InstanceData{
 		AppStatus: "ready",
 		ResourceStates: appstatetypes.ResourceStates{
 			{
@@ -32,7 +32,7 @@ func TestInjectHeartbeatInfoPayload(t *testing.T) {
 
 	reqPayload := make(map[string]interface{})
 
-	err := InjectHeartbeatInfoPayload(reqPayload, heartbeatInfo)
+	err := InjectInstanceDataPayload(reqPayload, instanceData)
 	assert.NoError(t, err)
 
 	expectedPayload := map[string]interface{}{
@@ -40,10 +40,10 @@ func TestInjectHeartbeatInfoPayload(t *testing.T) {
 	}
 	assert.Equal(t, expectedPayload, reqPayload)
 
-	// test nil heartbeat info
+	// test nil instance data
 	reqPayload = make(map[string]interface{})
 
-	err = InjectHeartbeatInfoPayload(reqPayload, nil)
+	err = InjectInstanceDataPayload(reqPayload, nil)
 	assert.NoError(t, err)
 
 	expectedPayload = map[string]interface{}{}
@@ -52,7 +52,7 @@ func TestInjectHeartbeatInfoPayload(t *testing.T) {
 	// test empty app status
 	reqPayload = make(map[string]interface{})
 
-	err = InjectHeartbeatInfoPayload(reqPayload, &types.HeartbeatInfo{
+	err = InjectInstanceDataPayload(reqPayload, &types.InstanceData{
 		AppStatus: "",
 	})
 	assert.NoError(t, err)
@@ -61,8 +61,8 @@ func TestInjectHeartbeatInfoPayload(t *testing.T) {
 	assert.Equal(t, expectedPayload, reqPayload)
 }
 
-func TestGetHeartbeatInfoHeaders(t *testing.T) {
-	heartbeatInfo := &types.HeartbeatInfo{
+func TestGetInstanceDataHeaders(t *testing.T) {
+	instanceData := &types.InstanceData{
 		AppStatus:       "ready",
 		ClusterID:       "cluster-123",
 		InstanceID:      "instance-456",
@@ -72,7 +72,7 @@ func TestGetHeartbeatInfoHeaders(t *testing.T) {
 		K8sDistribution: "k3s",
 	}
 
-	headers := GetHeartbeatInfoHeaders(heartbeatInfo)
+	headers := GetInstanceDataHeaders(instanceData)
 
 	expectedHeaders := map[string]string{
 		"X-Replicated-K8sVersion":                "v1.20.2+k3s1",
@@ -85,12 +85,12 @@ func TestGetHeartbeatInfoHeaders(t *testing.T) {
 	}
 	assert.Equal(t, expectedHeaders, headers)
 
-	// nil heartbeat info
-	nilHeaders := GetHeartbeatInfoHeaders(nil)
+	// nil instance data
+	nilHeaders := GetInstanceDataHeaders(nil)
 	assert.Empty(t, nilHeaders)
 
 	// empty app status
-	emptyAppStatusHeaders := GetHeartbeatInfoHeaders(&types.HeartbeatInfo{
+	emptyAppStatusHeaders := GetInstanceDataHeaders(&types.InstanceData{
 		AppStatus: "",
 	})
 	_, appStatusOk := emptyAppStatusHeaders["X-Replicated-AppStatus"]

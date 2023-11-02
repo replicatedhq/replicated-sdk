@@ -154,7 +154,7 @@ spec:
 				license: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "sdk-license-customer-0-license",
-						AppSlug:   "sdk-heartbeat-app",
+						AppSlug:   "replicated-sdk-app",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
@@ -171,7 +171,7 @@ spec:
 							"User-Agent":    dsl.String("Replicated-SDK/v0.0.0-unknown"),
 							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "sdk-license-customer-0-license", "sdk-license-customer-0-license"))))),
 						},
-						Path: dsl.String(fmt.Sprintf("/license/%s", "sdk-heartbeat-app")),
+						Path: dsl.String(fmt.Sprintf("/license/%s", "replicated-sdk-app")),
 					}).
 					WillRespondWith(dsl.Response{
 						Status: http.StatusUnauthorized,

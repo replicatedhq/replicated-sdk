@@ -1,4 +1,4 @@
-package heartbeat
+package report
 
 import (
 	"context"
@@ -9,17 +9,17 @@ import (
 
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-func InjectHeartbeatInfoPayload(reqPayload map[string]interface{}, heartbeatInfo *types.HeartbeatInfo) error {
-	payload, err := GetHeartbeatInfoPayload(heartbeatInfo)
+func InjectInstanceDataPayload(reqPayload map[string]interface{}, instanceData *types.InstanceData) error {
+	payload, err := GetInstanceDataPayload(instanceData)
 	if err != nil {
-		return errors.Wrap(err, "failed to get heartbeat info payload")
+		return errors.Wrap(err, "failed to get instance data payload")
 	}
 
 	for key, value := range payload {
@@ -29,16 +29,16 @@ func InjectHeartbeatInfoPayload(reqPayload map[string]interface{}, heartbeatInfo
 	return nil
 }
 
-func GetHeartbeatInfoPayload(heartbeatInfo *types.HeartbeatInfo) (map[string]interface{}, error) {
+func GetInstanceDataPayload(instanceData *types.InstanceData) (map[string]interface{}, error) {
 	payload := make(map[string]interface{})
 
-	if heartbeatInfo == nil {
+	if instanceData == nil {
 		return payload, nil
 	}
 
 	// only include resource states if they have been initialized
-	if heartbeatInfo.ResourceStates != nil {
-		marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
+	if instanceData.ResourceStates != nil {
+		marshalledRS, err := json.Marshal(instanceData.ResourceStates)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to marshal resource states")
 		}
@@ -48,40 +48,40 @@ func GetHeartbeatInfoPayload(heartbeatInfo *types.HeartbeatInfo) (map[string]int
 	return payload, nil
 }
 
-func InjectHeartbeatInfoHeaders(req *http.Request, heartbeatInfo *types.HeartbeatInfo) {
-	headers := GetHeartbeatInfoHeaders(heartbeatInfo)
+func InjectInstanceDataHeaders(req *http.Request, instanceData *types.InstanceData) {
+	headers := GetInstanceDataHeaders(instanceData)
 
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
 }
 
-func GetHeartbeatInfoHeaders(heartbeatInfo *types.HeartbeatInfo) map[string]string {
+func GetInstanceDataHeaders(instanceData *types.InstanceData) map[string]string {
 	headers := make(map[string]string)
 
-	if heartbeatInfo == nil {
+	if instanceData == nil {
 		return headers
 	}
 
-	headers["X-Replicated-K8sVersion"] = heartbeatInfo.K8sVersion
-	headers["X-Replicated-ClusterID"] = heartbeatInfo.ClusterID
-	headers["X-Replicated-InstanceID"] = heartbeatInfo.InstanceID
+	headers["X-Replicated-K8sVersion"] = instanceData.K8sVersion
+	headers["X-Replicated-ClusterID"] = instanceData.ClusterID
+	headers["X-Replicated-InstanceID"] = instanceData.InstanceID
 
 	// only include app status related information if it's been initialized
-	if heartbeatInfo.AppStatus != "" {
-		headers["X-Replicated-AppStatus"] = heartbeatInfo.AppStatus
+	if instanceData.AppStatus != "" {
+		headers["X-Replicated-AppStatus"] = instanceData.AppStatus
 	}
 
-	if heartbeatInfo.ChannelID != "" {
-		headers["X-Replicated-DownstreamChannelID"] = heartbeatInfo.ChannelID
-	} else if heartbeatInfo.ChannelName != "" {
-		headers["X-Replicated-DownstreamChannelName"] = heartbeatInfo.ChannelName
+	if instanceData.ChannelID != "" {
+		headers["X-Replicated-DownstreamChannelID"] = instanceData.ChannelID
+	} else if instanceData.ChannelName != "" {
+		headers["X-Replicated-DownstreamChannelName"] = instanceData.ChannelName
 	}
 
-	headers["X-Replicated-DownstreamChannelSequence"] = strconv.FormatInt(heartbeatInfo.ChannelSequence, 10)
+	headers["X-Replicated-DownstreamChannelSequence"] = strconv.FormatInt(instanceData.ChannelSequence, 10)
 
-	if heartbeatInfo.K8sDistribution != "" {
-		headers["X-Replicated-K8sDistribution"] = heartbeatInfo.K8sDistribution
+	if instanceData.K8sDistribution != "" {
+		headers["X-Replicated-K8sDistribution"] = instanceData.K8sDistribution
 	}
 
 	return headers

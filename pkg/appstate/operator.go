@@ -9,9 +9,9 @@ import (
 	"github.com/mitchellh/hashstructure"
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
@@ -130,11 +130,11 @@ func (o *Operator) setAppStatus(newAppStatus types.AppStatus) error {
 		go func() {
 			clientset, err := k8sutil.GetClientset()
 			if err != nil {
-				logger.Error(errors.Wrap(err, "failed to get clientset to send heartbeat"))
+				logger.Error(errors.Wrap(err, "failed to get clientset"))
 				return
 			}
-			if err := heartbeat.SendAppHeartbeat(clientset, store.GetStore()); err != nil {
-				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
+			if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
+				logger.Error(errors.Wrap(err, "failed to send instance data"))
 			}
 		}()
 	}

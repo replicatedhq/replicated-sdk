@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -48,12 +48,12 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 
 	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, license.Spec.AppSlug, urlValues.Encode())
 
-	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore)
+	instanceData := report.GetInstanceData(sdkStore)
 
 	// build the request body
 	reqPayload := map[string]interface{}{}
-	if err := heartbeat.InjectHeartbeatInfoPayload(reqPayload, heartbeatInfo); err != nil {
-		return nil, errors.Wrap(err, "failed to inject heartbeat info payload")
+	if err := report.InjectInstanceDataPayload(reqPayload, instanceData); err != nil {
+		return nil, errors.Wrap(err, "failed to inject instance data payload")
 	}
 	reqBody, err := json.Marshal(reqPayload)
 	if err != nil {
@@ -67,7 +67,7 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
 	req.Header.Set("Content-Type", "application/json")
 
-	heartbeat.InjectHeartbeatInfoHeaders(req, heartbeatInfo)
+	report.InjectInstanceDataHeaders(req, instanceData)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

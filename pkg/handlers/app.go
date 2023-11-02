@@ -17,7 +17,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
-	"github.com/replicatedhq/replicated-sdk/pkg/metrics"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -331,13 +331,6 @@ func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppReleas
 }
 
 func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
-	license := store.GetStore().GetLicense()
-
-	if util.IsAirgap() {
-		JSON(w, http.StatusForbidden, "This request cannot be satisfied in airgap mode")
-		return
-	}
-
 	request := SendCustomAppMetricsRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		logger.Error(errors.Wrap(err, "decode request"))
@@ -351,8 +344,14 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := metrics.SendCustomAppMetricsData(store.GetStore(), license, request.Data)
+	clientset, err := k8sutil.GetClientset()
 	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), request.Data); err != nil {
 		logger.Error(errors.Wrap(err, "set application data"))
 		w.WriteHeader(http.StatusBadRequest)
 		return

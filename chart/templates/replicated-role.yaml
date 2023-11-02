@@ -30,4 +30,5 @@ rules:
   resourceNames:
   - {{ include "replicated.secretName" . }}
   - replicated-instance-report
+  - replicated-custom-app-metrics-report
 {{ end }}
