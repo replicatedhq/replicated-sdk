@@ -23,12 +23,12 @@ func TestSendInstanceData(t *testing.T) {
 
 	mockStore := mock_store.NewMockStore(ctrl)
 	clientset := fake.NewSimpleClientset(
-		k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "replicated-sdk-namespace", "1", map[string]string{"app": "replicated-sdk-app"}),
-		k8sutil.CreateTestReplicaSet("replicated-sdk-replicaset", "replicated-sdk-namespace", "1"),
-		k8sutil.CreateTestPod("replicated-sdk-pod", "replicated-sdk-namespace", "replicated-sdk-replicaset", map[string]string{"app": "replicated-sdk-app"}),
+		k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "replicated-sdk-instance-namespace", "1", map[string]string{"app": "replicated-sdk-instance-app"}),
+		k8sutil.CreateTestReplicaSet("replicated-sdk-instance-replicaset", "replicated-sdk-instance-namespace", "1"),
+		k8sutil.CreateTestPod("replicated-sdk-instance-pod", "replicated-sdk-instance-namespace", "replicated-sdk-instance-replicaset", map[string]string{"app": "replicated-sdk-instance-app"}),
 	)
 
-	t.Setenv("REPLICATED_POD_NAME", "replicated-sdk-pod")
+	t.Setenv("REPLICATED_POD_NAME", "replicated-sdk-instance-pod")
 
 	tests := []struct {
 		name                  string
@@ -41,18 +41,18 @@ func TestSendInstanceData(t *testing.T) {
 			mockStoreExpectations: func() {
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "replicated-sdk-customer-0-license",
+						LicenseID: "replicated-sdk-instance-customer-0-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-namespace")
-				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-cluster-id")
-				mockStore.EXPECT().GetAppID().Return("replicated-sdk-app")
-				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-app-nightly")
+				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
+				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
+				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
-					AppSlug:        "replicated-sdk-app",
+					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
@@ -67,13 +67,13 @@ func TestSendInstanceData(t *testing.T) {
 						Method: http.MethodPost,
 						Headers: dsl.MapMatcher{
 							"User-Agent":                             dsl.String("Replicated-SDK/v0.0.0-unknown"),
-							"Authorization":                          dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-customer-0-license", "replicated-sdk-customer-0-license"))))),
+							"Authorization":                          dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-instance-customer-0-license", "replicated-sdk-instance-customer-0-license"))))),
 							"Content-Type":                           dsl.String("application/json"),
 							"X-Replicated-K8sVersion":                dsl.Like("v1.25.3"),
 							"X-Replicated-AppStatus":                 dsl.String("missing"),
-							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-cluster-id"),
-							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-app"),
-							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-app-nightly"),
+							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-instance-cluster-id"),
+							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-instance-app"),
+							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-instance-app-nightly"),
 							"X-Replicated-DownstreamChannelSequence": dsl.String("1"),
 						},
 						Path: dsl.String("/kots_metrics/license_instance/info"),
@@ -92,18 +92,18 @@ func TestSendInstanceData(t *testing.T) {
 			mockStoreExpectations: func() {
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "replicated-sdk-customer-2-license",
+						LicenseID: "replicated-sdk-instance-customer-2-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-namespace")
-				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-cluster-id")
-				mockStore.EXPECT().GetAppID().Return("replicated-sdk-app")
-				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-app-beta")
+				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
+				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
+				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
-					AppSlug:        "replicated-sdk-app",
+					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
@@ -118,13 +118,13 @@ func TestSendInstanceData(t *testing.T) {
 						Method: http.MethodPost,
 						Headers: dsl.MapMatcher{
 							"User-Agent":                             dsl.String("Replicated-SDK/v0.0.0-unknown"),
-							"Authorization":                          dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-customer-2-license", "replicated-sdk-customer-2-license"))))),
+							"Authorization":                          dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-instance-customer-2-license", "replicated-sdk-instance-customer-2-license"))))),
 							"Content-Type":                           dsl.String("application/json"),
 							"X-Replicated-K8sVersion":                dsl.Like("v1.25.3"),
 							"X-Replicated-AppStatus":                 dsl.String("missing"),
-							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-cluster-id"),
-							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-app"),
-							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-app-beta"),
+							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-instance-cluster-id"),
+							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-instance-app"),
+							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-instance-app-beta"),
 							"X-Replicated-DownstreamChannelSequence": dsl.String("1"),
 						},
 						Path: dsl.String("/kots_metrics/license_instance/info"),
@@ -143,18 +143,18 @@ func TestSendInstanceData(t *testing.T) {
 			mockStoreExpectations: func() {
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "replicated-sdk-customer-nonexistent-license",
+						LicenseID: "replicated-sdk-instance-customer-nonexistent-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-namespace")
-				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-cluster-id")
-				mockStore.EXPECT().GetAppID().Return("replicated-sdk-app")
-				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-app-beta")
+				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
+				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
+				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
-					AppSlug:        "replicated-sdk-app",
+					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
@@ -169,13 +169,13 @@ func TestSendInstanceData(t *testing.T) {
 						Method: http.MethodPost,
 						Headers: dsl.MapMatcher{
 							"User-Agent":                             dsl.String("Replicated-SDK/v0.0.0-unknown"),
-							"Authorization":                          dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-customer-nonexistent-license", "replicated-sdk-customer-nonexistent-license"))))),
+							"Authorization":                          dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-instance-customer-nonexistent-license", "replicated-sdk-instance-customer-nonexistent-license"))))),
 							"Content-Type":                           dsl.String("application/json"),
 							"X-Replicated-K8sVersion":                dsl.Like("v1.25.3"),
 							"X-Replicated-AppStatus":                 dsl.String("missing"),
-							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-cluster-id"),
-							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-app"),
-							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-app-beta"),
+							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-instance-cluster-id"),
+							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-instance-app"),
+							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-instance-app-beta"),
 							"X-Replicated-DownstreamChannelSequence": dsl.String("1"),
 						},
 						Path: dsl.String("/kots_metrics/license_instance/info"),
@@ -194,18 +194,18 @@ func TestSendInstanceData(t *testing.T) {
 			mockStoreExpectations: func() {
 				mockStore.EXPECT().GetLicense().Return(&v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "replicated-sdk-customer-0-license",
+						LicenseID: "replicated-sdk-instance-customer-0-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-namespace")
-				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-cluster-id")
-				mockStore.EXPECT().GetAppID().Return("replicated-sdk-app")
-				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-app-nightly")
+				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
+				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
+				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
 				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
-					AppSlug:        "replicated-sdk-app",
+					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
@@ -223,9 +223,9 @@ func TestSendInstanceData(t *testing.T) {
 							"Content-Type":                           dsl.String("application/json"),
 							"X-Replicated-K8sVersion":                dsl.Like("v1.25.3"),
 							"X-Replicated-AppStatus":                 dsl.String("missing"),
-							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-cluster-id"),
-							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-app"),
-							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-app-nightly"),
+							"X-Replicated-ClusterID":                 dsl.String("replicated-sdk-instance-cluster-id"),
+							"X-Replicated-InstanceID":                dsl.String("replicated-sdk-instance-app"),
+							"X-Replicated-DownstreamChannelID":       dsl.String("replicated-sdk-instance-app-nightly"),
 							"X-Replicated-DownstreamChannelSequence": dsl.String("1"),
 						},
 						Path: dsl.String("/kots_metrics/license_instance/info"),
