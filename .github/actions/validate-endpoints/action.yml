@@ -157,11 +157,11 @@ runs:
         for i in {1..5}
         do
           reported_at=$(date +%s)
-          string_key=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10; echo '')
-          integer_key=$(shuf -i 1-100 -n 1)
+          string_key=$(shuf -er -n10  {A..Z} {a..z} {0..9} | tr -d '\n')
+          integer_key=$(shuf -i 1-100 -n 1 | tr -d '\n')
           bool_key=true
           body='{"data":{"reported_at":'$reported_at',"string_key":"'$string_key'","integer_key":'$integer_key',"bool_key":'$bool_key'}}'
-          curl -XPOST -s --fail --show-error localhost:8888/api/v1/app/custom-metrics -H 'Content-Typ application/json' -d $body
+          curl -XPOST -s --fail --show-error localhost:8888/api/v1/app/custom-metrics -H 'Content-Type: application/json' -d $body
         done
 
         if [ "${{ inputs.is-airgap }}" == "false" ]; then
@@ -175,7 +175,7 @@ runs:
 
         report=$(kubectl get secret replicated-custom-app-metrics-report -ojsonpath='{.data.report}' | base64 -d | base64 -d | gunzip | jq .)
 
-        numOfEvents=$(echo $report | jq '.events | length' | tr -d '\n')
+        numOfEvents=$(echo "$report" | jq '.events | length' | tr -d '\n')
         if [ "$numOfEvents" != "5" ]; then
           echo "Expected 5 events, but found $numOfEvents"
           exit 1
