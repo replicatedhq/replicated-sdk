@@ -27,6 +27,7 @@ func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.S
 		Events: []CustomAppMetricsReportEvent{
 			{
 				ReportedAt: time.Now().UTC().UnixMilli(),
+				LicenseID:  sdkStore.GetLicense().Spec.LicenseID,
 				InstanceID: sdkStore.GetAppID(),
 				Data:       data,
 			},

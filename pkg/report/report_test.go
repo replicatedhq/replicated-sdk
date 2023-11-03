@@ -438,6 +438,7 @@ func getTestInstanceReportWithMaxSize() (*InstanceReport, error) {
 func createTestCustomAppMetricsEvent(reportedAt int64) CustomAppMetricsReportEvent {
 	return CustomAppMetricsReportEvent{
 		ReportedAt: reportedAt,
+		LicenseID:  "test-license-id",
 		InstanceID: "test-instance-id",
 		Data: map[string]interface{}{
 			"key1_string":         "val1",
