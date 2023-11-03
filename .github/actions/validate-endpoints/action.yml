@@ -168,12 +168,12 @@ runs:
           exit 0
         fi
 
-        if ! kubectl get secret/replicated-custom-app-metrics-report; then
+        if ! kubectl -n "${{ inputs.namespace }}" get secret/replicated-custom-app-metrics-report; then
           echo "Did not create replicated-custom-app-metrics-report secret"
           exit 1
         fi
 
-        report=$(kubectl get secret replicated-custom-app-metrics-report -ojsonpath='{.data.report}' | base64 -d | base64 -d | gunzip | jq .)
+        report=$(kubectl -n "${{ inputs.namespace }}" get secret replicated-custom-app-metrics-report -ojsonpath='{.data.report}' | base64 -d | base64 -d | gunzip | jq .)
 
         numOfEvents=$(echo "$report" | jq '.events | length' | tr -d '\n')
         if [ "$numOfEvents" != "5" ]; then

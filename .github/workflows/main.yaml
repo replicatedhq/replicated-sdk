@@ -471,7 +471,7 @@ jobs:
           curl -fsLO "https://github.com/replicatedhq/troubleshoot/releases/download/${RELEASE}/support-bundle_linux_amd64.tar.gz"
           tar xzf support-bundle_linux_amd64.tar.gz
 
-      - name: Install via Helm as subchart in production mode
+      - name: Install via Helm as subchart in production airgap mode
         run: |
           helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --wait --timeout 2m
           
@@ -521,7 +521,7 @@ jobs:
             sleep 1
           done
 
-      - name: Install via kubectl as subchart in production mode
+      - name: Install via kubectl as subchart in production airgap mode
         run: |
           helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
