@@ -10,7 +10,13 @@ import (
 var customAppMetricsReportMtx = sync.Mutex{}
 
 type CustomAppMetricsReport struct {
-	Events []map[string]interface{} `json:"events"`
+	Events []CustomAppMetricsReportEvent `json:"events"`
+}
+
+type CustomAppMetricsReportEvent struct {
+	ReportedAt int64                  `json:"reported_at"`
+	InstanceID string                 `json:"instance_id"`
+	Data       map[string]interface{} `json:"data"`
 }
 
 func (r *CustomAppMetricsReport) GetType() ReportType {

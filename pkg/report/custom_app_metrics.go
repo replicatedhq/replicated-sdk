@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
@@ -23,7 +24,13 @@ func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, 
 
 func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
 	report := &CustomAppMetricsReport{
-		Events: []map[string]interface{}{data},
+		Events: []CustomAppMetricsReportEvent{
+			{
+				ReportedAt: time.Now().UTC().UnixMilli(),
+				InstanceID: sdkStore.GetAppID(),
+				Data:       data,
+			},
+		},
 	}
 
 	if err := AppendReport(clientset, sdkStore.GetNamespace(), report); err != nil {
