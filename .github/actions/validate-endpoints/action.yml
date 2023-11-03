@@ -25,7 +25,7 @@ inputs:
     required: false
     default: 'false'
   namespace:
-    description: 'Namespace that the Replicated SDK is deployed in'
+    description: 'Namespace that the Replicated API is deployed in'
     required: false
     default: 'default'
 runs:
