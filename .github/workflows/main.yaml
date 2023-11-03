@@ -501,6 +501,10 @@ jobs:
             echo "Did not find replicated-instance-report in support bundle"
             exit 1
           fi
+          if ! ls support-bundle-*/secrets/*/replicated-custom-app-metrics-report/report.json; then
+            echo "Did not find replicated-custom-app-metrics-report in support bundle"
+            exit 1
+          fi
           rm -rf support-bundle-*
 
       - name: Uninstall test-chart via Helm
@@ -548,6 +552,10 @@ jobs:
           tar xzf support-bundle-*.tar.gz
           if ! ls support-bundle-*/secrets/*/replicated-instance-report/report.json; then
             echo "Did not find replicated-instance-report in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/secrets/*/replicated-custom-app-metrics-report/report.json; then
+            echo "Did not find replicated-custom-app-metrics-report in support bundle"
             exit 1
           fi
           rm -rf support-bundle-*
