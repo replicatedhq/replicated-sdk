@@ -28,7 +28,7 @@ func TestSendCustomAppMetrics(t *testing.T) {
 			"key4_numeric_string": "1.6",
 		},
 	}
-	customMetricsData, _ := json.Marshal(data)
+	customAppMetricsData, _ := json.Marshal(data)
 	license := &v1beta1.License{
 		Spec: v1beta1.LicenseSpec{
 			LicenseID: "sdk-license-customer-0-license",
@@ -40,14 +40,14 @@ func TestSendCustomAppMetrics(t *testing.T) {
 
 	clientWriter := httptest.NewRecorder()
 	clientRequest := &http.Request{
-		Body: io.NopCloser(bytes.NewBuffer(customMetricsData)),
+		Body: io.NopCloser(bytes.NewBuffer(customAppMetricsData)),
 	}
 
 	pactInteraction := func() {
 		pact.
 			AddInteraction().
-			Given("Send valid custom metrics").
-			UponReceiving("A request to send custom metrics").
+			Given("Send valid custom app metrics").
+			UponReceiving("A request to send custom app metrics").
 			WithRequest(dsl.Request{
 				Method: http.MethodPost,
 				Headers: dsl.MapMatcher{
@@ -63,7 +63,7 @@ func TestSendCustomAppMetrics(t *testing.T) {
 				Status: http.StatusOK,
 			})
 	}
-	t.Run("Send valid custom metrics", func(t *testing.T) {
+	t.Run("Send valid custom app metrics", func(t *testing.T) {
 		pactInteraction()
 
 		storeOptions := store.InitInMemoryStoreOptions{

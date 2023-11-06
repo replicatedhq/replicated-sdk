@@ -1,4 +1,4 @@
-package metrics
+package report
 
 import (
 	"bytes"
@@ -7,15 +7,43 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/pkg/errors"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	"k8s.io/client-go/kubernetes"
 )
 
-func SendCustomAppMetricsData(sdkStore store.Store, license *kotsv1beta1.License, data map[string]interface{}) error {
+func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
+	if util.IsAirgap() {
+		return SendAirgapCustomAppMetrics(clientset, sdkStore, data)
+	}
+	return SendOnlineCustomAppMetrics(sdkStore, data)
+}
+
+func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
+	report := &CustomAppMetricsReport{
+		Events: []CustomAppMetricsReportEvent{
+			{
+				ReportedAt: time.Now().UTC().UnixMilli(),
+				LicenseID:  sdkStore.GetLicense().Spec.LicenseID,
+				InstanceID: sdkStore.GetAppID(),
+				Data:       data,
+			},
+		},
+	}
+
+	if err := AppendReport(clientset, sdkStore.GetNamespace(), report); err != nil {
+		return errors.Wrap(err, "failed to append custom app metrics report")
+	}
+
+	return nil
+}
+
+func SendOnlineCustomAppMetrics(sdkStore store.Store, data map[string]interface{}) error {
+	license := sdkStore.GetLicense()
+
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
@@ -52,8 +80,8 @@ func SendCustomAppMetricsData(sdkStore store.Store, license *kotsv1beta1.License
 	req.SetBasicAuth(license.Spec.LicenseID, license.Spec.LicenseID)
 	req.Header.Set("Content-Type", "application/json")
 
-	heartbeatInfo := heartbeat.GetHeartbeatInfo(sdkStore)
-	heartbeat.InjectHeartbeatInfoHeaders(req, heartbeatInfo)
+	instanceData := GetInstanceData(sdkStore)
+	InjectInstanceDataHeaders(req, instanceData)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

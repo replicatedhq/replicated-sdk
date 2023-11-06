@@ -1,4 +1,4 @@
-package heartbeat
+package report
 
 import (
 	"bytes"
@@ -12,17 +12,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
 )
 
-var heartbeatMtx sync.Mutex
+var instanceDataMtx sync.Mutex
 
-func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) error {
+func SendInstanceData(clientset kubernetes.Interface, sdkStore store.Store) error {
 	license := sdkStore.GetLicense()
 
 	canReport, err := canReport(clientset, sdkStore.GetNamespace(), license)
@@ -34,56 +34,60 @@ func SendAppHeartbeat(clientset kubernetes.Interface, sdkStore store.Store) erro
 	}
 
 	// make sure events are reported in order
-	heartbeatMtx.Lock()
+	instanceDataMtx.Lock()
 	defer func() {
 		time.Sleep(1 * time.Second)
-		heartbeatMtx.Unlock()
+		instanceDataMtx.Unlock()
 	}()
 
-	heartbeatInfo := GetHeartbeatInfo(sdkStore)
+	instanceData := GetInstanceData(sdkStore)
 
 	if util.IsAirgap() {
-		return SendAirgapHeartbeat(clientset, sdkStore.GetNamespace(), license.Spec.LicenseID, heartbeatInfo)
+		return SendAirgapInstanceData(clientset, sdkStore.GetNamespace(), license.Spec.LicenseID, instanceData)
 	}
 
-	return SendOnlineHeartbeat(license, heartbeatInfo)
+	return SendOnlineInstanceData(license, instanceData)
 }
 
-func SendAirgapHeartbeat(clientset kubernetes.Interface, namespace string, licenseID string, heartbeatInfo *types.HeartbeatInfo) error {
-	event := types.InstanceReportEvent{
+func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, licenseID string, instanceData *types.InstanceData) error {
+	event := InstanceReportEvent{
 		ReportedAt:                time.Now().UTC().UnixMilli(),
 		LicenseID:                 licenseID,
-		InstanceID:                heartbeatInfo.InstanceID,
-		ClusterID:                 heartbeatInfo.ClusterID,
+		InstanceID:                instanceData.InstanceID,
+		ClusterID:                 instanceData.ClusterID,
 		UserAgent:                 buildversion.GetUserAgent(),
-		AppStatus:                 heartbeatInfo.AppStatus,
-		K8sVersion:                heartbeatInfo.K8sVersion,
-		K8sDistribution:           heartbeatInfo.K8sDistribution,
-		DownstreamChannelID:       heartbeatInfo.ChannelID,
-		DownstreamChannelName:     heartbeatInfo.ChannelName,
-		DownstreamChannelSequence: heartbeatInfo.ChannelSequence,
+		AppStatus:                 instanceData.AppStatus,
+		K8sVersion:                instanceData.K8sVersion,
+		K8sDistribution:           instanceData.K8sDistribution,
+		DownstreamChannelID:       instanceData.ChannelID,
+		DownstreamChannelName:     instanceData.ChannelName,
+		DownstreamChannelSequence: instanceData.ChannelSequence,
 	}
 
-	if heartbeatInfo.ResourceStates != nil {
-		marshalledRS, err := json.Marshal(heartbeatInfo.ResourceStates)
+	if instanceData.ResourceStates != nil {
+		marshalledRS, err := json.Marshal(instanceData.ResourceStates)
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal resource states")
 		}
 		event.ResourceStates = string(marshalledRS)
 	}
 
-	if err := CreateInstanceReportEvent(clientset, namespace, event); err != nil {
-		return errors.Wrap(err, "failed to create airgap heartbeat")
+	report := &InstanceReport{
+		Events: []InstanceReportEvent{event},
+	}
+
+	if err := AppendReport(clientset, namespace, report); err != nil {
+		return errors.Wrap(err, "failed to append instance report")
 	}
 
 	return nil
 }
 
-func SendOnlineHeartbeat(license *v1beta1.License, heartbeatInfo *types.HeartbeatInfo) error {
+func SendOnlineInstanceData(license *v1beta1.License, instanceData *types.InstanceData) error {
 	// build the request body
 	reqPayload := map[string]interface{}{}
-	if err := InjectHeartbeatInfoPayload(reqPayload, heartbeatInfo); err != nil {
-		return errors.Wrap(err, "failed to inject heartbeat info payload")
+	if err := InjectInstanceDataPayload(reqPayload, instanceData); err != nil {
+		return errors.Wrap(err, "failed to inject instance data payload")
 	}
 	reqBody, err := json.Marshal(reqPayload)
 	if err != nil {
@@ -97,7 +101,7 @@ func SendOnlineHeartbeat(license *v1beta1.License, heartbeatInfo *types.Heartbea
 	postReq.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
 	postReq.Header.Set("Content-Type", "application/json")
 
-	InjectHeartbeatInfoHeaders(postReq, heartbeatInfo)
+	InjectInstanceDataHeaders(postReq, instanceData)
 
 	resp, err := http.DefaultClient.Do(postReq)
 	if err != nil {
@@ -112,8 +116,8 @@ func SendOnlineHeartbeat(license *v1beta1.License, heartbeatInfo *types.Heartbea
 	return nil
 }
 
-func GetHeartbeatInfo(sdkStore store.Store) *types.HeartbeatInfo {
-	r := types.HeartbeatInfo{
+func GetInstanceData(sdkStore store.Store) *types.InstanceData {
+	r := types.InstanceData{
 		ClusterID:       sdkStore.GetReplicatedID(),
 		InstanceID:      sdkStore.GetAppID(),
 		ChannelID:       sdkStore.GetChannelID(),

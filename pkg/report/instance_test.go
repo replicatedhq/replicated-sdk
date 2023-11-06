@@ -1,4 +1,4 @@
-package heartbeat
+package report
 
 import (
 	"net/http"
@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func Test_SendAppHeartbeat(t *testing.T) {
+func Test_SendInstanceData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockStore := mock_store.NewMockStore(ctrl)
@@ -28,7 +28,7 @@ func Test_SendAppHeartbeat(t *testing.T) {
 	mockServer := httptest.NewServer(mockRouter)
 	defer mockServer.Close()
 	mockRouter.Methods("POST").Path("/kots_metrics/license_instance/info").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		respRecorder.Write([]byte("received heartbeat"))
+		respRecorder.Write([]byte("received instance data"))
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -44,7 +44,7 @@ func Test_SendAppHeartbeat(t *testing.T) {
 		mockStoreExpectations func()
 	}{
 		{
-			name: "online heartbeat",
+			name: "send online instance data",
 			args: args{
 				clientset: fake.NewSimpleClientset(
 					k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "1", map[string]string{"app": "test-app"}),
@@ -80,7 +80,7 @@ func Test_SendAppHeartbeat(t *testing.T) {
 			},
 		},
 		{
-			name: "airgap heartbeat",
+			name: "send airgap instance data",
 			args: args{
 				clientset: fake.NewSimpleClientset(
 					k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "test-namespace", "1", map[string]string{"app": "test-app"}),
@@ -128,11 +128,11 @@ func Test_SendAppHeartbeat(t *testing.T) {
 
 			tt.mockStoreExpectations()
 
-			err := SendAppHeartbeat(tt.args.clientset, tt.args.sdkStore)
+			err := SendInstanceData(tt.args.clientset, tt.args.sdkStore)
 			req.NoError(err)
 
 			if !tt.isAirgap {
-				req.Equal("received heartbeat", respRecorder.Body.String())
+				req.Equal("received instance data", respRecorder.Body.String())
 			} else {
 				req.Equal("", respRecorder.Body.String())
 			}

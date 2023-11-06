@@ -9,6 +9,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	cron "github.com/robfig/cron/v3"
@@ -63,11 +64,11 @@ func Start() error {
 		go func() {
 			clientset, err := k8sutil.GetClientset()
 			if err != nil {
-				logger.Error(errors.Wrap(err, "failed to get clientset to send heartbeat"))
+				logger.Error(errors.Wrap(err, "failed to get clientset"))
 				return
 			}
-			if err := SendAppHeartbeat(clientset, store.GetStore()); err != nil {
-				logger.Error(errors.Wrap(err, "failed to send heartbeat"))
+			if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
+				logger.Error(errors.Wrap(err, "failed to send instance data"))
 			}
 		}()
 	})

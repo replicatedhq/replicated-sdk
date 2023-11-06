@@ -1,12 +1,12 @@
-package heartbeat
+package report
 
 import (
 	"context"
 	"strings"
 
-	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )

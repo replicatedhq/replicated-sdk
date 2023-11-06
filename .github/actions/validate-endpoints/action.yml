@@ -150,3 +150,32 @@ runs:
             exit 1
           fi
         fi
+
+    - name: Validate /app/custom-metrics endpoint
+      shell: bash
+      run: |
+        for i in {1..5}
+        do
+          string_key=$(shuf -er -n10 {A..Z} {a..z} {0..9} | tr -d '\n')
+          integer_key=$(shuf -i 1-100 -n 1 | tr -d '\n')
+          bool_key=true
+          body='{"data":{"string_key":"'$string_key'","integer_key":'$integer_key',"bool_key":'$bool_key'}}'
+          curl -XPOST -s --fail --show-error localhost:8888/api/v1/app/custom-metrics -H 'Content-Type: application/json' -d $body
+        done
+
+        if [ "${{ inputs.is-airgap }}" == "false" ]; then
+          exit 0
+        fi
+
+        if ! kubectl -n "${{ inputs.namespace }}" get secret/replicated-custom-app-metrics-report; then
+          echo "Did not create replicated-custom-app-metrics-report secret"
+          exit 1
+        fi
+
+        report=$(kubectl -n "${{ inputs.namespace }}" get secret replicated-custom-app-metrics-report -ojsonpath='{.data.report}' | base64 -d | base64 -d | gunzip | jq .)
+
+        numOfEvents=$(echo "$report" | jq '.events | length' | tr -d '\n')
+        if [ "$numOfEvents" != "5" ]; then
+          echo "Expected 5 events, but found $numOfEvents"
+          exit 1
+        fi

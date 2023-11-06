@@ -18,11 +18,11 @@ kind: License
 metadata:
   name: sdklicenseappcustomer0
 spec:
-  licenseID: sdk-license-customer-0-license
+  licenseID: replicated-sdk-license-customer-0-license
   licenseType: trial
   customerName: SDK License App Customer 0
-  appSlug: sdk-license-app
-  channelID: sdk-license-app-nightly
+  appSlug: replicated-sdk-license-app
+  channelID: replicated-sdk-license-app-nightly
   channelName: Nightly
   licenseSequence: 2
   endpoint: http://replicated-app:3000
@@ -58,8 +58,8 @@ spec:
 			args: args{
 				license: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "sdk-license-customer-0-license",
-						AppSlug:   "sdk-license-app",
+						LicenseID: "replicated-sdk-license-customer-0-license",
+						AppSlug:   "replicated-sdk-license-app",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
@@ -73,9 +73,9 @@ spec:
 						Method: http.MethodGet,
 						Headers: dsl.MapMatcher{
 							"User-Agent":    dsl.String("Replicated-SDK/v0.0.0-unknown"),
-							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "sdk-license-customer-0-license", "sdk-license-customer-0-license"))))),
+							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-license-customer-0-license", "replicated-sdk-license-customer-0-license"))))),
 						},
-						Path: dsl.String(fmt.Sprintf("/license/%s", "sdk-license-app")),
+						Path: dsl.String(fmt.Sprintf("/license/%s", "replicated-sdk-license-app")),
 					}).
 					WillRespondWith(dsl.Response{
 						Status: http.StatusOK,
@@ -94,7 +94,7 @@ spec:
 				license: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "not-a-customer-license",
-						AppSlug:   "sdk-license-app",
+						AppSlug:   "replicated-sdk-license-app",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
@@ -110,7 +110,7 @@ spec:
 							"User-Agent":    dsl.String("Replicated-SDK/v0.0.0-unknown"),
 							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "not-a-customer-license", "not-a-customer-license"))))),
 						},
-						Path: dsl.String(fmt.Sprintf("/license/%s", "sdk-license-app")),
+						Path: dsl.String(fmt.Sprintf("/license/%s", "replicated-sdk-license-app")),
 					}).
 					WillRespondWith(dsl.Response{
 						Status: http.StatusUnauthorized,
@@ -123,7 +123,7 @@ spec:
 			args: args{
 				license: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "sdk-license-customer-0-license",
+						LicenseID: "replicated-sdk-license-customer-0-license",
 						AppSlug:   "not-an-app",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
@@ -138,7 +138,7 @@ spec:
 						Method: http.MethodGet,
 						Headers: dsl.MapMatcher{
 							"User-Agent":    dsl.String("Replicated-SDK/v0.0.0-unknown"),
-							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "sdk-license-customer-0-license", "sdk-license-customer-0-license"))))),
+							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-license-customer-0-license", "replicated-sdk-license-customer-0-license"))))),
 						},
 						Path: dsl.String(fmt.Sprintf("/license/%s", "not-an-app")),
 					}).
@@ -153,8 +153,8 @@ spec:
 			args: args{
 				license: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "sdk-license-customer-0-license",
-						AppSlug:   "sdk-heartbeat-app",
+						LicenseID: "replicated-sdk-license-customer-0-license",
+						AppSlug:   "replicated-sdk-instance-app",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
@@ -169,9 +169,9 @@ spec:
 						Method: http.MethodGet,
 						Headers: dsl.MapMatcher{
 							"User-Agent":    dsl.String("Replicated-SDK/v0.0.0-unknown"),
-							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "sdk-license-customer-0-license", "sdk-license-customer-0-license"))))),
+							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-license-customer-0-license", "replicated-sdk-license-customer-0-license"))))),
 						},
-						Path: dsl.String(fmt.Sprintf("/license/%s", "sdk-heartbeat-app")),
+						Path: dsl.String(fmt.Sprintf("/license/%s", "replicated-sdk-instance-app")),
 					}).
 					WillRespondWith(dsl.Response{
 						Status: http.StatusUnauthorized,
@@ -184,8 +184,8 @@ spec:
 			args: args{
 				license: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
-						LicenseID: "sdk-license-customer-archived-license",
-						AppSlug:   "sdk-license-app",
+						LicenseID: "replicated-sdk-license-customer-archived-license",
+						AppSlug:   "replicated-sdk-license-app",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				},
@@ -199,9 +199,9 @@ spec:
 						Method: http.MethodGet,
 						Headers: dsl.MapMatcher{
 							"User-Agent":    dsl.String("Replicated-SDK/v0.0.0-unknown"),
-							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "sdk-license-customer-archived-license", "sdk-license-customer-archived-license"))))),
+							"Authorization": dsl.String(fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "replicated-sdk-license-customer-archived-license", "replicated-sdk-license-customer-archived-license"))))),
 						},
-						Path: dsl.String(fmt.Sprintf("/license/%s", "sdk-license-app")),
+						Path: dsl.String(fmt.Sprintf("/license/%s", "replicated-sdk-license-app")),
 					}).
 					WillRespondWith(dsl.Response{
 						Status: http.StatusForbidden,
