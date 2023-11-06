@@ -20,7 +20,7 @@ metadata:
 spec:
   licenseID: replicated-sdk-license-customer-0-license
   licenseType: trial
-  customerName: SDK License App Customer 0
+  customerName: Replicated SDK License App Customer 0
   appSlug: replicated-sdk-license-app
   channelID: replicated-sdk-license-app-nightly
   channelName: Nightly
