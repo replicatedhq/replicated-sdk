@@ -31,10 +31,10 @@ func TestSendCustomAppMetrics(t *testing.T) {
 	customAppMetricsData, _ := json.Marshal(data)
 	license := &v1beta1.License{
 		Spec: v1beta1.LicenseSpec{
-			LicenseID: "sdk-license-customer-0-license",
-			AppSlug:   "sdk-license-app",
+			LicenseID: "replicated-sdk-license-customer-0-license",
+			AppSlug:   "replicated-sdk-license-app",
 			Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
-			ChannelID: "sdk-license-app-nightly",
+			ChannelID: "replicated-sdk-license-app-nightly",
 		},
 	}
 

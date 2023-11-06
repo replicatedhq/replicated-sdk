@@ -16,11 +16,11 @@ func TestGetLatestLicense(t *testing.T) {
 	sdkCustomerLicenseString := `apiVersion: kots.io/v1beta1
 kind: License
 metadata:
-  name: sdklicenseappcustomer0
+  name: replicatedsdklicenseappcustomer0
 spec:
   licenseID: replicated-sdk-license-customer-0-license
   licenseType: trial
-  customerName: SDK License App Customer 0
+  customerName: Replicated SDK License App Customer 0
   appSlug: replicated-sdk-license-app
   channelID: replicated-sdk-license-app-nightly
   channelName: Nightly
