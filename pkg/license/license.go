@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
@@ -57,6 +59,9 @@ func getLicenseFromAPI(url string, licenseID string) (*LicenseData, error) {
 	}
 
 	req.SetBasicAuth(licenseID, licenseID)
+
+	instanceData := report.GetInstanceData(store.GetStore())
+	report.InjectInstanceDataHeaders(req, instanceData)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -117,6 +122,9 @@ func GetLatestLicenseFields(license *kotsv1beta1.License, endpoint string) (type
 
 	req.SetBasicAuth(license.Spec.LicenseID, license.Spec.LicenseID)
 
+	instanceData := report.GetInstanceData(store.GetStore())
+	report.InjectInstanceDataHeaders(req, instanceData)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute get request")
@@ -152,6 +160,9 @@ func GetLatestLicenseField(license *kotsv1beta1.License, endpoint string, fieldN
 	}
 
 	req.SetBasicAuth(license.Spec.LicenseID, license.Spec.LicenseID)
+
+	instanceData := report.GetInstanceData(store.GetStore())
+	report.InjectInstanceDataHeaders(req, instanceData)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
