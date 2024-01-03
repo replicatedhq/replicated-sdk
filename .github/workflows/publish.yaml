@@ -21,7 +21,7 @@ jobs:
       previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Get tags
         id: get-tags
@@ -44,7 +44,7 @@ jobs:
     if: github.ref_type != 'branch'
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Generate Release Notes PR
       env:
@@ -60,7 +60,7 @@ jobs:
   make-tests:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '^1.20'
@@ -71,7 +71,7 @@ jobs:
   make-build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '^1.20'
@@ -88,7 +88,7 @@ jobs:
       - make-build
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - uses: replicatedhq/action-install-pact@v1
 

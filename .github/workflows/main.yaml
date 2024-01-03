@@ -23,7 +23,7 @@ jobs:
       PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '^1.20'
@@ -34,7 +34,7 @@ jobs:
   build-and-push-e2e:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [ build-and-push-e2e ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: validate chart
         run: |
@@ -174,7 +174,7 @@ jobs:
       customer-id: ${{ steps.create-customer.outputs.customer-id }}
       channel-slug: ${{ steps.create-release.outputs.channel-slug }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Package test chart
         env:
@@ -230,7 +230,7 @@ jobs:
       CHANNEL_SLUG: ${{ needs.create-test-release.outputs.channel-slug }}
       LICENSE_FIELDS: '[{"name":"expires_at","value": ""},{"name":"num_seats","value":"10"}]'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Create cluster
         id: create-cluster 
