@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/golang/mock v1.6.0
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/pact-foundation/pact-go v1.7.0
 	github.com/pkg/errors v0.9.1
