@@ -6,6 +6,14 @@
   {{ if eq ($podSecurityContext.runAsGroup | int) 1001 }}
     {{- $_ := unset $podSecurityContext "runAsGroup" }}
   {{- end }}
+  {{ if eq ($podSecurityContext.fsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "fsGroup" }}
+  {{- end }}
+  {{ if eq ($podSecurityContext.supplementalGroups | len) 1 }}
+    {{ if eq (index $podSecurityContext.supplementalGroups 0 | int) 1001 }}
+      {{- $_ := unset $podSecurityContext "supplementalGroups" }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
