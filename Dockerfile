@@ -1,6 +1,6 @@
 FROM cgr.dev/chainguard/wolfi-base:latest as local_go
 
-RUN apk update && apk add ca-certificates-bundle build-base openssh go-1.20~=1.20.7
+RUN apk update && apk add ca-certificates-bundle build-base openssh go-1.21~=1.21.7
 ENTRYPOINT /usr/bin/go
 
 FROM local_go as builder
