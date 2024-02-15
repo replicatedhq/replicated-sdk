@@ -32,9 +32,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build replicated image from Dockerfile
-        run: |
-          docker build --pull -t replicated/replicated-sdk:${{ github.sha }} .
+      - name: Build replicated image
+        uses: ./.github/actions/build-push-action
+        with:
+          context: deploy
+          image-name: replicated/replicated-sdk:${{ github.sha }}
+          git-tag: ${{ github.sha }}
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
