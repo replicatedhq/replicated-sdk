@@ -23,11 +23,6 @@ inputs:
     default: ''
     required: false
 
-outputs:
-  digest:
-    description: "The digest of the pushed image"
-    value: ${{ steps.apko-publish.outputs.digest }}
-
 runs:
   using: "composite"
   steps:
@@ -50,7 +45,6 @@ runs:
         cache-dir: ${{ steps.cache-dir.outputs.cache_dir }}
 
     - uses: chainguard-images/actions/apko-publish@main
-      id: apko-publish
       with:
         config: ${{ inputs.context }}/apko.yaml
         tag: ${{ inputs.image-name }}
