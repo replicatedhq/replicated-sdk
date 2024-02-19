@@ -111,6 +111,8 @@ jobs:
 
     - name: Run Package and Publish
       env: 
+        REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
+        REPLICATED_REGISTRY: replicated # docker.io/replicated
         REPLICATED_CHART_NAME: replicated
         REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
