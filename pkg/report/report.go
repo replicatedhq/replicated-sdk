@@ -26,6 +26,7 @@ type ReportType string
 const (
 	ReportTypeInstance         ReportType = "instance"
 	ReportTypeCustomAppMetrics ReportType = "custom-app-metrics"
+	ReportTypeAppInstanceTags  ReportType = "app-instance-tags"
 )
 
 type Report interface {
