@@ -41,6 +41,7 @@ type Report interface {
 
 var _ Report = &InstanceReport{}
 var _ Report = &CustomAppMetricsReport{}
+var _ Report = &AppInstanceTagsReport{}
 
 func AppendReport(clientset kubernetes.Interface, namespace string, report Report) error {
 	report.GetMtx().Lock()
