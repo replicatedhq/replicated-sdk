@@ -26,6 +26,7 @@ type ReportType string
 const (
 	ReportTypeInstance         ReportType = "instance"
 	ReportTypeCustomAppMetrics ReportType = "custom-app-metrics"
+	ReportTypeAppInstanceTags  ReportType = "app-instance-tags"
 )
 
 type Report interface {
@@ -40,6 +41,7 @@ type Report interface {
 
 var _ Report = &InstanceReport{}
 var _ Report = &CustomAppMetricsReport{}
+var _ Report = &AppInstanceTagsReport{}
 
 func AppendReport(clientset kubernetes.Interface, namespace string, report Report) error {
 	report.GetMtx().Lock()

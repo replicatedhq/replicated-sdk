@@ -278,6 +278,71 @@ func Test_AppendReport(t *testing.T) {
 				}...),
 			},
 		},
+		{
+			name:           "app instance tag report - no existing report",
+			existingReport: nil,
+			newReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{
+					createTestAppInstanceTagsEvent(1),
+					createTestAppInstanceTagsEvent(2),
+					createTestAppInstanceTagsEvent(3),
+				},
+			},
+			wantReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{
+					createTestAppInstanceTagsEvent(1),
+					createTestAppInstanceTagsEvent(2),
+					createTestAppInstanceTagsEvent(3),
+				},
+			},
+		},
+		{
+			name: "app instance tag report - report exists with no events",
+			existingReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{},
+			},
+			newReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{
+					createTestAppInstanceTagsEvent(1),
+					createTestAppInstanceTagsEvent(2),
+					createTestAppInstanceTagsEvent(3),
+				},
+			},
+			wantReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{
+					createTestAppInstanceTagsEvent(1),
+					createTestAppInstanceTagsEvent(2),
+					createTestAppInstanceTagsEvent(3),
+				},
+			},
+		},
+		{
+			name: "app instance tags report - report exists with a few events",
+			existingReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{
+					createTestAppInstanceTagsEvent(1),
+					createTestAppInstanceTagsEvent(2),
+					createTestAppInstanceTagsEvent(3),
+				},
+			},
+			newReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{
+					createTestAppInstanceTagsEvent(4),
+					createTestAppInstanceTagsEvent(5),
+					createTestAppInstanceTagsEvent(6),
+				},
+			},
+			wantReport: &AppInstanceTagsReport{
+				Events: []AppInstanceTagsReportEvent{
+					createTestAppInstanceTagsEvent(1),
+					createTestAppInstanceTagsEvent(2),
+					createTestAppInstanceTagsEvent(3),
+					createTestAppInstanceTagsEvent(4),
+					createTestAppInstanceTagsEvent(5),
+					createTestAppInstanceTagsEvent(6),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -446,6 +511,21 @@ func createTestCustomAppMetricsEvent(reportedAt int64) CustomAppMetricsReportEve
 			"key3_float":          3.5,
 			"key4_numeric_string": "4.0",
 			"key5_bool":           true,
+		},
+	}
+}
+
+func createTestAppInstanceTagsEvent(reportedAt int64) AppInstanceTagsReportEvent {
+	return AppInstanceTagsReportEvent{
+		ReportedAt: reportedAt,
+		LicenseID:  "test-license-id",
+		InstanceID: "test-instance-id",
+		Data: map[string]string{
+			"key1_string":         "val1",
+			"key2_int":            "2",
+			"key3_float":          "3.5",
+			"key4_numeric_string": "4.0",
+			"key5_bool":           "true",
 		},
 	}
 }

@@ -55,6 +55,20 @@ type SendCustomAppMetricsRequest struct {
 
 type CustomAppMetricsData map[string]interface{}
 
+type SendAppInstanceTagsRequest struct {
+	Data AppInstanceTagsData `json:"data"`
+}
+
+type AppInstanceTagsData map[string]interface{}
+
+func (a AppInstanceTagsData) ToMapString() map[string]string {
+	m := make(map[string]string)
+	for k, v := range a {
+		m[k] = v.(string)
+	}
+	return m
+}
+
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
@@ -378,6 +392,51 @@ func validateCustomAppMetricsData(data CustomAppMetricsData) error {
 			return errors.Errorf("%s value is an array, only scalar values are allowed", key)
 		case reflect.Map:
 			return errors.Errorf("%s value is a map, only scalar values are allowed", key)
+		}
+	}
+
+	return nil
+}
+
+func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
+	request := SendAppInstanceTagsRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		logger.Error(errors.Wrap(err, "decode request"))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := validateAppInstanceTagsData(request.Data); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := report.SendAppInstanceTags(clientset, store.GetStore(), request.Data.ToMapString()); err != nil {
+		logger.Error(errors.Wrap(err, "set application data"))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	JSON(w, http.StatusOK, "")
+}
+
+func validateAppInstanceTagsData(data AppInstanceTagsData) error {
+	if len(data) == 0 {
+		return errors.New("no data provided")
+	}
+
+	for key, val := range data {
+		valType := reflect.TypeOf(val)
+		if valType.Kind() != reflect.String {
+			return errors.Errorf("%s value is not a string, only string values are allowed", key)
 		}
 	}
 
