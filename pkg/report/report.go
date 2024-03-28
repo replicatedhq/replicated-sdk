@@ -165,6 +165,11 @@ func DecodeReport(encodedData []byte, reportType ReportType) (Report, error) {
 		if err := json.Unmarshal(decompressedData, r); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal custom app metrics report")
 		}
+	case ReportTypeAppInstanceTags:
+		r = &AppInstanceTagsReport{}
+		if err := json.Unmarshal(decompressedData, r); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal custom app instance tags report")
+		}
 	default:
 		return nil, errors.Errorf("unknown report type %q", reportType)
 	}

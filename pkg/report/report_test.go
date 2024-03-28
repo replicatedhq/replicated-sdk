@@ -394,7 +394,8 @@ func Test_AppendReport(t *testing.T) {
 			gotReport, err := DecodeReport(secret.Data[tt.wantReport.GetSecretKey()], tt.wantReport.GetType())
 			req.NoError(err)
 
-			if tt.wantReport.GetType() == ReportTypeInstance {
+			switch tt.wantReport.GetType() {
+			case ReportTypeInstance:
 				wantNumOfEvents := len(tt.wantReport.(*InstanceReport).Events)
 				gotNumOfEvents := len(gotReport.(*InstanceReport).Events)
 
@@ -404,7 +405,7 @@ func Test_AppendReport(t *testing.T) {
 				}
 
 				req.Equal(tt.wantReport, gotReport)
-			} else {
+			case ReportTypeCustomAppMetrics:
 				wantNumOfEvents := len(tt.wantReport.(*CustomAppMetricsReport).Events)
 				gotNumOfEvents := len(gotReport.(*CustomAppMetricsReport).Events)
 
@@ -414,6 +415,23 @@ func Test_AppendReport(t *testing.T) {
 				}
 
 				// since values of custom app metrics are an interface, compare the json representation
+				wantJSON, err := json.MarshalIndent(tt.wantReport, "", "  ")
+				req.NoError(err)
+
+				gotJSON, err := json.MarshalIndent(gotReport, "", "  ")
+				req.NoError(err)
+
+				req.Equal(string(wantJSON), string(gotJSON))
+
+			case ReportTypeAppInstanceTags:
+				wantNumOfEvents := len(tt.wantReport.(*AppInstanceTagsReport).Events)
+				gotNumOfEvents := len(gotReport.(*AppInstanceTagsReport).Events)
+
+				if wantNumOfEvents != gotNumOfEvents {
+					t.Errorf("want %d events, got %d", wantNumOfEvents, gotNumOfEvents)
+					return
+				}
+
 				wantJSON, err := json.MarshalIndent(tt.wantReport, "", "  ")
 				req.NoError(err)
 

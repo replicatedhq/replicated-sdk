@@ -21,7 +21,7 @@ type AppInstanceTagsReportEvent struct {
 }
 
 func (r *AppInstanceTagsReport) GetType() ReportType {
-	return ReportTypeCustomAppMetrics
+	return ReportTypeAppInstanceTags
 }
 
 func (r *AppInstanceTagsReport) GetSecretName() string {
@@ -35,7 +35,7 @@ func (r *AppInstanceTagsReport) GetSecretKey() string {
 func (r *AppInstanceTagsReport) AppendEvents(report Report) error {
 	reportToAppend, ok := report.(*AppInstanceTagsReport)
 	if !ok {
-		return errors.Errorf("report is not a custom app metrics report")
+		return errors.Errorf("report is not a app instance tags report")
 	}
 
 	r.Events = append(r.Events, reportToAppend.Events...)
