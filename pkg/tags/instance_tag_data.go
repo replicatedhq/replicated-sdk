@@ -28,7 +28,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	encodedTagData, err := tdata.EncodeToBase64()
+	encodedTagData, err := tdata.MarshalBase64()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal instance tags")
 	}
@@ -112,7 +112,7 @@ func Get(ctx context.Context, clientset kubernetes.Interface, namespace string) 
 	}
 
 	tagData := &types.InstanceTagData{}
-	if err := tagData.DecodeFromBase64(tagDataBytes); err != nil {
+	if err := tagData.UnmarshalBase64(tagDataBytes); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal instance tags")
 	}
 

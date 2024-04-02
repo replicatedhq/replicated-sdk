@@ -16,7 +16,7 @@ func (i InstanceTagData) IsEmpty() bool {
 	return len(i.Tags) == 0
 }
 
-func (i InstanceTagData) EncodeToBase64() ([]byte, error) {
+func (i InstanceTagData) MarshalBase64() ([]byte, error) {
 	b, err := json.Marshal(i)
 	if err != nil {
 		return nil, err
@@ -24,7 +24,7 @@ func (i InstanceTagData) EncodeToBase64() ([]byte, error) {
 	return []byte(base64.StdEncoding.EncodeToString(b)), nil
 }
 
-func (i *InstanceTagData) DecodeFromBase64(bs []byte) error {
+func (i *InstanceTagData) UnmarshalBase64(bs []byte) error {
 	b, err := base64.StdEncoding.DecodeString(string(bs))
 	if err != nil {
 		return errors.Wrap(err, "failed to decode instance-tag data base64")
