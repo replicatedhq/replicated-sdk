@@ -21,13 +21,17 @@ func TestSendAppInstanceTags(t *testing.T) {
 
 	channelSequence := int64(1)
 	data := map[string]interface{}{
-		"data": map[string]string{
-			"key1_string":         "val1",
-			"key2_int":            "5",
-			"key3_float":          "1.5",
-			"key4_numeric_string": "1.6",
+		"data": map[string]interface{}{
+			"isForced": false,
+			"tags": map[string]string{
+				"key1_string":         "val1",
+				"key2_int":            "5",
+				"key3_float":          "1.5",
+				"key4_numeric_string": "1.6",
+			},
 		},
 	}
+
 	appInstanceTagsData, _ := json.Marshal(data)
 	license := &v1beta1.License{
 		Spec: v1beta1.LicenseSpec{
