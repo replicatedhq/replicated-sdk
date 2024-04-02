@@ -58,8 +58,10 @@ type SendCustomAppMetricsRequest struct {
 type CustomAppMetricsData map[string]interface{}
 
 type SendAppInstanceTagsRequest struct {
-	IsForced bool                   `json:"isForced"`
-	Tags     map[string]interface{} `json:"tags"`
+	Data struct {
+		IsForced bool                   `json:"isForced"`
+		Tags     map[string]interface{} `json:"tags"`
+	} `json:"data"`
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
@@ -399,7 +401,7 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateAppInstanceTagsData(request.Tags); err != nil {
+	if err := validateAppInstanceTagsData(request.Data.Tags); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
@@ -413,11 +415,11 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ts := map[string]string{}
-	for k, v := range request.Tags {
+	for k, v := range request.Data.Tags {
 		ts[k] = fmt.Sprintf("%v", v)
 	}
 
-	tdata := tagtypes.InstanceTagData{IsForced: request.IsForced, Tags: ts}
+	tdata := tagtypes.InstanceTagData{IsForced: request.Data.IsForced, Tags: ts}
 	if err := report.SendAppInstanceTags(r.Context(), clientset, store.GetStore(), tdata); err != nil {
 		logger.Error(errors.Wrap(err, "set application data"))
 		w.WriteHeader(http.StatusBadRequest)

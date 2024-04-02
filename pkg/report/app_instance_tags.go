@@ -71,7 +71,7 @@ func SendOnlineAppInstanceTags(sdkStore store.Store, tdata tagstypes.InstanceTag
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "failed to execute get request")
+		return errors.Wrap(err, "failed to execute post request")
 	}
 	defer resp.Body.Close()
 
@@ -84,7 +84,7 @@ func SendOnlineAppInstanceTags(sdkStore store.Store, tdata tagstypes.InstanceTag
 		if len(body) > 0 {
 			return util.ActionableError{Message: string(body)}
 		}
-		return errors.Errorf("unexpected result from get request: %d", resp.StatusCode)
+		return errors.Errorf("unexpected result from post request: %d", resp.StatusCode)
 	}
 
 	return nil
