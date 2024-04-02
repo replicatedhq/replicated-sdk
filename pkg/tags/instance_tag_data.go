@@ -2,7 +2,6 @@ package tags
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -29,7 +28,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	tagDataBytes, err := json.Marshal(tdata)
+	encodedTagData, err := tdata.EncodeToBase64()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal instance tags")
 	}
@@ -63,7 +62,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 				},
 			},
 			Data: map[string][]byte{
-				GetSecretKey(): tagDataBytes,
+				GetSecretKey(): encodedTagData,
 			},
 		}
 
@@ -78,7 +77,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 		existingSecret.Data = map[string][]byte{}
 	}
 
-	existingSecret.Data[GetSecretKey()] = tagDataBytes
+	existingSecret.Data[GetSecretKey()] = []byte(encodedTagData)
 
 	_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
 	if err != nil {
@@ -112,10 +111,10 @@ func Get(ctx context.Context, clientset kubernetes.Interface, namespace string) 
 		return nil, ErrInstanceTagDataIsEmpty
 	}
 
-	tagData := types.InstanceTagData{}
-	if err := json.Unmarshal(tagDataBytes, &tagData); err != nil {
+	tagData := &types.InstanceTagData{}
+	if err := tagData.DecodeFromBase64(tagDataBytes); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal instance tags")
 	}
 
-	return &tagData, nil
+	return tagData, nil
 }

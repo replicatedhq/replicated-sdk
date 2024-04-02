@@ -85,11 +85,11 @@ func GetInstanceDataHeaders(instanceData *types.InstanceData) map[string]string 
 	}
 
 	if !instanceData.Tags.IsEmpty() {
-		b64, err := instanceData.Tags.ToBase64()
+		b64, err := instanceData.Tags.EncodeToBase64()
 		if err != nil {
 			logger.Debugf("Failed to base64 encode instance tags into headers: %v: %v", instanceData.Tags, err)
 		} else {
-			headers["X-Replicated-InstanceTagData"] = b64
+			headers["X-Replicated-InstanceTagData"] = string(b64)
 		}
 	}
 
