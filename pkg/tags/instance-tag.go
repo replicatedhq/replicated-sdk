@@ -68,7 +68,7 @@ func SyncInstanceTags(ctx context.Context, clientset kubernetes.Interface, names
 			},
 		}
 
-		_, err = clientset.CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+		_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 		if err != nil {
 			return errors.Wrap(err, "failed to create report secret")
 		}
@@ -81,7 +81,7 @@ func SyncInstanceTags(ctx context.Context, clientset kubernetes.Interface, names
 
 	existingSecret.Data[GetSecretKey()] = tagDataBytes
 
-	_, err = clientset.CoreV1().Secrets(namespace).Update(context.TODO(), existingSecret, metav1.UpdateOptions{})
+	_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.Wrap(err, "failed to update instance-tags secret")
 	}
