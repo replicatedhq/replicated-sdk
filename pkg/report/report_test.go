@@ -278,71 +278,6 @@ func Test_AppendReport(t *testing.T) {
 				}...),
 			},
 		},
-		{
-			name:           "app instance tag report - no existing report",
-			existingReport: nil,
-			newReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{
-					createTestAppInstanceTagsEvent(1),
-					createTestAppInstanceTagsEvent(2),
-					createTestAppInstanceTagsEvent(3),
-				},
-			},
-			wantReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{
-					createTestAppInstanceTagsEvent(1),
-					createTestAppInstanceTagsEvent(2),
-					createTestAppInstanceTagsEvent(3),
-				},
-			},
-		},
-		{
-			name: "app instance tag report - report exists with no events",
-			existingReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{},
-			},
-			newReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{
-					createTestAppInstanceTagsEvent(1),
-					createTestAppInstanceTagsEvent(2),
-					createTestAppInstanceTagsEvent(3),
-				},
-			},
-			wantReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{
-					createTestAppInstanceTagsEvent(1),
-					createTestAppInstanceTagsEvent(2),
-					createTestAppInstanceTagsEvent(3),
-				},
-			},
-		},
-		{
-			name: "app instance tags report - report exists with a few events",
-			existingReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{
-					createTestAppInstanceTagsEvent(1),
-					createTestAppInstanceTagsEvent(2),
-					createTestAppInstanceTagsEvent(3),
-				},
-			},
-			newReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{
-					createTestAppInstanceTagsEvent(4),
-					createTestAppInstanceTagsEvent(5),
-					createTestAppInstanceTagsEvent(6),
-				},
-			},
-			wantReport: &AppInstanceTagsReport{
-				Events: []AppInstanceTagsReportEvent{
-					createTestAppInstanceTagsEvent(1),
-					createTestAppInstanceTagsEvent(2),
-					createTestAppInstanceTagsEvent(3),
-					createTestAppInstanceTagsEvent(4),
-					createTestAppInstanceTagsEvent(5),
-					createTestAppInstanceTagsEvent(6),
-				},
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -394,8 +329,7 @@ func Test_AppendReport(t *testing.T) {
 			gotReport, err := DecodeReport(secret.Data[tt.wantReport.GetSecretKey()], tt.wantReport.GetType())
 			req.NoError(err)
 
-			switch tt.wantReport.GetType() {
-			case ReportTypeInstance:
+			if tt.wantReport.GetType() == ReportTypeInstance {
 				wantNumOfEvents := len(tt.wantReport.(*InstanceReport).Events)
 				gotNumOfEvents := len(gotReport.(*InstanceReport).Events)
 
@@ -405,7 +339,7 @@ func Test_AppendReport(t *testing.T) {
 				}
 
 				req.Equal(tt.wantReport, gotReport)
-			case ReportTypeCustomAppMetrics:
+			} else {
 				wantNumOfEvents := len(tt.wantReport.(*CustomAppMetricsReport).Events)
 				gotNumOfEvents := len(gotReport.(*CustomAppMetricsReport).Events)
 
@@ -415,23 +349,6 @@ func Test_AppendReport(t *testing.T) {
 				}
 
 				// since values of custom app metrics are an interface, compare the json representation
-				wantJSON, err := json.MarshalIndent(tt.wantReport, "", "  ")
-				req.NoError(err)
-
-				gotJSON, err := json.MarshalIndent(gotReport, "", "  ")
-				req.NoError(err)
-
-				req.Equal(string(wantJSON), string(gotJSON))
-
-			case ReportTypeAppInstanceTags:
-				wantNumOfEvents := len(tt.wantReport.(*AppInstanceTagsReport).Events)
-				gotNumOfEvents := len(gotReport.(*AppInstanceTagsReport).Events)
-
-				if wantNumOfEvents != gotNumOfEvents {
-					t.Errorf("want %d events, got %d", wantNumOfEvents, gotNumOfEvents)
-					return
-				}
-
 				wantJSON, err := json.MarshalIndent(tt.wantReport, "", "  ")
 				req.NoError(err)
 
@@ -529,21 +446,6 @@ func createTestCustomAppMetricsEvent(reportedAt int64) CustomAppMetricsReportEve
 			"key3_float":          3.5,
 			"key4_numeric_string": "4.0",
 			"key5_bool":           true,
-		},
-	}
-}
-
-func createTestAppInstanceTagsEvent(reportedAt int64) AppInstanceTagsReportEvent {
-	return AppInstanceTagsReportEvent{
-		ReportedAt: reportedAt,
-		LicenseID:  "test-license-id",
-		InstanceID: "test-instance-id",
-		Data: map[string]string{
-			"key1_string":         "val1",
-			"key2_int":            "2",
-			"key3_float":          "3.5",
-			"key4_numeric_string": "4.0",
-			"key5_bool":           "true",
 		},
 	}
 }

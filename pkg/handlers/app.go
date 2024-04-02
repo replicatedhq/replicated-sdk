@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"sort"
@@ -19,8 +20,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
-	tagtypes "github.com/replicatedhq/replicated-sdk/pkg/tag/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/tags"
+	tagtypes "github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -412,17 +412,15 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := report.SendAppInstanceTags(clientset, store.GetStore(), request.Data.ToMapString()); err != nil {
-		logger.Error(errors.Wrap(err, "set application data"))
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	ts := map[string]string{}
+	for k, v := range request.Tags {
+		ts[k] = fmt.Sprintf("%v", v)
 	}
 
-	tdata := tagtypes.InstanceTagData{IsForced: request.IsForced, Tags: request.Tags}
-
-	if err := tags.SyncInstanceTags(r.Context(), clientset, store.GetStore().GetNamespace(), tdata); err != nil {
-		logger.Error(errors.Wrap(err, "failed so to sync instance tags"))
-		w.WriteHeader(http.StatusInternalServerError)
+	tdata := tagtypes.InstanceTagData{IsForced: request.IsForced, Tags: ts}
+	if err := report.SendAppInstanceTags(r.Context(), clientset, store.GetStore(), tdata); err != nil {
+		logger.Error(errors.Wrap(err, "set application data"))
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 

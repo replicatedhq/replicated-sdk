@@ -84,6 +84,15 @@ func GetInstanceDataHeaders(instanceData *types.InstanceData) map[string]string 
 		headers["X-Replicated-K8sDistribution"] = instanceData.K8sDistribution
 	}
 
+	if !instanceData.Tags.IsEmpty() {
+		b64, err := instanceData.Tags.ToBase64()
+		if err != nil {
+			logger.Debugf("Failed to base64 encode instance tags into headers: %v: %v", instanceData.Tags, err)
+		} else {
+			headers["X-Replicated-InstanceTagData"] = b64
+		}
+	}
+
 	return headers
 }
 

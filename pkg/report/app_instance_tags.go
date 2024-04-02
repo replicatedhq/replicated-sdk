@@ -2,46 +2,32 @@ package report
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	tags "github.com/replicatedhq/replicated-sdk/pkg/tags"
+	tagstypes "github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
 )
 
-func SendAppInstanceTags(clientset kubernetes.Interface, sdkStore store.Store, data map[string]string) error {
+func SendAppInstanceTags(ctx context.Context, clientset kubernetes.Interface, sdkStore store.Store, tdata tagstypes.InstanceTagData) error {
+	if err := tags.Save(ctx, clientset, sdkStore.GetNamespace(), tdata); err != nil {
+		return errors.Wrap(err, "failed to save instance tags")
+	}
 	if util.IsAirgap() {
-		return SendAirgapAppInstanceTags(clientset, sdkStore, data)
+		return nil
 	}
-	return SendOnlineAppInstanceTags(sdkStore, data)
+	return SendOnlineAppInstanceTags(sdkStore, tdata)
 }
 
-func SendAirgapAppInstanceTags(clientset kubernetes.Interface, sdkStore store.Store, data map[string]string) error {
-	report := &AppInstanceTagsReport{
-		Events: []AppInstanceTagsReportEvent{
-			{
-				ReportedAt: time.Now().UTC().UnixMilli(),
-				LicenseID:  sdkStore.GetLicense().Spec.LicenseID,
-				InstanceID: sdkStore.GetAppID(),
-				Data:       data,
-			},
-		},
-	}
-
-	if err := AppendReport(clientset, sdkStore.GetNamespace(), report); err != nil {
-		return errors.Wrap(err, "failed to append custom app metrics report")
-	}
-
-	return nil
-}
-
-func SendOnlineAppInstanceTags(sdkStore store.Store, data map[string]string) error {
+func SendOnlineAppInstanceTags(sdkStore store.Store, tdata tagstypes.InstanceTagData) error {
 	license := sdkStore.GetLicense()
 
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
@@ -62,9 +48,9 @@ func SendOnlineAppInstanceTags(sdkStore store.Store, data map[string]string) err
 	url := fmt.Sprintf("%s://%s/application/instance-tags", u.Scheme, hostname)
 
 	payload := struct {
-		Data map[string]string `json:"data"`
+		Data tagstypes.InstanceTagData `json:"data"`
 	}{
-		Data: data,
+		Data: tdata,
 	}
 
 	reqBody, err := json.Marshal(payload)

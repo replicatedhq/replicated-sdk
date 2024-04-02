@@ -24,7 +24,7 @@ func GetSecretKey() string {
 
 var replicatedSecretLock = sync.Mutex{}
 
-func SyncInstanceTags(ctx context.Context, clientset kubernetes.Interface, namespace string, tdata types.InstanceTagData) error {
+func Save(ctx context.Context, clientset kubernetes.Interface, namespace string, tdata types.InstanceTagData) error {
 
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
@@ -36,7 +36,6 @@ func SyncInstanceTags(ctx context.Context, clientset kubernetes.Interface, names
 
 	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, GetInstanceTagDataSecretName(), metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
-
 		return errors.Wrap(err, "failed to get instance-tags secret")
 	}
 
@@ -87,4 +86,36 @@ func SyncInstanceTags(ctx context.Context, clientset kubernetes.Interface, names
 	}
 
 	return nil
+}
+
+var (
+	ErrInstanceTagDataIsEmpty        = errors.New("instance tag data is empty")
+	ErrInstanceTagDataSecretNotFound = errors.New("instance tag secret not found")
+)
+
+func Get(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.InstanceTagData, error) {
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, GetInstanceTagDataSecretName(), metav1.GetOptions{})
+	if err != nil && !kuberneteserrors.IsNotFound(err) {
+		return nil, errors.Wrap(err, "failed to get instance-tags secret")
+	}
+
+	if kuberneteserrors.IsNotFound(err) {
+		return nil, ErrInstanceTagDataSecretNotFound
+	}
+
+	if len(secret.Data) == 0 {
+		return nil, ErrInstanceTagDataIsEmpty
+	}
+
+	tagDataBytes, ok := secret.Data[GetSecretKey()]
+	if !ok || len(tagDataBytes) == 0 {
+		return nil, ErrInstanceTagDataIsEmpty
+	}
+
+	tagData := types.InstanceTagData{}
+	if err := json.Unmarshal(tagDataBytes, &tagData); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal instance tags")
+	}
+
+	return &tagData, nil
 }
