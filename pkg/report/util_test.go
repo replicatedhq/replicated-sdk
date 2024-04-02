@@ -6,6 +6,7 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
+	tagstypes "github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
@@ -70,6 +71,7 @@ func TestGetInstanceDataHeaders(t *testing.T) {
 		ChannelSequence: 42,
 		K8sVersion:      "v1.20.2+k3s1",
 		K8sDistribution: "k3s",
+		Tags:            tagstypes.InstanceTagData{IsForced: true, Tags: map[string]string{"key": "value"}},
 	}
 
 	headers := GetInstanceDataHeaders(instanceData)
@@ -82,6 +84,7 @@ func TestGetInstanceDataHeaders(t *testing.T) {
 		"X-Replicated-DownstreamChannelID":       "channel-789",
 		"X-Replicated-DownstreamChannelSequence": "42",
 		"X-Replicated-K8sDistribution":           "k3s",
+		"X-Replicated-InstanceTagData":           "eyJpc0ZvcmNlZCI6dHJ1ZSwidGFncyI6eyJrZXkiOiJ2YWx1ZSJ9fQ==",
 	}
 	assert.Equal(t, expectedHeaders, headers)
 
