@@ -19,6 +19,8 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	tagtypes "github.com/replicatedhq/replicated-sdk/pkg/tag/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/tags"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -56,17 +58,8 @@ type SendCustomAppMetricsRequest struct {
 type CustomAppMetricsData map[string]interface{}
 
 type SendAppInstanceTagsRequest struct {
-	Data AppInstanceTagsData `json:"data"`
-}
-
-type AppInstanceTagsData map[string]interface{}
-
-func (a AppInstanceTagsData) ToMapString() map[string]string {
-	m := make(map[string]string)
-	for k, v := range a {
-		m[k] = v.(string)
-	}
-	return m
+	IsForced bool                   `json:"isForced"`
+	Tags     map[string]interface{} `json:"tags"`
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
@@ -406,7 +399,7 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateAppInstanceTagsData(request.Data); err != nil {
+	if err := validateAppInstanceTagsData(request.Tags); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
@@ -425,10 +418,18 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tdata := tagtypes.InstanceTagData{IsForced: request.IsForced, Tags: request.Tags}
+
+	if err := tags.SyncInstanceTags(r.Context(), clientset, store.GetStore().GetNamespace(), tdata); err != nil {
+		logger.Error(errors.Wrap(err, "failed so to sync instance tags"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	JSON(w, http.StatusOK, "")
 }
 
-func validateAppInstanceTagsData(data AppInstanceTagsData) error {
+func validateAppInstanceTagsData(data map[string]interface{}) error {
 	if len(data) == 0 {
 		return errors.New("no data provided")
 	}
