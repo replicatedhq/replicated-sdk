@@ -2,7 +2,6 @@ package tags
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -29,7 +28,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	encodedTagData, err := json.Marshal(tdata)
+	encodedTagData, err := tdata.MarshalBase64()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal instance tags")
 	}
