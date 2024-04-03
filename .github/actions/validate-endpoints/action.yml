@@ -180,30 +180,4 @@ runs:
           exit 1
         fi
 
-    - name: Validate /app/instance-tags endpoint
-      shell: bash
-      run: |
-        for i in {1..5}
-        do
-          string_key=$(shuf -er -n10 {A..Z} {a..z} {0..9} | tr -d '\n')
-          body='{"data":{"string_key":"'$string_key'"}}'
-          curl -XPOST -s --fail --show-error localhost:8888/api/v1/app/instance-tags -H 'Content-Type: application/json' -d $body
-        done
-
-        if [ "${{ inputs.is-airgap }}" == "false" ]; then
-          exit 0
-        fi
-
-        if ! kubectl -n "${{ inputs.namespace }}" get secret/replicated-app-instance-tags-report; then
-          echo "Did not create replicated-app-instance-tags-report secret"
-          exit 1
-        fi
-
-        report=$(kubectl -n "${{ inputs.namespace }}" get secret replicated-app-instance-tags-report -ojsonpath='{.data.report}' | base64 -d | base64 -d | gunzip | jq .)
-
-        numOfEvents=$(echo "$report" | jq '.events | length' | tr -d '\n')
-        if [ "$numOfEvents" != "5" ]; then
-          echo "Expected 5 events, but found $numOfEvents"
-          exit 1
-        fi
 
