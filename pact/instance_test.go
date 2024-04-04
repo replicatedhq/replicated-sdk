@@ -45,7 +45,7 @@ func TestSendInstanceData(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetNamespace().Times(2).Return("replicated-sdk-instance-namespace")
 				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-nightly")
@@ -96,7 +96,7 @@ func TestSendInstanceData(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetNamespace().Times(2).Return("replicated-sdk-instance-namespace")
 				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-beta")
@@ -147,7 +147,7 @@ func TestSendInstanceData(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetNamespace().Times(2).Return("replicated-sdk-instance-namespace")
 				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-beta")
@@ -198,7 +198,7 @@ func TestSendInstanceData(t *testing.T) {
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("replicated-sdk-instance-namespace")
+				mockStore.EXPECT().GetNamespace().Times(2).Return("replicated-sdk-instance-namespace")
 				mockStore.EXPECT().GetReplicatedID().Return("replicated-sdk-instance-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("replicated-sdk-instance-app")
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-nightly")

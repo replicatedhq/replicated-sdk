@@ -65,7 +65,7 @@ func Test_SendInstanceData(t *testing.T) {
 						Endpoint:  mockServer.URL,
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Return("test-namespace")
+				mockStore.EXPECT().GetNamespace().Times(2).Return("test-namespace")
 				mockStore.EXPECT().GetReplicatedID().Return("test-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("test-app")
 				mockStore.EXPECT().GetChannelID().Return("test-app-nightly")
@@ -101,7 +101,7 @@ func Test_SendInstanceData(t *testing.T) {
 						Endpoint:  mockServer.URL,
 					},
 				})
-				mockStore.EXPECT().GetNamespace().Times(2).Return("test-namespace")
+				mockStore.EXPECT().GetNamespace().Times(3).Return("test-namespace")
 				mockStore.EXPECT().GetReplicatedID().Return("test-cluster-id")
 				mockStore.EXPECT().GetAppID().Return("test-app")
 				mockStore.EXPECT().GetChannelID().Return("test-app-nightly")
