@@ -14,7 +14,7 @@ import (
 )
 
 func GetInstanceTagDataSecretName() string {
-	return "replicated-instance-tag-data"
+	return "replicated-meta-data"
 }
 
 func GetSecretKey() string {

@@ -71,7 +71,7 @@ func TestGetInstanceDataHeaders(t *testing.T) {
 		ChannelSequence: 42,
 		K8sVersion:      "v1.20.2+k3s1",
 		K8sDistribution: "k3s",
-		Tags:            tagstypes.InstanceTagData{IsForced: true, Tags: map[string]string{"key": "value"}},
+		Tags:            tagstypes.InstanceTagData{Force: true, Tags: map[string]string{"key": "value"}},
 	}
 
 	headers := GetInstanceDataHeaders(instanceData)

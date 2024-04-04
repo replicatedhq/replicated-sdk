@@ -20,7 +20,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
-	tagtypes "github.com/replicatedhq/replicated-sdk/pkg/tags/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -58,10 +58,7 @@ type SendCustomAppMetricsRequest struct {
 type CustomAppMetricsData map[string]interface{}
 
 type SendAppInstanceTagsRequest struct {
-	Data struct {
-		IsForced bool                   `json:"isForced"`
-		Tags     map[string]interface{} `json:"tags"`
-	} `json:"data"`
+	Data types.InstanceTagData `json:"data"`
 }
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
@@ -396,14 +393,16 @@ func validateCustomAppMetricsData(data CustomAppMetricsData) error {
 func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 	request := SendAppInstanceTagsRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		logger.Error(errors.Wrap(err, "decode request"))
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+		t, ok := err.(*json.UnmarshalTypeError)
+		if ok {
+			logger.Debugf("failed to decode instance-tag request: %s value is not a string", t.Field)
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "%v not supported, only string values are allowed on instance-tags", t.Value)
+			return
+		}
 
-	if err := validateAppInstanceTagsData(request.Data.Tags); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		logger.Error(errors.Wrap(err, "decode request"))
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -414,32 +413,11 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ts := map[string]string{}
-	for k, v := range request.Data.Tags {
-		ts[k] = fmt.Sprintf("%v", v)
-	}
-
-	tdata := tagtypes.InstanceTagData{IsForced: request.Data.IsForced, Tags: ts}
-	if err := report.SendAppInstanceTags(r.Context(), clientset, store.GetStore(), tdata); err != nil {
+	if err := report.SendAppInstanceTags(r.Context(), clientset, store.GetStore(), request.Data); err != nil {
 		logger.Error(errors.Wrap(err, "set application data"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	JSON(w, http.StatusOK, "")
-}
-
-func validateAppInstanceTagsData(data map[string]interface{}) error {
-	if len(data) == 0 {
-		return errors.New("no data provided")
-	}
-
-	for key, val := range data {
-		valType := reflect.TypeOf(val)
-		if valType.Kind() != reflect.String {
-			return errors.Errorf("%s value is not a string, only string values are allowed", key)
-		}
-	}
-
-	return nil
 }

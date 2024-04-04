@@ -35,7 +35,7 @@ func TestInstanceTagData(t *testing.T) {
 		{
 			name: "should marshal correctly to base64",
 			initFn: func(tdata *InstanceTagData) {
-				tdata.IsForced = true
+				tdata.Force = true
 				tdata.Tags = map[string]string{
 					"key": "value",
 				}
@@ -54,7 +54,7 @@ func TestInstanceTagData(t *testing.T) {
 				assert.NoError(t, err)
 
 				expected := &InstanceTagData{
-					IsForced: true,
+					Force: true,
 					Tags: map[string]string{
 						"key": "value",
 					},
