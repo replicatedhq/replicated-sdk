@@ -49,6 +49,11 @@ stringData:
             name: replicated-custom-app-metrics-report
             includeValue: true
             key: report
+        - secret:
+            namespace: {{ include "replicated.namespace" . }}
+            name: replicated-meta-data
+            includeValue: true
+            key: meta 
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status
