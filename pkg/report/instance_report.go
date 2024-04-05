@@ -26,6 +26,7 @@ type InstanceReportEvent struct {
 	DownstreamChannelID       string `json:"downstream_channel_id,omitempty"`
 	DownstreamChannelSequence int64  `json:"downstream_channel_sequence"`
 	DownstreamChannelName     string `json:"downstream_channel_name,omitempty"`
+	Tags                      string `json:"tags"`
 }
 
 func (r *InstanceReport) GetType() ReportType {

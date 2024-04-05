@@ -67,6 +67,7 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
 	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST")
+	r.HandleFunc("/api/v1/app/instance-tags", handlers.SendAppInstanceTags).Methods("POST")
 
 	// integration
 	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.PostIntegrationMockData)).Methods("POST")

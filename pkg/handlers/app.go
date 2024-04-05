@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"sort"
@@ -19,6 +20,8 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/tags"
+	"github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -54,6 +57,10 @@ type SendCustomAppMetricsRequest struct {
 }
 
 type CustomAppMetricsData map[string]interface{}
+
+type SendAppInstanceTagsRequest struct {
+	Data types.InstanceTagData `json:"data"`
+}
 
 func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	clientset, err := k8sutil.GetClientset()
@@ -382,4 +389,42 @@ func validateCustomAppMetricsData(data CustomAppMetricsData) error {
 	}
 
 	return nil
+}
+
+func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
+	request := SendAppInstanceTagsRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		t, ok := err.(*json.UnmarshalTypeError)
+		if ok {
+			logger.Errorf("failed to decode instance-tag request: %s value is not a string", t.Field)
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "%v not supported, only string values are allowed on instance-tags", t.Value)
+			return
+		}
+
+		logger.Error(errors.Wrap(err, "decode request"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := tags.Save(r.Context(), clientset, store.GetStore().GetNamespace(), request.Data); err != nil {
+		logger.Errorf("failed to save instance tags: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
+		logger.Errorf("failed to send instance data: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	JSON(w, http.StatusOK, "")
 }

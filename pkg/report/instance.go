@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/tags"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
 )
@@ -71,6 +73,12 @@ func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, li
 		}
 		event.ResourceStates = string(marshalledRS)
 	}
+
+	marshalledTags, err := json.Marshal(instanceData.Tags)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal tags")
+	}
+	event.Tags = string(marshalledTags)
 
 	report := &InstanceReport{
 		Events: []InstanceReportEvent{event},
@@ -140,6 +148,12 @@ func GetInstanceData(sdkStore store.Store) *types.InstanceData {
 
 		if distribution := GetDistribution(clientset); distribution != types.UnknownDistribution {
 			r.K8sDistribution = distribution.String()
+		}
+
+		if tdata, err := tags.Get(context.TODO(), clientset, sdkStore.GetNamespace()); err != nil {
+			logger.Debugf("failed to get instance tag data: %v", err.Error())
+		} else {
+			r.Tags = *tdata
 		}
 	}
 

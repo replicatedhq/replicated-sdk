@@ -375,6 +375,7 @@ func createTestInstanceEvent(reportedAt int64) InstanceReportEvent {
 		DownstreamChannelID:       "test-channel-id",
 		DownstreamChannelName:     "test-channel-name",
 		DownstreamChannelSequence: 1,
+		Tags:                      `{"force": false, "tags": {}}`,
 	}
 }
 

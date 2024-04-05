@@ -31,4 +31,5 @@ rules:
   - {{ include "replicated.secretName" . }}
   - replicated-instance-report
   - replicated-custom-app-metrics-report
+  - replicated-meta-data
 {{ end }}
