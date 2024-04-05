@@ -74,6 +74,12 @@ func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, li
 		event.ResourceStates = string(marshalledRS)
 	}
 
+	marshalledTags, err := json.Marshal(instanceData.Tags)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal tags")
+	}
+	event.Tags = string(marshalledTags)
+
 	report := &InstanceReport{
 		Events: []InstanceReportEvent{event},
 	}

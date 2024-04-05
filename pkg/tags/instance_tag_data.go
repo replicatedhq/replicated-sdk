@@ -13,13 +13,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func GetInstanceTagDataSecretName() string {
-	return "replicated-meta-data"
-}
-
-func GetSecretKey() string {
-	return "instance-tag-data"
-}
+const (
+	InstanceMetadataSecretName = "replicated-meta-data"
+	InstanceTagSecretKey       = "instance-tag-data"
+)
 
 var replicatedSecretLock = sync.Mutex{}
 
@@ -33,7 +30,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 		return errors.Wrap(err, "failed to marshal instance tags")
 	}
 
-	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, GetInstanceTagDataSecretName(), metav1.GetOptions{})
+	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, InstanceMetadataSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to get instance-tags secret")
 	}
@@ -50,7 +47,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 				Kind:       "Secret",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      GetInstanceTagDataSecretName(),
+				Name:      InstanceMetadataSecretName,
 				Namespace: namespace,
 				OwnerReferences: []metav1.OwnerReference{
 					{
@@ -62,7 +59,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 				},
 			},
 			Data: map[string][]byte{
-				GetSecretKey(): encodedTagData,
+				InstanceTagSecretKey: encodedTagData,
 			},
 		}
 
@@ -77,7 +74,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 		existingSecret.Data = map[string][]byte{}
 	}
 
-	existingSecret.Data[GetSecretKey()] = encodedTagData
+	existingSecret.Data[InstanceTagSecretKey] = encodedTagData
 
 	_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
 	if err != nil {
@@ -93,7 +90,7 @@ var (
 )
 
 func Get(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.InstanceTagData, error) {
-	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, GetInstanceTagDataSecretName(), metav1.GetOptions{})
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, InstanceMetadataSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return nil, errors.Wrap(err, "failed to get instance-tags secret")
 	}
@@ -106,7 +103,7 @@ func Get(ctx context.Context, clientset kubernetes.Interface, namespace string) 
 		return nil, ErrInstanceTagDataIsEmpty
 	}
 
-	tagDataBytes, ok := secret.Data[GetSecretKey()]
+	tagDataBytes, ok := secret.Data[InstanceTagSecretKey]
 	if !ok || len(tagDataBytes) == 0 {
 		return nil, ErrInstanceTagDataIsEmpty
 	}

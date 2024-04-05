@@ -43,14 +43,14 @@ func TestInstanceTagData(t *testing.T) {
 			assertFn: func(t *testing.T, tdata *InstanceTagData) {
 				b, err := tdata.MarshalBase64()
 				assert.NoError(t, err)
-				assert.Equal(t, "eyJpc0ZvcmNlZCI6dHJ1ZSwidGFncyI6eyJrZXkiOiJ2YWx1ZSJ9fQ==", string(b))
+				assert.Equal(t, "eyJmb3JjZSI6dHJ1ZSwidGFncyI6eyJrZXkiOiJ2YWx1ZSJ9fQ==", string(b))
 			},
 		},
 		{
 			name:   "should unmarshal struct correctly from base64",
 			initFn: func(tdata *InstanceTagData) {},
 			assertFn: func(t *testing.T, tdata *InstanceTagData) {
-				err := tdata.UnmarshalBase64([]byte("eyJpc0ZvcmNlZCI6dHJ1ZSwidGFncyI6eyJrZXkiOiJ2YWx1ZSJ9fQ=="))
+				err := tdata.UnmarshalBase64([]byte("eyJmb3JjZSI6dHJ1ZSwidGFncyI6eyJrZXkiOiJ2YWx1ZSJ9fQ=="))
 				assert.NoError(t, err)
 
 				expected := &InstanceTagData{

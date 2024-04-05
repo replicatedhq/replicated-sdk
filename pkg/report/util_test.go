@@ -84,7 +84,7 @@ func TestGetInstanceDataHeaders(t *testing.T) {
 		"X-Replicated-DownstreamChannelID":       "channel-789",
 		"X-Replicated-DownstreamChannelSequence": "42",
 		"X-Replicated-K8sDistribution":           "k3s",
-		"X-Replicated-InstanceTagData":           "eyJpc0ZvcmNlZCI6dHJ1ZSwidGFncyI6eyJrZXkiOiJ2YWx1ZSJ9fQ==",
+		"X-Replicated-InstanceTagData":           "eyJmb3JjZSI6dHJ1ZSwidGFncyI6eyJrZXkiOiJ2YWx1ZSJ9fQ==",
 	}
 	assert.Equal(t, expectedHeaders, headers)
 
