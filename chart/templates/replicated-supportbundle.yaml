@@ -53,7 +53,7 @@ stringData:
             namespace: {{ include "replicated.namespace" . }}
             name: replicated-meta-data
             includeValue: true
-            key: meta 
+            key: instance-tag-data 
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status
