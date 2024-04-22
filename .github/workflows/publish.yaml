@@ -107,7 +107,9 @@ jobs:
     - uses: ./.github/actions/build-push-action
       with:
         context: deploy
-        image-name: index.docker.io/replicated/replicated-sdk:v${{needs.get-tags.outputs.tag}}
+        # StormsChangeMe
+        # image-name: index.docker.io/replicated/replicated-sdk:v${{needs.get-tags.outputs.tag}}
+        image-name: index.docker.io/St0rmz1/replicated-sdk:v${{needs.get-tags.outputs.tag}}
         git-tag: v${{needs.get-tags.outputs.tag}}
         registry-username: ${{ secrets.DOCKERHUB_USER }}
         registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -127,7 +129,9 @@ jobs:
     - name: Run Package and Publish
       env: 
         REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
-        REPLICATED_REGISTRY: replicated # docker.io/replicated
+        # StormsChangeMe
+        # REPLICATED_REGISTRY: replicated # docker.io/replicated
+        REPLICATED_REGISTRY: St0rmz1 # docker.io/replicated
         REPLICATED_CHART_NAME: replicated
         REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
@@ -183,7 +187,9 @@ jobs:
     if: success() && needs.package-and-publish.result == 'success'
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
     with: 
-      image: index.docker.io/replicated/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
+      # StormsChangeMe
+      # image: index.docker.io/replicated/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
+      image: index.docker.io/St0rmz1/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
       digest: ${{ needs.package-and-publish.outputs.digest }}
     secrets:
       registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
