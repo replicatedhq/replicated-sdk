@@ -183,7 +183,7 @@ jobs:
     if: success() && needs.package-and-publish.result == 'success'
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
     with: 
-      image: index.docker.io/st0rmz1/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
+      image: index.docker.io/replicated/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
       digest: ${{ needs.package-and-publish.outputs.digest }}
     secrets:
       registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
