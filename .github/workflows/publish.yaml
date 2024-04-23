@@ -109,7 +109,7 @@ jobs:
         context: deploy
         # StormsChangeMe
         # image-name: index.docker.io/replicated/replicated-sdk:v${{needs.get-tags.outputs.tag}}
-        image-name: index.docker.io/St0rmz1/replicated-sdk:v${{needs.get-tags.outputs.tag}}
+        image-name: index.docker.io/st0rmz1/replicated-sdk:v${{needs.get-tags.outputs.tag}}
         git-tag: v${{needs.get-tags.outputs.tag}}
         registry-username: ${{ secrets.DOCKERHUB_USER }}
         registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -131,7 +131,7 @@ jobs:
         REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
         # StormsChangeMe
         # REPLICATED_REGISTRY: replicated # docker.io/replicated
-        REPLICATED_REGISTRY: St0rmz1 # docker.io/replicated
+        REPLICATED_REGISTRY: st0rmz1 # docker.io/replicated
         REPLICATED_CHART_NAME: replicated
         REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
@@ -189,7 +189,7 @@ jobs:
     with: 
       # StormsChangeMe
       # image: index.docker.io/replicated/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
-      image: index.docker.io/St0rmz1/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
+      image: index.docker.io/st0rmz1/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
       digest: ${{ needs.package-and-publish.outputs.digest }}
     secrets:
       registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
