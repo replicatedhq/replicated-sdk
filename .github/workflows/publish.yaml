@@ -105,6 +105,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
     - uses: ./.github/actions/build-push-action
+      id: build-push-action
       with:
         context: deploy
         # StormsChangeMe
