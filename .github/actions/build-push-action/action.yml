@@ -23,6 +23,13 @@ inputs:
     default: ''
     required: false
 
+outputs:
+  # The digest of the published container image is required for the provenance job
+  digest:
+    value: ${{ steps.apko-publish.outputs.digest }}
+    description: |
+      The digest of the published container image.
+
 runs:
   using: "composite"
   steps:
@@ -45,6 +52,7 @@ runs:
         cache-dir: ${{ steps.cache-dir.outputs.cache_dir }}
 
     - uses: chainguard-images/actions/apko-publish@main
+      id: apko-publish
       with:
         config: ${{ inputs.context }}/apko.yaml
         tag: ${{ inputs.image-name }}
