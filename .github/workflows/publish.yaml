@@ -127,56 +127,52 @@ jobs:
           console.log(digest);
           core.setOutput("digest", digest);
 
-    - name: Run Package and Publish
-      env: 
-        REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
-        # StormsChangeMe
-        # REPLICATED_REGISTRY: replicated # docker.io/replicated
-        REPLICATED_REGISTRY: st0rmz1 # docker.io/replicated
-        REPLICATED_CHART_NAME: replicated
-        REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
-        REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
-        REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
-        REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
-        REPLICATED_PASS_PROD: ${{secrets.REPLICATED_PASS_PROD}}
-      run: |
-        # TEMPORARY: for backwards compatibility, create another directory to use for the "replicated-sdk" chart
-        cp -R chart chart-sdk
-
-        cd chart
-        envsubst < Chart.yaml.tmpl > Chart.yaml
-        envsubst < values.yaml.tmpl > values.yaml
-        rm -f *.tmpl
-
-        export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
-
-        # StormsChangeMe Temp disable staging test
-        # echo pushing ${CHART_NAME} to staging
-        # helm registry login registry.staging.replicated.com --username $REPLICATED_USER_STAGING --password $REPLICATED_PASS_STAGING
-        # helm push $CHART_NAME oci://registry.staging.replicated.com/library
-
-        echo pushing ${CHART_NAME} to production
-        helm registry login registry.replicated.com --username $REPLICATED_USER_PROD --password $REPLICATED_PASS_PROD
-        helm push $CHART_NAME oci://registry.replicated.com/library
-
-        # TEMPORARY: for backwards compatibility, package and push chart with "replicated-sdk" name
-        cd ../chart-sdk
-        REPLICATED_CHART_NAME=replicated-sdk
-        envsubst < Chart.yaml.tmpl > Chart.yaml
-        envsubst < values.yaml.tmpl > values.yaml
-        rm -f *.tmpl
-
-        export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
-
-        # StormsChangeMe Temp disable staging test
-        # echo pushing ${CHART_NAME} to staging
-        # helm push $CHART_NAME oci://registry.staging.replicated.com/library
-
-        echo pushing ${CHART_NAME} to production
-        helm push $CHART_NAME oci://registry.replicated.com/library
-
-    - name: Pact record-release
-      run: make record-release
+#    - name: Run Package and Publish
+#      env: 
+#        REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
+#        REPLICATED_REGISTRY: replicated # docker.io/replicated
+#        REPLICATED_CHART_NAME: replicated
+#        REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
+#        REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
+#        REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
+#        REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
+#        REPLICATED_PASS_PROD: ${{secrets.REPLICATED_PASS_PROD}}
+#      run: |
+#        # TEMPORARY: for backwards compatibility, create another directory to use for the "replicated-sdk" chart
+#        cp -R chart chart-sdk
+#
+#        cd chart
+#        envsubst < Chart.yaml.tmpl > Chart.yaml
+#        envsubst < values.yaml.tmpl > values.yaml
+#        rm -f *.tmpl
+#
+#        export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
+#
+#        echo pushing ${CHART_NAME} to staging
+#        helm registry login registry.staging.replicated.com --username $REPLICATED_USER_STAGING --password $REPLICATED_PASS_STAGING
+#        helm push $CHART_NAME oci://registry.staging.replicated.com/library
+#
+#        echo pushing ${CHART_NAME} to production
+#        helm registry login registry.replicated.com --username $REPLICATED_USER_PROD --password $REPLICATED_PASS_PROD
+#        helm push $CHART_NAME oci://registry.replicated.com/library
+#
+#        # TEMPORARY: for backwards compatibility, package and push chart with "replicated-sdk" name
+#        cd ../chart-sdk
+#        REPLICATED_CHART_NAME=replicated-sdk
+#        envsubst < Chart.yaml.tmpl > Chart.yaml
+#        envsubst < values.yaml.tmpl > values.yaml
+#        rm -f *.tmpl
+#
+#        export CHART_NAME=`helm package . | rev | cut -d/ -f1 | rev`
+#
+#        echo pushing ${CHART_NAME} to staging
+#        helm push $CHART_NAME oci://registry.staging.replicated.com/library
+#
+#        echo pushing ${CHART_NAME} to production
+#        helm push $CHART_NAME oci://registry.replicated.com/library
+#
+#    - name: Pact record-release
+#      run: make record-release
 
   provenance: 
     # This job is responsible for generating the SLSA provenance for the image that was pushed to the registry.
