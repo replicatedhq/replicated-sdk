@@ -86,6 +86,9 @@ jobs:
       - get-tags
       - make-tests
       - make-build
+    outputs:
+      # digest of the image pushed to the registry. This is used for the provenance generation
+      digest: ${{ steps.trim-and-save-digest.outputs.digest }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -102,12 +105,23 @@ jobs:
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
     - uses: ./.github/actions/build-push-action
+      id: build-push-action
       with:
         context: deploy
         image-name: index.docker.io/replicated/replicated-sdk:v${{needs.get-tags.outputs.tag}}
         git-tag: v${{needs.get-tags.outputs.tag}}
         registry-username: ${{ secrets.DOCKERHUB_USER }}
         registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
+    
+    - name: 'Trim and Save Digest'
+    # build-push-action outputs the full image name and digest, but we need to save just the sha256 part
+      id: trim-and-save-digest
+      uses: actions/github-script@v7
+      with:
+       script: |
+          const fullDigest = "${{ steps.build-push-action.outputs.digest }}";
+          const digest = fullDigest.split('@')[1];
+          core.setOutput("digest", digest);
 
     - name: Run Package and Publish
       env: 
@@ -155,3 +169,22 @@ jobs:
 
     - name: Pact record-release
       run: make record-release
+
+  provenance: 
+    # This job is responsible for generating the SLSA provenance for the image that was pushed to the registry.
+    needs:
+      - package-and-publish
+      - get-tags
+    permissions:
+      actions: read # for detecting the Github Actions environment.
+      id-token: write # for creating OIDC tokens for signing.
+      packages: write # for uploading attestations.
+    if: success() && needs.package-and-publish.result == 'success'
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
+    with: 
+      image: index.docker.io/replicated/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
+      digest: ${{ needs.package-and-publish.outputs.digest }}
+    secrets:
+      registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      registry-username: ${{ secrets.DOCKERHUB_USER }}
+        
