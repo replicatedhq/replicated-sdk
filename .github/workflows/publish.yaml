@@ -121,8 +121,6 @@ jobs:
        script: |
           const fullDigest = "${{ steps.build-push-action.outputs.digest }}";
           const digest = fullDigest.split('@')[1];
-          console.log(fullDigest);
-          console.log(digest);
           core.setOutput("digest", digest);
 
     - name: Run Package and Publish
