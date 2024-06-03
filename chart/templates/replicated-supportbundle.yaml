@@ -24,6 +24,7 @@ stringData:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
               {{- end }}
+            namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated/logs
         - http:
             collectorName: replicated-app-info
