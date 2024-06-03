@@ -500,7 +500,7 @@ jobs:
           integration-enabled: 'false'
           is-airgap: 'true'
 
-      - name: Validate support bundle instance report
+      - name: Validate support bundle contents
         run: |
           ./support-bundle --load-cluster-specs --interactive=false
           tar xzf support-bundle-*.tar.gz
@@ -510,6 +510,10 @@ jobs:
           fi
           if ! ls support-bundle-*/secrets/*/replicated-custom-app-metrics-report/report.json; then
             echo "Did not find replicated-custom-app-metrics-report in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated/logs/*/*.log; then
+            echo "Did not find replicated pod logs in support bundle"
             exit 1
           fi
           rm -rf support-bundle-*
@@ -553,7 +557,7 @@ jobs:
           deployed-via-kubectl: 'true'
           is-airgap: 'true'
 
-      - name: Validate support bundle instance report
+      - name: Validate support bundle contents
         run: |
           ./support-bundle --load-cluster-specs --interactive=false
           tar xzf support-bundle-*.tar.gz
@@ -563,6 +567,10 @@ jobs:
           fi
           if ! ls support-bundle-*/secrets/*/replicated-custom-app-metrics-report/report.json; then
             echo "Did not find replicated-custom-app-metrics-report in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated/logs/*/*.log; then
+            echo "Did not find replicated pod logs in support bundle"
             exit 1
           fi
           rm -rf support-bundle-*
