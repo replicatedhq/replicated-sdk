@@ -1,5 +1,5 @@
 {{/*
-Renders the Support Bundle secret to be used by replicated
+Renders the Support Bundle secret to be used by replicated 
 */}}
 ---
 apiVersion: v1
