@@ -18,6 +18,22 @@ stringData:
       name: {{ include "replicated.supportBundleName" . }}
     spec:
       collectors:
+        - exec:
+            name: replicated-app-info-exec 
+            selector:
+              {{- include "replicated.labels" . | nindent 4 }}
+            namespace: {{ include "replicated.namespace" . }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info"]
+            timeout: 5s
+        - exec:
+            name: replicated-license-info-exec 
+            selector:
+              {{- include "replicated.labels" . | nindent 4 }}
+            namespace: {{ include "replicated.namespace" . }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info"]
+            timeout: 5s
         - logs:
             collectorName: replicated-logs
             selector:
