@@ -19,7 +19,7 @@ stringData:
     spec:
       collectors:
         - exec:
-            name: replicated-app-info-exec 
+            collectorName: replicated-app-info
             selector:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
@@ -29,7 +29,7 @@ stringData:
             args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info"]
             timeout: 5s
         - exec:
-            name: replicated-license-info-exec 
+            collectorName: replicated-license-info
             selector:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
@@ -46,20 +46,6 @@ stringData:
               {{- end }}
             namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated/logs
-        - http:
-            collectorName: replicated-app-info
-            get:
-              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info
-              headers:
-                User-Agent: "troubleshoot.sh/support-bundle"
-              timeout: 5s
-        - http:
-            collectorName: replicated-license-info
-            get:
-              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info
-              headers:
-                User-Agent: "troubleshoot.sh/support-bundle"
-              timeout: 5s
         - secret:
             namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated-instance-report
