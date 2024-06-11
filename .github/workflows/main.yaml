@@ -227,10 +227,10 @@ jobs:
       matrix:
         cluster: [
           {distribution: k3s, version: 1.26},
-          {distribution: eks, version: 1.27},
-          {distribution: gke, version: 1.27},
           {distribution: kind, version: 1.27},
-          {distribution: openshift, version: 4.13.0-okd}
+          {distribution: gke, version: 1.28},
+          {distribution: eks, version: 1.29},
+          {distribution: openshift, version: 4.14.0-okd}
         ]
     env:
       LICENSE_ID: ${{ needs.create-test-release.outputs.license-id }}
