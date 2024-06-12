@@ -1,5 +1,5 @@
 {{/*
-Renders the Support Bundle secret to be used by replicated
+Renders the Support Bundle secret to be used by replicated 
 */}}
 ---
 apiVersion: v1
@@ -18,6 +18,50 @@ stringData:
       name: {{ include "replicated.supportBundleName" . }}
     spec:
       collectors:
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-app-updates
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/updates"]
+            timeout: 5s
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-app-history
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/history"]
+            timeout: 5s
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-app-info
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info"]
+            timeout: 5s
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-license-info
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info"]
+            timeout: 5s
         - logs:
             collectorName: replicated-logs
             selector:
@@ -26,20 +70,6 @@ stringData:
               {{- end }}
             namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated/logs
-        - http:
-            collectorName: replicated-app-info
-            get:
-              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info
-              headers:
-                User-Agent: "troubleshoot.sh/support-bundle"
-              timeout: 5s
-        - http:
-            collectorName: replicated-license-info
-            get:
-              url: http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info
-              headers:
-                User-Agent: "troubleshoot.sh/support-bundle"
-              timeout: 5s
         - secret:
             namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated-instance-report

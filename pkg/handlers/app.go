@@ -31,11 +31,16 @@ import (
 )
 
 type GetCurrentAppInfoResponse struct {
-	AppSlug        string              `json:"appSlug"`
-	AppName        string              `json:"appName"`
-	AppStatus      appstatetypes.State `json:"appStatus"`
-	HelmChartURL   string              `json:"helmChartURL,omitempty"`
-	CurrentRelease AppRelease          `json:"currentRelease"`
+	InstanceID      string              `json:"instanceID"`
+	AppSlug         string              `json:"appSlug"`
+	AppName         string              `json:"appName"`
+	AppStatus       appstatetypes.State `json:"appStatus"`
+	HelmChartURL    string              `json:"helmChartURL,omitempty"`
+	CurrentRelease  AppRelease          `json:"currentRelease"`
+	ChannelID       string              `json:"channelID"`
+	ChannelName     string              `json:"channelName"`
+	ChannelSequence int64               `json:"channelSequence"`
+	ReleaseSequence int64               `json:"releaseSequence"`
 }
 
 type GetAppHistoryResponse struct {
@@ -79,8 +84,13 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 
 	if isIntegrationModeEnabled {
 		response := GetCurrentAppInfoResponse{
-			AppSlug: store.GetStore().GetAppSlug(),
-			AppName: store.GetStore().GetAppName(),
+			InstanceID:      store.GetStore().GetAppID(),
+			AppSlug:         store.GetStore().GetAppSlug(),
+			AppName:         store.GetStore().GetAppName(),
+			ChannelID:       store.GetStore().GetChannelID(),
+			ChannelName:     store.GetStore().GetChannelName(),
+			ChannelSequence: store.GetStore().GetChannelSequence(),
+			ReleaseSequence: store.GetStore().GetReleaseSequence(),
 		}
 
 		mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
@@ -102,6 +112,7 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := GetCurrentAppInfoResponse{
+		InstanceID:   store.GetStore().GetAppID(),
 		AppSlug:      store.GetStore().GetAppSlug(),
 		AppName:      store.GetStore().GetAppName(),
 		AppStatus:    store.GetStore().GetAppStatus().State,
@@ -111,6 +122,10 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:    store.GetStore().GetReleaseCreatedAt(),
 			ReleaseNotes: store.GetStore().GetReleaseNotes(),
 		},
+		ChannelID:       store.GetStore().GetChannelID(),
+		ChannelName:     store.GetStore().GetChannelName(),
+		ChannelSequence: store.GetStore().GetChannelSequence(),
+		ReleaseSequence: store.GetStore().GetReleaseSequence(),
 	}
 
 	if helm.IsHelmManaged() {
