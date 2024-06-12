@@ -516,6 +516,22 @@ jobs:
             echo "Did not find replicated pod logs in support bundle"
             exit 1
           fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-app-history-stdout.txt; then
+            echo "Did not find replicated-app-history-stdout.txt in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-app-updates-stdout.txt; then
+            echo "Did not find replicated-app-updates-stdout.txt in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-app-info-stdout.txt; then
+            echo "Did not find replicated-app-info-stdout.txt in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-license-info-stdout.txt; then
+            echo "Did not find replicated-license-info-stdout.txt in support bundle"
+            exit 1
+          fi
           rm -rf support-bundle-*
 
       - name: Uninstall test-chart via Helm
@@ -571,6 +587,22 @@ jobs:
           fi
           if ! ls support-bundle-*/replicated/logs/*/*.log; then
             echo "Did not find replicated pod logs in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-app-history-stdout.txt; then
+            echo "Did not find replicated-app-history-stdout.txt in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-app-updates-stdout.txt; then
+            echo "Did not find replicated-app-updates-stdout.txt in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-app-info-stdout.txt; then
+            echo "Did not find replicated-app-info-stdout.txt in support bundle"
+            exit 1
+          fi
+          if ! ls support-bundle-*/replicated-sdk/*/*/replicated-license-info-stdout.txt; then
+            echo "Did not find replicated-license-info-stdout.txt in support bundle"
             exit 1
           fi
           rm -rf support-bundle-*
