@@ -31,17 +31,16 @@ import (
 )
 
 type GetCurrentAppInfoResponse struct {
-	InstanceID     string              `json:"instanceID"`
-	AppSlug        string              `json:"appSlug"`
-	AppName        string              `json:"appName"`
-	AppStatus      appstatetypes.State `json:"appStatus"`
-	HelmChartURL   string              `json:"helmChartURL,omitempty"`
-	CurrentRelease AppRelease          `json:"currentRelease"`
-
-	ChannelID       string `json:"channelID"`
-	ChannelName     string `json:"channelName"`
-	ChannelSequence int64  `json:"channelSequence"`
-	ReleaseSequence int64  `json:"releaseSequence"`
+	InstanceID      string              `json:"instanceID"`
+	AppSlug         string              `json:"appSlug"`
+	AppName         string              `json:"appName"`
+	AppStatus       appstatetypes.State `json:"appStatus"`
+	HelmChartURL    string              `json:"helmChartURL,omitempty"`
+	CurrentRelease  AppRelease          `json:"currentRelease"`
+	ChannelID       string              `json:"channelID"`
+	ChannelName     string              `json:"channelName"`
+	ChannelSequence int64               `json:"channelSequence"`
+	ReleaseSequence int64               `json:"releaseSequence"`
 }
 
 type GetAppHistoryResponse struct {
