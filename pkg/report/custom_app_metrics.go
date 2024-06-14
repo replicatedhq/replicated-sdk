@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"time"
@@ -16,10 +17,29 @@ import (
 )
 
 func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
+	// Logic here
+
+	// Get data from secret
+	data = SyncCustomAppMetrics(currentTags, tags)
+
+	// Save data
+
 	if util.IsAirgap() {
 		return SendAirgapCustomAppMetrics(clientset, sdkStore, data)
 	}
 	return SendOnlineCustomAppMetrics(sdkStore, data)
+}
+
+func SyncCustomAppMetrics(currentTags map[string]interface{}, inputTags map[string]interface{}, overwrite bool) map[string]interface{} {
+	if overwrite {
+		return inputTags
+	}
+
+	if len(inputTags) == 0 || maps.Equal(currentTags, inputTags) {
+		return currentTags
+	}
+
+	return err
 }
 
 func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
