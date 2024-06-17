@@ -18,10 +18,10 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/meta"
+	"github.com/replicatedhq/replicated-sdk/pkg/meta/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
-	"github.com/replicatedhq/replicated-sdk/pkg/tags"
-	"github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -429,7 +429,7 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tags.Save(r.Context(), clientset, store.GetStore().GetNamespace(), request.Data); err != nil {
+	if err := meta.SaveInstanceTag(r.Context(), clientset, store.GetStore().GetNamespace(), request.Data); err != nil {
 		logger.Errorf("failed to save instance tags: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
