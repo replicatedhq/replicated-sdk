@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	InstanceMetadataSecretName = "replicated-meta-data"
-	InstanceTagSecretKey       = "instance-tag-data"
+	ReplicatedMetaDataSecretName = "replicated-meta-data"
+	InstanceTagSecretKey         = "instance-tag-data"
 )
 
 var replicatedSecretLock = sync.Mutex{}
@@ -30,7 +30,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 		return errors.Wrap(err, "failed to marshal instance tags")
 	}
 
-	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, InstanceMetadataSecretName, metav1.GetOptions{})
+	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, ReplicatedMetaDataSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to get instance-tags secret")
 	}
@@ -47,7 +47,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 				Kind:       "Secret",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      InstanceMetadataSecretName,
+				Name:      ReplicatedMetaDataSecretName,
 				Namespace: namespace,
 				OwnerReferences: []metav1.OwnerReference{
 					{
@@ -65,7 +65,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 
 		_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 		if err != nil {
-			return errors.Wrap(err, "failed to create report secret")
+			return errors.Wrap(err, "failed to create meta secret")
 		}
 		return nil
 	}
@@ -90,7 +90,7 @@ var (
 )
 
 func Get(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.InstanceTagData, error) {
-	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, InstanceMetadataSecretName, metav1.GetOptions{})
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, ReplicatedMetaDataSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return nil, errors.Wrap(err, "failed to get instance-tags secret")
 	}

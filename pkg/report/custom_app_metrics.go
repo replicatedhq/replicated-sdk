@@ -19,8 +19,10 @@ import (
 func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
 	// Logic here
 
-	// Get data from secret
-	data = SyncCustomAppMetrics(currentTags, tags)
+	// Get current tags data from secret
+	currentTags := map[string]interface{}{}
+
+	data = SyncCustomAppMetrics(currentTags, data, false)
 
 	// Save data
 
@@ -30,16 +32,25 @@ func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, 
 	return SendOnlineCustomAppMetrics(sdkStore, data)
 }
 
-func SyncCustomAppMetrics(currentTags map[string]interface{}, inputTags map[string]interface{}, overwrite bool) map[string]interface{} {
+func SyncCustomAppMetrics(existingMetrics map[string]interface{}, inboundMetrics map[string]interface{}, overwrite bool) map[string]interface{} {
 	if overwrite {
-		return inputTags
+		return inboundMetrics
 	}
 
-	if len(inputTags) == 0 || maps.Equal(currentTags, inputTags) {
-		return currentTags
+	if len(inboundMetrics) == 0 || maps.Equal(existingMetrics, inboundMetrics) {
+		return existingMetrics
 	}
 
-	return err
+	for k, v := range inboundMetrics {
+		if v == nil {
+			delete(existingMetrics, k)
+			continue
+		}
+
+		existingMetrics[k] = v
+	}
+
+	return existingMetrics
 }
 
 func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
