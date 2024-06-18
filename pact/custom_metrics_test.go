@@ -72,6 +72,7 @@ func TestSendCustomAppMetrics(t *testing.T) {
 			ReplicatedAppEndpoint: license.Spec.Endpoint,
 			ChannelID:             license.Spec.ChannelID,
 			ChannelSequence:       channelSequence,
+			Namespace:             "default",
 		}
 		store.InitInMemory(storeOptions)
 		defer store.SetStore(nil)
