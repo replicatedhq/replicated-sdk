@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"net/url"
 	"time"
@@ -20,42 +19,15 @@ import (
 
 func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}, overwrite bool) error {
 
-	currentCustomMetrics, err := meta.GetLatestCustomMetrics(context.TODO(), clientset, sdkStore.GetNamespace())
+	syncedMetrics, err := meta.SyncCustomAppMetrics(context.Background(), clientset, sdkStore.GetNamespace(), data, overwrite)
 	if err != nil {
-		return errors.Wrap(err, "failed to get latest custom metrics")
-	}
-
-	data = SyncCustomAppMetrics(currentCustomMetrics, data, overwrite)
-
-	if err := meta.SaveLatestCustomMetrics(context.TODO(), clientset, sdkStore.GetNamespace(), data); err != nil {
-		return errors.Wrap(err, "failed to save latest custom metrics")
+		return errors.Wrap(err, "failed to sync custom app metrics")
 	}
 
 	if util.IsAirgap() {
-		return SendAirgapCustomAppMetrics(clientset, sdkStore, data)
+		return SendAirgapCustomAppMetrics(clientset, sdkStore, syncedMetrics)
 	}
-	return SendOnlineCustomAppMetrics(sdkStore, data)
-}
-
-func SyncCustomAppMetrics(existingMetrics map[string]interface{}, inboundMetrics map[string]interface{}, overwrite bool) map[string]interface{} {
-	if overwrite {
-		return inboundMetrics
-	}
-
-	if len(inboundMetrics) == 0 || maps.Equal(existingMetrics, inboundMetrics) {
-		return existingMetrics
-	}
-
-	for k, v := range inboundMetrics {
-		if v == nil {
-			delete(existingMetrics, k)
-			continue
-		}
-
-		existingMetrics[k] = v
-	}
-
-	return existingMetrics
+	return SendOnlineCustomAppMetrics(sdkStore, syncedMetrics)
 }
 
 func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
