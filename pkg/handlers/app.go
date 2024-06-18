@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/config"
@@ -388,9 +389,9 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteCustomAppMetricsKey(w http.ResponseWriter, r *http.Request) {
-	key := r.PathValue("key")
+	key, ok := mux.Vars(r)["key"]
 
-	if key == "" {
+	if !ok || key == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "key cannot be empty")
 		logger.Errorf("cannot delete custom metrics key - key cannot be empty")
@@ -406,7 +407,7 @@ func DeleteCustomAppMetricsKey(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]interface{}{key: nil}
 
-	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), data); err != nil {
+	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), data, false); err != nil {
 		logger.Error(errors.Wrapf(err, "failed to delete custom merics key: %s", key))
 		w.WriteHeader(http.StatusBadRequest)
 		return
