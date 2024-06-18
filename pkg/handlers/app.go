@@ -373,7 +373,12 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), request.Data); err != nil {
+	overwrite := true
+	if r.Method == http.MethodPatch {
+		overwrite = false
+	}
+
+	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), request.Data, overwrite); err != nil {
 		logger.Error(errors.Wrap(err, "set application data"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -382,6 +387,33 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, "")
 }
 
+func DeleteCustomAppMetricsKey(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+
+	if key == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "key cannot be empty")
+		logger.Errorf("cannot delete custom metrics key - key cannot be empty")
+		return
+	}
+
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{key: nil}
+
+	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), data); err != nil {
+		logger.Error(errors.Wrapf(err, "failed to delete custom merics key: %s", key))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	JSON(w, http.StatusNoContent, "")
+}
 func validateCustomAppMetricsData(data CustomAppMetricsData) error {
 	if len(data) == 0 {
 		return errors.New("no data provided")

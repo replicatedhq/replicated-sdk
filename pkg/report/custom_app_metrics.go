@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,20 +12,24 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/meta"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
 )
 
-func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
-	// Logic here
+func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}, overwrite bool) error {
 
-	// Get current tags data from secret
-	currentTags := map[string]interface{}{}
+	currentCustomMetrics, err := meta.GetLatestCustomMetrics(context.TODO(), clientset, sdkStore.GetNamespace())
+	if err != nil {
+		return errors.Wrap(err, "failed to get latest custom metrics")
+	}
 
-	data = SyncCustomAppMetrics(currentTags, data, false)
+	data = SyncCustomAppMetrics(currentCustomMetrics, data, overwrite)
 
-	// Save data
+	if err := meta.SaveLatestCustomMetrics(context.TODO(), clientset, sdkStore.GetNamespace(), data); err != nil {
+		return errors.Wrap(err, "failed to save latest custom metrics")
+	}
 
 	if util.IsAirgap() {
 		return SendAirgapCustomAppMetrics(clientset, sdkStore, data)
