@@ -2,7 +2,7 @@ package types
 
 import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	tagstypes "github.com/replicatedhq/replicated-sdk/pkg/tags/types"
+	metatypes "github.com/replicatedhq/replicated-sdk/pkg/meta/types"
 )
 
 type Distribution int64
@@ -35,7 +35,7 @@ type InstanceData struct {
 	ResourceStates  appstatetypes.ResourceStates `json:"resource_states"`
 	K8sVersion      string                       `json:"k8s_version"`
 	K8sDistribution string                       `json:"k8s_distribution"`
-	Tags            tagstypes.InstanceTagData    `json:"tags"`
+	Tags            metatypes.InstanceTagData    `json:"tags"`
 }
 
 func (d Distribution) String() string {

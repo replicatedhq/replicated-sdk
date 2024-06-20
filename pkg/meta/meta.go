@@ -1,11 +1,11 @@
-package tags
+package meta
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,24 +13,29 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+type replicatedMetadataSecretKey string
+
+func (m replicatedMetadataSecretKey) String() string {
+	return string(m)
+}
+
 const (
-	InstanceMetadataSecretName = "replicated-meta-data"
-	InstanceTagSecretKey       = "instance-tag-data"
+	ReplicatedMetadataSecretName string = "replicated-meta-data"
 )
 
 var replicatedSecretLock = sync.Mutex{}
 
-func Save(ctx context.Context, clientset kubernetes.Interface, namespace string, tdata types.InstanceTagData) error {
+func save(ctx context.Context, clientset kubernetes.Interface, namespace string, key replicatedMetadataSecretKey, data interface{}) error {
 
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
-	encodedTagData, err := tdata.MarshalBase64()
+	encodedData, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal instance tags")
 	}
 
-	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, InstanceMetadataSecretName, metav1.GetOptions{})
+	existingSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, ReplicatedMetadataSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
 		return errors.Wrap(err, "failed to get instance-tags secret")
 	}
@@ -47,7 +52,7 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 				Kind:       "Secret",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      InstanceMetadataSecretName,
+				Name:      string(ReplicatedMetadataSecretName),
 				Namespace: namespace,
 				OwnerReferences: []metav1.OwnerReference{
 					{
@@ -59,13 +64,13 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 				},
 			},
 			Data: map[string][]byte{
-				InstanceTagSecretKey: encodedTagData,
+				string(key): encodedData,
 			},
 		}
 
 		_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 		if err != nil {
-			return errors.Wrap(err, "failed to create report secret")
+			return errors.Wrap(err, "failed to create meta secret")
 		}
 		return nil
 	}
@@ -74,44 +79,43 @@ func Save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 		existingSecret.Data = map[string][]byte{}
 	}
 
-	existingSecret.Data[InstanceTagSecretKey] = encodedTagData
+	existingSecret.Data[string(key)] = encodedData
 
 	_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
 	if err != nil {
-		return errors.Wrap(err, "failed to update instance-tags secret")
+		return errors.Wrapf(err, "failed to update replicated-meta-data secret with key %s", key)
 	}
 
 	return nil
 }
 
 var (
-	ErrInstanceTagDataIsEmpty        = errors.New("instance tag data is empty")
-	ErrInstanceTagDataSecretNotFound = errors.New("instance tag secret not found")
+	ErrReplicatedMetadataSecretEmpty    = errors.New("replicated metadata secret is empty")
+	ErrReplicatedMetadataSecretNotFound = errors.New("replicated metadata secret not found")
 )
 
-func Get(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.InstanceTagData, error) {
-	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, InstanceMetadataSecretName, metav1.GetOptions{})
+func get(ctx context.Context, clientset kubernetes.Interface, namespace string, key replicatedMetadataSecretKey, v interface{}) error {
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, ReplicatedMetadataSecretName, metav1.GetOptions{})
 	if err != nil && !kuberneteserrors.IsNotFound(err) {
-		return nil, errors.Wrap(err, "failed to get instance-tags secret")
+		return errors.Wrap(err, "failed to get replicated-meta-data secret")
 	}
 
 	if kuberneteserrors.IsNotFound(err) {
-		return nil, ErrInstanceTagDataSecretNotFound
+		return ErrReplicatedMetadataSecretNotFound
 	}
 
 	if len(secret.Data) == 0 {
-		return nil, ErrInstanceTagDataIsEmpty
+		return ErrReplicatedMetadataSecretEmpty
 	}
 
-	tagDataBytes, ok := secret.Data[InstanceTagSecretKey]
-	if !ok || len(tagDataBytes) == 0 {
-		return nil, ErrInstanceTagDataIsEmpty
+	dataBytes, ok := secret.Data[string(key)]
+	if !ok || len(dataBytes) == 0 {
+		return errors.Wrapf(ErrReplicatedMetadataSecretEmpty, "key (%s) not found in secret", key)
 	}
 
-	tagData := &types.InstanceTagData{}
-	if err := tagData.UnmarshalBase64(tagDataBytes); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal instance tags")
+	if err := json.Unmarshal(dataBytes, v); err != nil {
+		return errors.Wrapf(err, "failed to unmarshal secret data for key %s", key)
 	}
 
-	return tagData, nil
+	return nil
 }

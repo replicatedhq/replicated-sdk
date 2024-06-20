@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,16 +11,23 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/meta"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes"
 )
 
-func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
-	if util.IsAirgap() {
-		return SendAirgapCustomAppMetrics(clientset, sdkStore, data)
+func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}, overwrite bool) error {
+
+	syncedMetrics, err := meta.SyncCustomAppMetrics(context.Background(), clientset, sdkStore.GetNamespace(), data, overwrite)
+	if err != nil {
+		return errors.Wrap(err, "failed to sync custom app metrics")
 	}
-	return SendOnlineCustomAppMetrics(sdkStore, data)
+
+	if util.IsAirgap() {
+		return SendAirgapCustomAppMetrics(clientset, sdkStore, syncedMetrics)
+	}
+	return SendOnlineCustomAppMetrics(sdkStore, syncedMetrics)
 }
 
 func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {

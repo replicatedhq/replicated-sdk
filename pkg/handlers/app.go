@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/config"
@@ -18,15 +19,16 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/meta"
+	"github.com/replicatedhq/replicated-sdk/pkg/meta/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
-	"github.com/replicatedhq/replicated-sdk/pkg/tags"
-	"github.com/replicatedhq/replicated-sdk/pkg/tags/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -352,6 +354,12 @@ func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppReleas
 	return appRelease
 }
 
+var testClientSet kubernetes.Interface
+
+func SetTestClientSet(clientset kubernetes.Interface) {
+	testClientSet = clientset
+}
+
 func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 	request := SendCustomAppMetricsRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -366,14 +374,25 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		logger.Error(errors.Wrap(err, "failed to get clientset"))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	var clientset kubernetes.Interface
+	if testClientSet != nil {
+		clientset = testClientSet
+	} else {
+		var err error
+		clientset, err = k8sutil.GetClientset()
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get clientset"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
-	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), request.Data); err != nil {
+	overwrite := true
+	if r.Method == http.MethodPatch {
+		overwrite = false
+	}
+
+	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), request.Data, overwrite); err != nil {
 		logger.Error(errors.Wrap(err, "set application data"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -382,6 +401,33 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, "")
 }
 
+func DeleteCustomAppMetricsKey(w http.ResponseWriter, r *http.Request) {
+	key, ok := mux.Vars(r)["key"]
+
+	if !ok || key == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "key cannot be empty")
+		logger.Errorf("cannot delete custom metrics key - key cannot be empty")
+		return
+	}
+
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{key: nil}
+
+	if err := report.SendCustomAppMetrics(clientset, store.GetStore(), data, false); err != nil {
+		logger.Error(errors.Wrapf(err, "failed to delete custom merics key: %s", key))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	JSON(w, http.StatusNoContent, "")
+}
 func validateCustomAppMetricsData(data CustomAppMetricsData) error {
 	if len(data) == 0 {
 		return errors.New("no data provided")
@@ -429,7 +475,7 @@ func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tags.Save(r.Context(), clientset, store.GetStore().GetNamespace(), request.Data); err != nil {
+	if err := meta.SaveInstanceTag(r.Context(), clientset, store.GetStore().GetNamespace(), request.Data); err != nil {
 		logger.Errorf("failed to save instance tags: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

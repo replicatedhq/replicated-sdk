@@ -66,7 +66,8 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
-	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST")
+	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST", "PATCH")
+	r.HandleFunc("/api/v1/app/custom-metrics/{key}", handlers.DeleteCustomAppMetricsKey).Methods("DELETE")
 	r.HandleFunc("/api/v1/app/instance-tags", handlers.SendAppInstanceTags).Methods("POST")
 
 	// integration
