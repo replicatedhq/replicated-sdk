@@ -13,7 +13,10 @@ import (
 	"github.com/pact-foundation/pact-go/dsl"
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestSendCustomAppMetrics(t *testing.T) {
@@ -78,7 +81,13 @@ func TestSendCustomAppMetrics(t *testing.T) {
 		defer store.SetStore(nil)
 
 		if err := pact.Verify(func() error {
-			handlers.SendCustomAppMetrics(clientWriter, clientRequest)
+			fakeClientSet := fake.NewSimpleClientset(
+				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "replicated-sdk-instance-namespace", "1", map[string]string{"app": "replicated"}),
+				k8sutil.CreateTestReplicaSet("replicated-sdk-instance-replicaset", "replicated-sdk-instance-namespace", "1"),
+				k8sutil.CreateTestPod("replicated-sdk-instance-pod", "replicated-sdk-instance-namespace", "replicated-sdk-instance-replicaset", map[string]string{"app": "replicated"}),
+			)
+			h := handlers.SendCustomAppMetrics(fakeClientSet)
+			h(clientWriter, clientRequest)
 			if clientWriter.Code != http.StatusOK {
 				return fmt.Errorf("expected status code %d but got %d", http.StatusOK, clientWriter.Code)
 			}

@@ -28,6 +28,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -353,7 +354,13 @@ func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppReleas
 	return appRelease
 }
 
-func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
+func SendCustomAppMetrics(clientset kubernetes.Interface) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sendCustomAppMetrics(clientset, w, r)
+	}
+}
+
+func sendCustomAppMetrics(clientset kubernetes.Interface, w http.ResponseWriter, r *http.Request) {
 	request := SendCustomAppMetricsRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		logger.Error(errors.Wrap(err, "decode request"))
@@ -367,12 +374,12 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		logger.Error(errors.Wrap(err, "failed to get clientset"))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	// clientset, err := k8sutil.GetClientset()
+	// if err != nil {
+	// 	logger.Error(errors.Wrap(err, "failed to get clientset"))
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	return
+	// }
 
 	overwrite := true
 	if r.Method == http.MethodPatch {

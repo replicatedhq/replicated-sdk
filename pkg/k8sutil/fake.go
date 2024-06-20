@@ -14,6 +14,7 @@ func CreateTestDeployment(name string, namespace string, revision string, matchL
 			Annotations: map[string]string{
 				"deployment.kubernetes.io/revision": revision,
 			},
+			UID: "test-uid",
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
