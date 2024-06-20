@@ -14,7 +14,7 @@ func CreateTestDeployment(name string, namespace string, revision string, matchL
 			Annotations: map[string]string{
 				"deployment.kubernetes.io/revision": revision,
 			},
-			UID: "test-uid",
+			UID: "test-deployment-uid",
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -32,6 +32,7 @@ func CreateTestReplicaSet(name string, namespace string, revision string) *appsv
 			Annotations: map[string]string{
 				"deployment.kubernetes.io/revision": revision,
 			},
+			UID: "test-deployment-uid",
 		},
 	}
 }
@@ -39,6 +40,7 @@ func CreateTestReplicaSet(name string, namespace string, revision string) *appsv
 func CreateTestPod(name string, namespace string, replicaSetName string, labels map[string]string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			UID:       "test-deployment-uid",
 			Name:      name,
 			Namespace: namespace,
 			Labels:    labels,

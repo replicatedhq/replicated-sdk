@@ -374,13 +374,6 @@ func sendCustomAppMetrics(clientset kubernetes.Interface, w http.ResponseWriter,
 		return
 	}
 
-	// clientset, err := k8sutil.GetClientset()
-	// if err != nil {
-	// 	logger.Error(errors.Wrap(err, "failed to get clientset"))
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
-
 	overwrite := true
 	if r.Method == http.MethodPatch {
 		overwrite = false

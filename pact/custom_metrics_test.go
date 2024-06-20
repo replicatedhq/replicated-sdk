@@ -66,6 +66,11 @@ func TestSendCustomAppMetrics(t *testing.T) {
 				Status: http.StatusOK,
 			})
 	}
+	fakeClientSet := fake.NewSimpleClientset(
+		k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "default", "1", map[string]string{"app": "replicated"}),
+		k8sutil.CreateTestReplicaSet("replicated-sdk-instance-replicaset", "default", "1"),
+		k8sutil.CreateTestPod("replicated-sdk-instance-pod", "default", "replicated-sdk-instance-replicaset", map[string]string{"app": "replicated"}),
+	)
 	t.Run("Send valid custom app metrics", func(t *testing.T) {
 		pactInteraction()
 
@@ -81,11 +86,6 @@ func TestSendCustomAppMetrics(t *testing.T) {
 		defer store.SetStore(nil)
 
 		if err := pact.Verify(func() error {
-			fakeClientSet := fake.NewSimpleClientset(
-				k8sutil.CreateTestDeployment(util.GetReplicatedDeploymentName(), "replicated-sdk-instance-namespace", "1", map[string]string{"app": "replicated"}),
-				k8sutil.CreateTestReplicaSet("replicated-sdk-instance-replicaset", "replicated-sdk-instance-namespace", "1"),
-				k8sutil.CreateTestPod("replicated-sdk-instance-pod", "replicated-sdk-instance-namespace", "replicated-sdk-instance-replicaset", map[string]string{"app": "replicated"}),
-			)
 			h := handlers.SendCustomAppMetrics(fakeClientSet)
 			h(clientWriter, clientRequest)
 			if clientWriter.Code != http.StatusOK {
