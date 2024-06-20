@@ -11,7 +11,6 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
-	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 )
 
@@ -49,12 +48,6 @@ func Start(params APIServerParams) {
 		log.Fatalf("failed to bootstrap: %v", err)
 	}
 
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		log.Fatalf("failed to get clientset: %v", err)
-		return
-	}
-
 	r := mux.NewRouter()
 	r.Use(handlers.CorsMiddleware)
 
@@ -73,7 +66,7 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
 	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
 	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
-	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics(clientset)).Methods("POST", "PATCH")
+	r.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST", "PATCH")
 	r.HandleFunc("/api/v1/app/custom-metrics/{key}", handlers.DeleteCustomAppMetricsKey).Methods("DELETE")
 	r.HandleFunc("/api/v1/app/instance-tags", handlers.SendAppInstanceTags).Methods("POST")
 

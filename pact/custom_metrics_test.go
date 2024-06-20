@@ -86,8 +86,8 @@ func TestSendCustomAppMetrics(t *testing.T) {
 		defer store.SetStore(nil)
 
 		if err := pact.Verify(func() error {
-			h := handlers.SendCustomAppMetrics(fakeClientSet)
-			h(clientWriter, clientRequest)
+			handlers.SetTestClientSet(fakeClientSet)
+			handlers.SendCustomAppMetrics(clientWriter, clientRequest)
 			if clientWriter.Code != http.StatusOK {
 				return fmt.Errorf("expected status code %d but got %d", http.StatusOK, clientWriter.Code)
 			}

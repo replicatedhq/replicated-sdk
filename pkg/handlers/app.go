@@ -354,13 +354,13 @@ func mockReleaseToAppRelease(mockRelease integrationtypes.MockRelease) AppReleas
 	return appRelease
 }
 
-func SendCustomAppMetrics(clientset kubernetes.Interface) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		sendCustomAppMetrics(clientset, w, r)
-	}
+var testClientSet kubernetes.Interface
+
+func SetTestClientSet(clientset kubernetes.Interface) {
+	testClientSet = clientset
 }
 
-func sendCustomAppMetrics(clientset kubernetes.Interface, w http.ResponseWriter, r *http.Request) {
+func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 	request := SendCustomAppMetricsRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		logger.Error(errors.Wrap(err, "decode request"))
@@ -372,6 +372,19 @@ func sendCustomAppMetrics(clientset kubernetes.Interface, w http.ResponseWriter,
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
+	}
+
+	var clientset kubernetes.Interface
+	if testClientSet != nil {
+		clientset = testClientSet
+	} else {
+		var err error
+		clientset, err = k8sutil.GetClientset()
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get clientset"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	overwrite := true
