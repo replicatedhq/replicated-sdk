@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
@@ -63,7 +62,7 @@ func getLicenseFromAPI(url string, licenseID string) (*LicenseData, error) {
 	instanceData := report.GetInstanceData(store.GetStore())
 	report.InjectInstanceDataHeaders(req, instanceData)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := util.HttpClient().Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute get request")
 	}
@@ -125,7 +124,7 @@ func GetLatestLicenseFields(license *kotsv1beta1.License, endpoint string) (type
 	instanceData := report.GetInstanceData(store.GetStore())
 	report.InjectInstanceDataHeaders(req, instanceData)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := util.HttpClient().Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute get request")
 	}
@@ -164,7 +163,7 @@ func GetLatestLicenseField(license *kotsv1beta1.License, endpoint string, fieldN
 	instanceData := report.GetInstanceData(store.GetStore())
 	report.InjectInstanceDataHeaders(req, instanceData)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := util.HttpClient().Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute get request")
 	}

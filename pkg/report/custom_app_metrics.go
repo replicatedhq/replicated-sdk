@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -91,7 +90,7 @@ func SendOnlineCustomAppMetrics(sdkStore store.Store, data map[string]interface{
 	instanceData := GetInstanceData(sdkStore)
 	InjectInstanceDataHeaders(req, instanceData)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := util.HttpClient().Do(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to execute get request")
 	}
