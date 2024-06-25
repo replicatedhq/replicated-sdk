@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 
 	"github.com/pkg/errors"
@@ -69,7 +68,7 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 
 	report.InjectInstanceDataHeaders(req, instanceData)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := util.HttpClient().Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute get request")
 	}

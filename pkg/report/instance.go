@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
@@ -111,7 +110,7 @@ func SendOnlineInstanceData(license *v1beta1.License, instanceData *types.Instan
 
 	InjectInstanceDataHeaders(postReq, instanceData)
 
-	resp, err := http.DefaultClient.Do(postReq)
+	resp, err := util.HttpClient().Do(postReq)
 	if err != nil {
 		return errors.Wrap(err, "failed to post request")
 	}
