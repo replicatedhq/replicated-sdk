@@ -55,6 +55,7 @@ func RequireValidLicenseIDMiddleware(next http.Handler) http.Handler {
 type CacheEntry struct {
 	RequestBody  []byte
 	ResponseBody []byte
+	StatusCode   int
 	Expiry       time.Time
 }
 
@@ -104,11 +105,11 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-func CacheMiddleware(next http.Handler, duration time.Duration, statusCode int) http.HandlerFunc {
+func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.HandlerFunc {
+	// Each handler has its own cache to reduce contention for the in-memory store
 	cache := NewCache()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			logger.Error(errors.Wrap(err, "cache middleware failed ready request body"))
@@ -118,18 +119,19 @@ func CacheMiddleware(next http.Handler, duration time.Duration, statusCode int) 
 
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-		cacheKey := r.Method + "::" + r.URL.Path + "::" + string(body)
+		key := r.Method + "::" + r.URL.Path + "::" + string(body)
 
-		if entry, found := cache.Get(cacheKey); found {
-			logger.Infof("cache middleware: serving from cache for method %s path %s", r.Method, r.URL.Path)
-			JSON(w, statusCode, entry.ResponseBody)
+		if entry, found := cache.Get(key); found {
+			logger.Infof("cache middleware: serving cached payload for method: %s path: %s ttl: %s ", r.Method, r.URL.Path, time.Until(entry.Expiry).Round(time.Second).String())
+			JSONCached(w, entry.StatusCode, entry.ResponseBody)
 			return
 		}
 
 		recorder := &responseRecorder{ResponseWriter: w, Body: &bytes.Buffer{}}
-		next.ServeHTTP(recorder, r)
+		next(recorder, r)
 
-		cache.Set(cacheKey, CacheEntry{
+		cache.Set(key, CacheEntry{
+			StatusCode:   recorder.statusCode,
 			RequestBody:  body,
 			ResponseBody: recorder.Body.Bytes(),
 		}, duration)
