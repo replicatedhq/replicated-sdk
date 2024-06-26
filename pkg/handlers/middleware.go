@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"sync"
@@ -66,7 +67,7 @@ type cache struct {
 
 func NewCache() *cache {
 	return &cache{
-		store: make(map[string]CacheEntry),
+		store: map[string]CacheEntry{},
 	}
 }
 
@@ -92,11 +93,11 @@ func (c *cache) Set(key string, entry CacheEntry, duration time.Duration) {
 type responseRecorder struct {
 	http.ResponseWriter
 	Body       *bytes.Buffer
-	statusCode int
+	StatusCode int
 }
 
 func (r *responseRecorder) WriteHeader(code int) {
-	r.statusCode = code
+	r.StatusCode = code
 	r.ResponseWriter.WriteHeader(code)
 }
 
@@ -123,17 +124,23 @@ func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.Handler
 
 		if entry, found := cache.Get(key); found {
 			logger.Infof("cache middleware: serving cached payload for method: %s path: %s ttl: %s ", r.Method, r.URL.Path, time.Until(entry.Expiry).Round(time.Second).String())
-			JSONCached(w, entry.StatusCode, entry.ResponseBody)
+			JSONCached(w, entry.StatusCode, json.RawMessage(entry.ResponseBody))
 			return
 		}
 
 		recorder := &responseRecorder{ResponseWriter: w, Body: &bytes.Buffer{}}
 		next(recorder, r)
 
+		// Save only successful responses in the cache
+		if recorder.StatusCode < 200 || recorder.StatusCode >= 300 {
+			return
+		}
+
 		cache.Set(key, CacheEntry{
-			StatusCode:   recorder.statusCode,
+			StatusCode:   recorder.StatusCode,
 			RequestBody:  body,
 			ResponseBody: recorder.Body.Bytes(),
 		}, duration)
+
 	}
 }
