@@ -10,6 +10,65 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_IsSamePayload(t *testing.T) {
+	tests := []struct {
+		name     string
+		payloadA []byte
+		payloadB []byte
+		expect   bool
+	}{
+		{
+			name:     "should return true for empty nil payloads",
+			payloadA: nil,
+			payloadB: nil,
+			expect:   true,
+		},
+		{
+			name:     "should return true despite one payload being nil",
+			payloadA: []byte{},
+			payloadB: nil,
+			expect:   true,
+		},
+		{
+			name:     "should tolerate empty non-nil byte payloads",
+			payloadA: []byte{},
+			payloadB: []byte{},
+			expect:   true,
+		},
+		{
+			name:     "should return false for different payloads where one payload is empty",
+			payloadA: []byte{},
+			payloadB: []byte(`{"numPeople": 10}`),
+			expect:   false,
+		},
+		{
+			name:     "should return false for different payloads",
+			payloadA: []byte(`{"numProjects": 2000}`),
+			payloadB: []byte(`{"numPeople": 10}`),
+			expect:   false,
+		},
+		{
+			name:     "should return true for same payloads",
+			payloadA: []byte(`{"numPeople": 10}`),
+			payloadB: []byte(`{"numPeople": 10}`),
+			expect:   true,
+		},
+		{
+			name:     "should return true for same payload despite differences in key ordering and spacing",
+			payloadA: []byte(`{"numProjects": 2000, "numPeople":     10     }`),
+			payloadB: []byte(`{"numPeople": 10, "numProjects":    2000}`),
+			expect:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsSamePayload(tt.payloadA, tt.payloadB)
+			require.Equal(t, tt.expect, got)
+		})
+	}
+
+}
 func Test_cache(t *testing.T) {
 	tests := []struct {
 		name     string

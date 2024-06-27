@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"sync"
 	"time"
@@ -133,7 +134,7 @@ func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.Handler
 
 		key := fmt.Sprintf("%x\n", hash)
 
-		if entry, found := cache.Get(key); found && bytes.Equal(entry.RequestBody, body) {
+		if entry, found := cache.Get(key); found && IsSamePayload(entry.RequestBody, body) {
 			logger.Infof("cache middleware: serving cached payload for method: %s path: %s ttl: %s ", r.Method, r.URL.Path, time.Until(entry.Expiry).Round(time.Second).String())
 			JSONCached(w, entry.StatusCode, json.RawMessage(entry.ResponseBody))
 			return
@@ -154,4 +155,29 @@ func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.Handler
 		}, duration)
 
 	}
+}
+
+func IsSamePayload(a, b []byte) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+
+	if len(a) == 0 {
+		a = []byte(`{}`)
+	}
+
+	if len(b) == 0 {
+		b = []byte(`{}`)
+	}
+
+	var aPayload, bPayload map[string]interface{}
+	if err := json.Unmarshal(a, &aPayload); err != nil {
+		logger.Error(errors.Wrap(err, "failed to unmarshal payload A"))
+		return false
+	}
+	if err := json.Unmarshal(b, &bPayload); err != nil {
+		logger.Error(errors.Wrap(err, "failed to unmarshal payload B"))
+		return false
+	}
+	return maps.Equal(aPayload, bPayload)
 }
