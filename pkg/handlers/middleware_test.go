@@ -64,6 +64,27 @@ func Test_cache(t *testing.T) {
 
 			},
 		},
+		{
+			name: "cache set should delete expired cache entries",
+			assertFn: func(t *testing.T, c *cache) {
+
+				entry := CacheEntry{
+					RequestBody:  []byte("request body"),
+					ResponseBody: []byte("response body"),
+					StatusCode:   http.StatusOK,
+				}
+
+				c.Set("first-cache-key", entry, 10*time.Millisecond)
+				_, exists := c.Get("first-cache-key")
+				require.True(t, exists)
+
+				time.Sleep(20 * time.Millisecond)
+
+				c.Set("second-cache-key", entry, 1*time.Minute)
+				_, exists = c.Get("first-cache-key")
+				require.False(t, exists)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -93,7 +114,7 @@ func Test_CacheMiddleware(t *testing.T) {
 	cachedHandler.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
-	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should not exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
 
 	/* Second request should be served from cache since the payload it the same */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
@@ -107,7 +128,7 @@ func Test_CacheMiddleware(t *testing.T) {
 	cachedHandler.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
-	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should not exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
 
 }
 
@@ -124,7 +145,7 @@ func Test_CacheMiddleware_Expiry(t *testing.T) {
 	cachedHandler.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
-	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should not exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
 
 	/* Second request should be served from cache since the payload it the same and under the expiry time */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
@@ -140,7 +161,7 @@ func Test_CacheMiddleware_Expiry(t *testing.T) {
 	cachedHandler.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
-	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should not exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
 
 }
 
@@ -157,13 +178,13 @@ func Test_CacheMiddleware_DoNotCacheErroredPayload(t *testing.T) {
 	cachedHandler.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, `{"error":"Something went wrong!"}`, recorder.Body.String())
-	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should not exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
 
-	/* Second request should not be served from cache - err'ed payloads not saved to cache */
+	/* Second request should not be served from cache - err'ed payloads are not cached */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, `{"error":"Something went wrong!"}`, recorder.Body.String())
-	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
 
 }

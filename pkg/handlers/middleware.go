@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -86,6 +88,13 @@ func (c *cache) Set(key string, entry CacheEntry, duration time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Clean up expired entries
+	for k, v := range c.store {
+		if time.Now().After(v.Expiry) {
+			delete(c.store, k)
+		}
+	}
+
 	entry.Expiry = time.Now().Add(duration)
 	c.store[key] = entry
 }
@@ -113,16 +122,18 @@ func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			logger.Error(errors.Wrap(err, "cache middleware failed ready request body"))
+			logger.Error(errors.Wrap(err, "cache middleware - failed to read request body"))
 			http.Error(w, "cache middleware: unable to read request body", http.StatusInternalServerError)
 			return
 		}
 
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-		key := r.Method + "::" + r.URL.Path + "::" + string(body)
+		hash := sha256.Sum256([]byte(r.Method + "::" + r.URL.Path))
 
-		if entry, found := cache.Get(key); found {
+		key := fmt.Sprintf("%x\n", hash)
+
+		if entry, found := cache.Get(key); found && bytes.Equal(entry.RequestBody, body) {
 			logger.Infof("cache middleware: serving cached payload for method: %s path: %s ttl: %s ", r.Method, r.URL.Path, time.Until(entry.Expiry).Round(time.Second).String())
 			JSONCached(w, entry.StatusCode, json.RawMessage(entry.ResponseBody))
 			return
