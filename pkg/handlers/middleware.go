@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
+	"reflect"
 	"sync"
 	"time"
 
@@ -130,9 +130,9 @@ func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.Handler
 
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-		hash := sha256.Sum256([]byte(r.Method + "::" + r.URL.Path))
+		hash := sha256.Sum256([]byte(r.Method + "::" + r.URL.Path + "::" + r.URL.Query().Encode()))
 
-		key := fmt.Sprintf("%x\n", hash)
+		key := fmt.Sprintf("%x", hash)
 
 		if entry, found := cache.Get(key); found && IsSamePayload(entry.RequestBody, body) {
 			logger.Infof("cache middleware: serving cached payload for method: %s path: %s ttl: %s ", r.Method, r.URL.Path, time.Until(entry.Expiry).Round(time.Second).String())
@@ -179,5 +179,5 @@ func IsSamePayload(a, b []byte) bool {
 		logger.Error(errors.Wrap(err, "failed to unmarshal payload B"))
 		return false
 	}
-	return maps.Equal(aPayload, bPayload)
+	return reflect.DeepEqual(aPayload, bPayload)
 }
