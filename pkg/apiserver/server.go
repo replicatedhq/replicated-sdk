@@ -51,26 +51,28 @@ func Start(params APIServerParams) {
 	r := mux.NewRouter()
 	r.Use(handlers.CorsMiddleware)
 
-	const DefaultCacheTTL = 1 * time.Minute
-
 	// TODO: make all routes authenticated
 	authRouter := r.NewRoute().Subrouter()
 	authRouter.Use(handlers.RequireValidLicenseIDMiddleware)
 
+	cacheHandler := handlers.CacheMiddleware(handlers.NewCache(), handlers.CacheMiddlewareDefaultTTL)
+	cachedRouter := r.NewRoute().Subrouter()
+	cachedRouter.Use(cacheHandler)
+
 	r.HandleFunc("/healthz", handlers.Healthz)
 
 	// license
-	r.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
-	r.HandleFunc("/api/v1/license/fields", handlers.GetLicenseFields).Methods("GET")
-	r.HandleFunc("/api/v1/license/fields/{fieldName}", handlers.GetLicenseField).Methods("GET")
+	cachedRouter.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
+	cachedRouter.HandleFunc("/api/v1/license/fields", handlers.GetLicenseFields).Methods("GET")
+	cachedRouter.HandleFunc("/api/v1/license/fields/{fieldName}", handlers.GetLicenseField).Methods("GET")
 
 	// app
-	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
-	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
-	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
-	r.HandleFunc("/api/v1/app/custom-metrics", handlers.CacheMiddleware(handlers.SendCustomAppMetrics, DefaultCacheTTL)).Methods("POST", "PATCH")
-	r.HandleFunc("/api/v1/app/custom-metrics/{key}", handlers.CacheMiddleware(handlers.DeleteCustomAppMetricsKey, DefaultCacheTTL)).Methods("DELETE")
-	r.HandleFunc("/api/v1/app/instance-tags", handlers.CacheMiddleware(handlers.SendAppInstanceTags, DefaultCacheTTL)).Methods("POST")
+	cachedRouter.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
+	cachedRouter.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
+	cachedRouter.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
+	cachedRouter.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST", "PATCH")
+	cachedRouter.HandleFunc("/api/v1/app/custom-metrics/{key}", handlers.DeleteCustomAppMetricsKey).Methods("DELETE")
+	cachedRouter.HandleFunc("/api/v1/app/instance-tags", handlers.SendAppInstanceTags).Methods("POST")
 
 	// integration
 	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.PostIntegrationMockData)).Methods("POST")

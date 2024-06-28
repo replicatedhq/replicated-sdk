@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -116,10 +117,15 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.HandlerFunc {
-	// Each handler has its own cache to reduce contention for the in-memory store
-	cache := NewCache()
+const CacheMiddlewareDefaultTTL = 1 * time.Minute
 
+func CacheMiddleware(cache *cache, duration time.Duration) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return cacheMiddleware(next, cache, duration)
+	}
+}
+
+func cacheMiddleware(next http.Handler, cache *cache, duration time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -127,21 +133,20 @@ func CacheMiddleware(next http.HandlerFunc, duration time.Duration) http.Handler
 			http.Error(w, "cache middleware: unable to read request body", http.StatusInternalServerError)
 			return
 		}
-
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 		hash := sha256.Sum256([]byte(r.Method + "::" + r.URL.Path + "::" + r.URL.Query().Encode()))
-
 		key := fmt.Sprintf("%x", hash)
 
 		if entry, found := cache.Get(key); found && IsSamePayload(entry.RequestBody, body) {
 			logger.Infof("cache middleware: serving cached payload for method: %s path: %s ttl: %s ", r.Method, r.URL.Path, time.Until(entry.Expiry).Round(time.Second).String())
+			w.Header().Set("X-Replicated-Rate-Limited", "true")
 			JSONCached(w, entry.StatusCode, json.RawMessage(entry.ResponseBody))
 			return
 		}
 
 		recorder := &responseRecorder{ResponseWriter: w, Body: &bytes.Buffer{}}
-		next(recorder, r)
+		next.ServeHTTP(recorder, r)
 
 		// Save only successful responses in the cache
 		if recorder.StatusCode < 200 || recorder.StatusCode >= 300 {

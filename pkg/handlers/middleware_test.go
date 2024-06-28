@@ -166,28 +166,35 @@ func Test_CacheMiddleware(t *testing.T) {
 	})
 
 	duration := 1 * time.Minute
-	cachedHandler := CacheMiddleware(handler, duration)
+	cache := NewCache()
+	cachedHandler := CacheMiddleware(cache, duration).Middleware(handler)
 
 	/* First request should not be served from cache */
 	req, recorder := newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
 	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should NOT exist because the response is NOT rate limited
 
 	/* Second request should be served from cache since the payload it the same */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
 	require.Equal(t, "true", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should exist because the response is served from cache
+	require.Equal(t, "true", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should exist because the response is rate limited
 
 	/* Third request should not be served from cache since the payload is different */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 1111}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
 	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should NOT exist because the response is NOT served from cache
 
 }
 
@@ -197,30 +204,37 @@ func Test_CacheMiddleware_Expiry(t *testing.T) {
 	})
 
 	duration := 100 * time.Millisecond
-	cachedHandler := CacheMiddleware(handler, duration)
+	cache := NewCache()
+	cachedHandler := CacheMiddleware(cache, duration).Middleware(handler)
 
 	/* First request should not be served from cache */
 	req, recorder := newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
 	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should NOT exist because the response is NOT served from cache
 
 	/* Second request should be served from cache since the payload it the same and under the expiry time */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
 	require.Equal(t, "true", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should exist because the response is served from cache
+	require.Equal(t, "true", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should exist because the response is rate limited
 
 	time.Sleep(110 * time.Millisecond)
 
 	/* Third request should not be served from cache due to expiry */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, `{"message":"Hello, World!"}`, recorder.Body.String())
 	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should NOT exist because the response is NOT rate limited
 
 }
 
@@ -230,20 +244,25 @@ func Test_CacheMiddleware_DoNotCacheErroredPayload(t *testing.T) {
 	})
 
 	duration := 1 * time.Minute
-	cachedHandler := CacheMiddleware(handler, duration)
+	cache := NewCache()
+	cachedHandler := CacheMiddleware(cache, duration).Middleware(handler)
 
 	/* First request should not be served from cache */
 	req, recorder := newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, `{"error":"Something went wrong!"}`, recorder.Body.String())
 	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should NOT exist because the response is NOT served from cache
 
 	/* Second request should not be served from cache - err'ed payloads are not cached */
 	req, recorder = newTestRequest("POST", "/custom-metric", []byte(`{"data": {"numProjects": 2000}}`))
 	cachedHandler.ServeHTTP(recorder, req)
+
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, `{"error":"Something went wrong!"}`, recorder.Body.String())
 	require.Equal(t, "", recorder.Header().Get("X-Replicated-Served-From-Cache")) // Header should NOT exist because the response is NOT served from cache
+	require.Equal(t, "", recorder.Header().Get("X-Replicated-Rate-Limited"))      // Header should NOT exist because the response is NOT rate limited
 
 }
