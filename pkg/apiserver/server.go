@@ -62,14 +62,14 @@ func Start(params APIServerParams) {
 	r.HandleFunc("/healthz", handlers.Healthz)
 
 	// license
-	cachedRouter.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
-	cachedRouter.HandleFunc("/api/v1/license/fields", handlers.GetLicenseFields).Methods("GET")
-	cachedRouter.HandleFunc("/api/v1/license/fields/{fieldName}", handlers.GetLicenseField).Methods("GET")
+	r.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
+	r.HandleFunc("/api/v1/license/fields", handlers.GetLicenseFields).Methods("GET")
+	r.HandleFunc("/api/v1/license/fields/{fieldName}", handlers.GetLicenseField).Methods("GET")
 
 	// app
-	cachedRouter.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
-	cachedRouter.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
-	cachedRouter.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
+	r.HandleFunc("/api/v1/app/info", handlers.GetCurrentAppInfo).Methods("GET")
+	r.HandleFunc("/api/v1/app/updates", handlers.GetAppUpdates).Methods("GET")
+	r.HandleFunc("/api/v1/app/history", handlers.GetAppHistory).Methods("GET")
 	cachedRouter.HandleFunc("/api/v1/app/custom-metrics", handlers.SendCustomAppMetrics).Methods("POST", "PATCH")
 	cachedRouter.HandleFunc("/api/v1/app/custom-metrics/{key}", handlers.DeleteCustomAppMetricsKey).Methods("DELETE")
 	cachedRouter.HandleFunc("/api/v1/app/instance-tags", handlers.SendAppInstanceTags).Methods("POST")
