@@ -1,9 +1,20 @@
 package handlers
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"reflect"
+	"sync"
+	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 )
 
@@ -43,4 +54,135 @@ func RequireValidLicenseIDMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// Code for the cache middleware
+type CacheEntry struct {
+	RequestBody  []byte
+	ResponseBody []byte
+	StatusCode   int
+	Expiry       time.Time
+}
+
+type cache struct {
+	store map[string]CacheEntry
+	mu    sync.RWMutex
+}
+
+func NewCache() *cache {
+	return &cache{
+		store: map[string]CacheEntry{},
+	}
+}
+
+func (c *cache) Get(key string) (CacheEntry, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	entry, found := c.store[key]
+	if !found || time.Now().After(entry.Expiry) {
+		return CacheEntry{}, false
+	}
+	return entry, true
+}
+
+func (c *cache) Set(key string, entry CacheEntry, duration time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Clean up expired entries
+	for k, v := range c.store {
+		if time.Now().After(v.Expiry) {
+			delete(c.store, k)
+		}
+	}
+
+	entry.Expiry = time.Now().Add(duration)
+	c.store[key] = entry
+}
+
+type responseRecorder struct {
+	http.ResponseWriter
+	Body       *bytes.Buffer
+	StatusCode int
+}
+
+func (r *responseRecorder) WriteHeader(code int) {
+	r.StatusCode = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *responseRecorder) Write(b []byte) (int, error) {
+	r.Body.Write(b)
+	return r.ResponseWriter.Write(b)
+}
+
+const CacheMiddlewareDefaultTTL = 1 * time.Minute
+
+func CacheMiddleware(cache *cache, duration time.Duration) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return cacheMiddleware(next, cache, duration)
+	}
+}
+
+func cacheMiddleware(next http.Handler, cache *cache, duration time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			logger.Error(errors.Wrap(err, "cache middleware - failed to read request body"))
+			http.Error(w, "cache middleware: unable to read request body", http.StatusInternalServerError)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+
+		hash := sha256.Sum256([]byte(r.Method + "::" + r.URL.Path + "::" + r.URL.Query().Encode()))
+		key := fmt.Sprintf("%x", hash)
+
+		if entry, found := cache.Get(key); found && IsSamePayload(entry.RequestBody, body) {
+			logger.Infof("cache middleware: serving cached payload for method: %s path: %s ttl: %s ", r.Method, r.URL.Path, time.Until(entry.Expiry).Round(time.Second).String())
+			w.Header().Set("X-Replicated-Rate-Limited", "true")
+			JSONCached(w, entry.StatusCode, json.RawMessage(entry.ResponseBody))
+			return
+		}
+
+		recorder := &responseRecorder{ResponseWriter: w, Body: &bytes.Buffer{}}
+		next.ServeHTTP(recorder, r)
+
+		// Save only successful responses in the cache
+		if recorder.StatusCode < 200 || recorder.StatusCode >= 300 {
+			return
+		}
+
+		cache.Set(key, CacheEntry{
+			StatusCode:   recorder.StatusCode,
+			RequestBody:  body,
+			ResponseBody: recorder.Body.Bytes(),
+		}, duration)
+
+	}
+}
+
+func IsSamePayload(a, b []byte) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+
+	if len(a) == 0 {
+		a = []byte(`{}`)
+	}
+
+	if len(b) == 0 {
+		b = []byte(`{}`)
+	}
+
+	var aPayload, bPayload map[string]interface{}
+	if err := json.Unmarshal(a, &aPayload); err != nil {
+		logger.Error(errors.Wrap(err, "failed to unmarshal payload A"))
+		return false
+	}
+	if err := json.Unmarshal(b, &bPayload); err != nil {
+		logger.Error(errors.Wrap(err, "failed to unmarshal payload B"))
+		return false
+	}
+	return reflect.DeepEqual(aPayload, bPayload)
 }
