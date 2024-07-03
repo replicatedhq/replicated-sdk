@@ -13,32 +13,32 @@ import (
 
 func TestGetLatestLicense(t *testing.T) {
 	sdkCustomerLicenseString := `apiVersion: kots.io/v1beta1
-	kind: License
-	metadata:
-	  name: replicatedsdklicenseappcustomer0
-	spec:
-	  licenseID: replicated-sdk-license-customer-0-license
-	  licenseType: trial
-	  customerName: Replicated SDK License App Customer 0
-	  appSlug: replicated-sdk-license-app
-	  channelID: replicated-sdk-license-app-nightly
-	  channelName: Nightly
-	  channels:
-	    - channelID: replicated-sdk-license-app-nightly
-	      channelName: Nightly
-	      isDefault: true
-	      endpoint: http://replicated-app:3000
-	  licenseSequence: 2
-	  endpoint: http://replicated-app:3000
-	  entitlements:
-	    expires_at:
-	      title: Expiration
-	      description: License Expiration
-	      value: '2050-01-01T01:23:46Z'
-	      valueType: String
-	      signature: {}
-	  isNewKotsUiEnabled: true
-	  isKotsInstallEnabled: true
+kind: License
+metadata:
+  name: replicatedsdklicenseappcustomer0
+spec:
+  licenseID: replicated-sdk-license-customer-0-license
+  licenseType: trial
+  customerName: Replicated SDK License App Customer 0
+  appSlug: replicated-sdk-license-app
+  channelID: replicated-sdk-license-app-nightly
+  channelName: Nightly
+  channels:
+    - channelID: replicated-sdk-license-app-nightly
+      channelName: Nightly
+      isDefault: true
+      endpoint: http://replicated-app:3000
+  licenseSequence: 2
+  endpoint: http://replicated-app:3000
+  entitlements:
+  expires_at:
+    title: Expiration
+    description: License Expiration
+    value: '2050-01-01T01:23:46Z'
+    valueType: String
+    signature: {}
+  isNewKotsUiEnabled: true
+  isKotsInstallEnabled: true
 	`
 
 	sdkCustomerLicense, err := license.LoadLicenseFromBytes([]byte(sdkCustomerLicenseString))
