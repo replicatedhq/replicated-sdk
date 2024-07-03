@@ -39,7 +39,7 @@ spec:
       signature: {}
   isNewKotsUiEnabled: true
   isKotsInstallEnabled: true
-	`
+`
 
 	sdkCustomerLicense, err := license.LoadLicenseFromBytes([]byte(sdkCustomerLicenseString))
 	if err != nil {
