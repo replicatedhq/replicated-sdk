@@ -24,6 +24,11 @@ spec:
   appSlug: replicated-sdk-license-app
   channelID: replicated-sdk-license-app-nightly
   channelName: Nightly
+  channels:
+    - channelID: replicated-sdk-license-app-nightly
+      channelName: Nightly
+      isDefault: true
+      endpoint: http://replicated-app:3000
   licenseSequence: 2
   endpoint: http://replicated-app:3000
   entitlements:
