@@ -31,12 +31,12 @@ spec:
   licenseSequence: 2
   endpoint: http://replicated-app:3000
   entitlements:
-  expires_at:
-    title: Expiration
-    description: License Expiration
-    value: '2050-01-01T01:23:46Z'
-    valueType: String
-    signature: {}
+    expires_at:
+      title: Expiration
+      description: License Expiration
+      value: '2050-01-01T01:23:46Z'
+      valueType: String
+      signature: {}
   isNewKotsUiEnabled: true
   isKotsInstallEnabled: true
 	`
