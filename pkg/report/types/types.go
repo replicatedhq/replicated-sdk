@@ -12,6 +12,7 @@ const (
 	AKS
 	DigitalOcean
 	EKS
+	EmbeddedCluster
 	GKE
 	K0s
 	K3s
@@ -46,6 +47,8 @@ func (d Distribution) String() string {
 		return "digital-ocean"
 	case EKS:
 		return "eks"
+	case EmbeddedCluster:
+		return "embedded-cluster"
 	case GKE:
 		return "gke"
 	case K0s:
