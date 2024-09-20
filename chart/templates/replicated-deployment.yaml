@@ -48,6 +48,12 @@ spec:
       - name: replicated
         secret:
           secretName: {{ include "replicated.secretName" . }}
+      {{- if .Values.privateCAConfigmap }}
+      - name: additional-certs
+        configMap:
+          defaultMode: 420
+          name: {{ .Values.privateCAConfigmap }}
+      {{- end }}
       containers:
       - name: replicated
         image: {{ index .Values.images "replicated-sdk" }}
@@ -60,9 +66,17 @@ spec:
           mountPath: /etc/replicated/config.yaml
           readOnly: true
           subPath: config.yaml
+        {{- if .Values.privateCAConfigmap }}
+        - mountPath: /certs
+          name: additional-certs
+        {{- end }}
         env:
         {{- with .Values.extraEnv }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.privateCAConfigmap }}
+        - name: SSL_CERT_DIR
+          value: /certs
         {{- end }}
         - name: REPLICATED_NAMESPACE
           valueFrom:
