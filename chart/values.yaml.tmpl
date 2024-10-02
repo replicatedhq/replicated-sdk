@@ -2,8 +2,22 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-images:
-  replicated-sdk: ${REPLICATED_REGISTRY}/replicated-sdk:${REPLICATED_TAG}
+global:
+  imageRegistry: ""
+
+# Deprecated: Use .Values.image instead of .Values.images
+# The following properties for the Replicated SDK image are deprecated:
+# 
+# images:
+#   replicated-sdk: ${REPLICATED_REGISTRY}/replicated/replicated-sdk:${REPLICATED_TAG}
+
+# Replicated SDK image properties
+# If .Values.images is set, it takes precedence over the following settings.
+image:
+  registry: ${REPLICATED_REGISTRY}
+  repository: "replicated/replicated-sdk"
+  tag: "${REPLICATED_TAG}"
+  pullPolicy: IfNotPresent
 
 license: ""
 licenseFields: ""
