@@ -64,8 +64,6 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
         {{- end }}
         {{- if .Values.containerSecurityContext.enabled }}
-        {{- end }}
-        {{- if .Values.containerSecurityContext.enabled }}
         securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 10 }}
         {{- end }}
         volumeMounts:
