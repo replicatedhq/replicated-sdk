@@ -44,6 +44,34 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Image
+*/}}
+{{- define "replicated.image" -}}
+{{- $registryName := default .Values.image.registry ((.Values.global).imageRegistry) -}}
+{{- $repositoryName := .Values.image.repository -}}
+{{- $separator := ":" -}}
+{{- $termination := "" -}}
+
+{{- if not $repositoryName -}}
+  {{- fail "Image repository is required but not set" -}}
+{{- end -}}
+
+{{- if .Values.image.tag -}}
+  {{- $termination = .Values.image.tag | toString -}}
+{{- else if .Chart -}}
+  {{- $termination = .Chart.AppVersion | default "latest" | toString -}}
+{{- else -}}
+  {{- $termination = "latest" -}}
+{{- end -}}
+
+{{- if $registryName -}}
+  {{- printf "%s/%s%s%s" $registryName $repositoryName $separator $termination -}}
+{{- else -}}
+  {{- printf "%s%s%s" $repositoryName $separator $termination -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 License Fields
 */}}
 {{- define "replicated.licenseFields" -}}

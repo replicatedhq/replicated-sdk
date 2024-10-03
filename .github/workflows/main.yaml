@@ -44,7 +44,7 @@ jobs:
         uses: ./.github/actions/build-push-action
         with:
           context: deploy
-          image-name: ttl.sh/automated-${{ github.run_id }}/replicated-sdk:24h
+          image-name: ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk:24h
           git-tag: ${{ github.sha }}
 
       - name: Build replicated chart
