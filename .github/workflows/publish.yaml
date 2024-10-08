@@ -2,6 +2,7 @@ name: publish
 on:
   push:
     tags:
+    - '[0-9]+.[0-9]+.[0-9]+'
     - 'v[0-9]+.[0-9]+.[0-9]+'
     - 'v[0-9]+.[0-9]+.[0-9]+\-beta'
     - 'v[0-9]+.[0-9]+.[0-9]+\-beta\.[0-9]+'
@@ -125,7 +126,7 @@ jobs:
 
     - name: Run Package and Publish
       env: 
-        REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
+        REPLICATED_TAG: ${{needs.get-tags.outputs.tag}}
         REPLICATED_REGISTRY: docker.io
         REPLICATED_CHART_NAME: replicated
         REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
@@ -182,7 +183,7 @@ jobs:
     if: success() && needs.package-and-publish.result == 'success'
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
     with: 
-      image: index.docker.io/replicated/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
+      image: index.docker.io/replicated/replicated-sdk:${{ needs.get-tags.outputs.tag }}
       digest: ${{ needs.package-and-publish.outputs.digest }}
     secrets:
       registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
