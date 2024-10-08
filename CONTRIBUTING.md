@@ -84,7 +84,7 @@ Pact tests live in the `pact/` directory at the root of the repository. The Pact
 3. Generate a new tag for the commits and proceed to push the tag to the repository using the following commands:
 eg:
 ```bash
-  SDK_TAG="v0.0.1-beta.1"
+  SDK_TAG="0.0.1-beta.1"
   git checkout main && git pull
   git tag $SDK_TAG
   git push -u origin $SDK_TAG
