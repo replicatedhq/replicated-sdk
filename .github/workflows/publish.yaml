@@ -12,12 +12,12 @@ env:
   PACT_VERSION: ${{ github.ref_name }}
   PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
   PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  GIT_TAG: ${{ github.ref_name }}
 
 jobs:
   get-tags:
     runs-on: ubuntu-22.04
     outputs:
-      tag: ${{ steps.get-tags.outputs.tag }}
       previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
     steps:
       - name: Checkout
@@ -29,13 +29,12 @@ jobs:
         with:
           script: |
             const {
-              data: [latest, previous],
+              data: [previous],
             } = await github.rest.repos.listReleases({
               ...context.repo,
-              per_page: 2,
+              per_page: 1,
               page: 1,
             });
-            core.setOutput("tag", latest.tag_name.replace(/^v/, ''));
             core.setOutput("previous-tag", previous.tag_name.replace(/^v/, ''));
 
   generate-release-notes-pr:
@@ -49,7 +48,6 @@ jobs:
     - name: Generate Release Notes PR
       env:
         GIT_PREV_TAG: ${{ needs.get-tags.outputs.previous-tag }}
-        GIT_TAG: ${{ needs.get-tags.outputs.tag }}
         GH_PAT: ${{ secrets.GH_PAT }}
       run: |
         curl -H "Authorization: token $GH_PAT" \
@@ -108,8 +106,8 @@ jobs:
       id: build-push-action
       with:
         context: deploy
-        image-name: index.docker.io/replicated/replicated-sdk:v${{needs.get-tags.outputs.tag}}
-        git-tag: v${{needs.get-tags.outputs.tag}}
+        image-name: index.docker.io/replicated/replicated-sdk:${{ github.ref_name }}
+        git-tag: ${{ github.ref_name }}
         registry-username: ${{ secrets.DOCKERHUB_USER }}
         registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
     
@@ -125,10 +123,10 @@ jobs:
 
     - name: Run Package and Publish
       env: 
-        REPLICATED_TAG: ${{needs.get-tags.outputs.tag}}
+        REPLICATED_TAG: ${{ github.ref_name }}
         REPLICATED_REGISTRY: docker.io
         REPLICATED_CHART_NAME: replicated
-        REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
+        REPLICATED_CHART_VERSION: ${{ github.ref_name }}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
         REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
         REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
@@ -182,7 +180,7 @@ jobs:
     if: success() && needs.package-and-publish.result == 'success'
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
     with: 
-      image: index.docker.io/replicated/replicated-sdk:${{ needs.get-tags.outputs.tag }}
+      image: index.docker.io/replicated/replicated-sdk:${{ github.ref_name }}
       digest: ${{ needs.package-and-publish.outputs.digest }}
     secrets:
       registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
