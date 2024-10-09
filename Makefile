@@ -58,7 +58,7 @@ vet:
 
 .PHONY: build-ttl.sh
 build-ttl.sh:
-	docker buildx build .  -t ttl.sh/${USER}/replicated-sdk:24h -f deploy/Dockerfile
+	docker buildx build . -t ttl.sh/${USER}/replicated-sdk:24h -f deploy/Dockerfile
 	docker push ttl.sh/${USER}/replicated-sdk:24h
 
 	make -C chart build-ttl.sh
