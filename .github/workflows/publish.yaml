@@ -30,13 +30,13 @@ jobs:
           script: |
             const {
               data: [latest, previous],
-            } = await github.rest.repos.listTags({
+            } = await github.rest.repos.listReleases({
               ...context.repo,
               per_page: 2,
               page: 1,
             });
-            core.setOutput("tag", latest.name.replace(/^v/, ''));
-            core.setOutput("previous-tag", previous.name.replace(/^v/, ''));
+            core.setOutput("tag", latest.tag_name.replace(/^v/, ''));
+            core.setOutput("previous-tag", previous.tag_name.replace(/^v/, ''));
 
   generate-release-notes-pr:
     runs-on: ubuntu-22.04
