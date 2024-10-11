@@ -1,73 +1,15 @@
 name: publish
 on:
   push:
-    tags:
-    - 'v[0-9]+.[0-9]+.[0-9]+'
-    - 'v[0-9]+.[0-9]+.[0-9]+\-beta'
-    - 'v[0-9]+.[0-9]+.[0-9]+\-beta\.[0-9]+'
-    - 'v[0-9]+.[0-9]+.[0-9]+\-alpha'
-    - 'v[0-9]+.[0-9]+.[0-9]+\-alpha\.[0-9]+'
-
+    branches:
+      - fix-28
+  
 env:
   PACT_VERSION: ${{ github.ref_name }}
   PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
   PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
 
 jobs:
-  get-tags:
-    runs-on: ubuntu-22.04
-    outputs:
-      tag: ${{ steps.get-tags.outputs.tag }}
-      previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get tags
-        id: get-tags
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const {
-              data: [latest, previous],
-            } = await github.rest.repos.listTags({
-              ...context.repo,
-              per_page: 2,
-              page: 1,
-            });
-            core.setOutput("tag", latest.name.replace(/^v/, ''));
-            core.setOutput("previous-tag", previous.name.replace(/^v/, ''));
-
-  generate-release-notes-pr:
-    runs-on: ubuntu-22.04
-    needs: [get-tags]
-    if: github.ref_type != 'branch'
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Generate Release Notes PR
-      env:
-        GIT_PREV_TAG: ${{ needs.get-tags.outputs.previous-tag }}
-        GIT_TAG: ${{ needs.get-tags.outputs.tag }}
-        GH_PAT: ${{ secrets.GH_PAT }}
-      run: |
-        curl -H "Authorization: token $GH_PAT" \
-          -H 'Accept: application/json' \
-          -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
-          "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
-
-  make-tests:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '^1.22'
-      - uses: replicatedhq/action-install-pact@v1
-      - run: make test
-      - run: make publish-pact
-
   make-build:
     runs-on: ubuntu-22.04
     steps:
@@ -76,15 +18,12 @@ jobs:
         with:
           go-version: '^1.22'
       - run: make build
-      - run: gh release create ${{ github.ref_name }} --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   package-and-publish:
     runs-on: 'ubuntu-22.04'
     needs:
-      - get-tags
-      - make-tests
       - make-build
     outputs:
       # digest of the image pushed to the registry. This is used for the provenance generation
@@ -92,12 +31,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - uses: replicatedhq/action-install-pact@v1
-
-    - name: Pact can-i-deploy
-      run: |
-        make can-i-deploy || echo "::warning:: can-i-deploy says no; provider(s) must successfully verify before release"
 
     - uses: docker/login-action@v3
       with:
@@ -108,8 +41,8 @@ jobs:
       id: build-push-action
       with:
         context: deploy
-        image-name: index.docker.io/replicated/replicated-sdk:v${{needs.get-tags.outputs.tag}}
-        git-tag: v${{needs.get-tags.outputs.tag}}
+        image-name: index.docker.io/replicated/replicated-sdk:v1.0.0-beta.28
+        git-tag: v1.0.0-beta.28
         registry-username: ${{ secrets.DOCKERHUB_USER }}
         registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
     
@@ -125,10 +58,10 @@ jobs:
 
     - name: Run Package and Publish
       env: 
-        REPLICATED_TAG: v${{needs.get-tags.outputs.tag}}
+        REPLICATED_TAG: v1.0.0-beta.28
         REPLICATED_REGISTRY: replicated # docker.io/replicated
         REPLICATED_CHART_NAME: replicated
-        REPLICATED_CHART_VERSION: ${{needs.get-tags.outputs.tag}}
+        REPLICATED_CHART_VERSION: 1.0.0-beta.28
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
         REPLICATED_PASS_STAGING: ${{secrets.REPLICATED_PASS_STAGING}}
         REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
@@ -167,14 +100,10 @@ jobs:
         echo pushing ${CHART_NAME} to production
         helm push $CHART_NAME oci://registry.replicated.com/library
 
-    - name: Pact record-release
-      run: make record-release
-
   provenance: 
     # This job is responsible for generating the SLSA provenance for the image that was pushed to the registry.
     needs:
       - package-and-publish
-      - get-tags
     permissions:
       actions: read # for detecting the Github Actions environment.
       id-token: write # for creating OIDC tokens for signing.
@@ -182,7 +111,7 @@ jobs:
     if: success() && needs.package-and-publish.result == 'success'
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
     with: 
-      image: index.docker.io/replicated/replicated-sdk:v${{ needs.get-tags.outputs.tag }}
+      image: index.docker.io/replicated/replicated-sdk:v1.0.0-beta.28
       digest: ${{ needs.package-and-publish.outputs.digest }}
     secrets:
       registry-password: ${{ secrets.DOCKERHUB_PASSWORD }}
