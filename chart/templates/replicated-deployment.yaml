@@ -53,6 +53,14 @@ spec:
         configMap:
           defaultMode: 420
           name: {{ .Values.privateCAConfigmap }}
+      {{- else if .Values.privateCASecret }}
+      - name: additional-certs
+        secret:
+          defaultMode: 420
+          secretName: {{ .Values.privateCASecret.name }}
+          items:
+          - key: {{ .Values.privateCASecret.key }}
+            path: ca.crt
       {{- end }}
       containers:
       - name: replicated
@@ -74,12 +82,16 @@ spec:
         {{- if .Values.privateCAConfigmap }}
         - mountPath: /certs
           name: additional-certs
+        {{- else if .Values.privateCASecret }}
+        - mountPath: /certs/ca.crt
+          subPath: ca.crt
+          name: additional-certs
         {{- end }}
         env:
         {{- with .Values.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- if .Values.privateCAConfigmap }}
+        {{- if or .Values.privateCAConfigmap .Values.privateCASecret }}
         - name: SSL_CERT_DIR
           value: /certs
         {{- end }}
