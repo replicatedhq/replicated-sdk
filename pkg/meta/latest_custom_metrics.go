@@ -16,7 +16,7 @@ func SyncCustomAppMetrics(ctx context.Context, clientset kubernetes.Interface, n
 	existing := map[string]interface{}{}
 
 	err := get(ctx, clientset, namespace, customMetricsSecretKey, &existing)
-	if err != nil && errors.Cause(err) != ErrReplicatedMetadataSecretNotFound {
+	if err != nil && errors.Cause(err) != ErrReplicatedMetadataNotFound {
 		return nil, errors.Wrapf(err, "failed to get custom metrics data")
 	}
 
