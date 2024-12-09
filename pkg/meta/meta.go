@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -90,8 +91,7 @@ func save(ctx context.Context, clientset kubernetes.Interface, namespace string,
 }
 
 var (
-	ErrReplicatedMetadataSecretEmpty    = errors.New("replicated metadata secret is empty")
-	ErrReplicatedMetadataSecretNotFound = errors.New("replicated metadata secret not found")
+	ErrReplicatedMetadataNotFound = errors.New("replicated metadata not found")
 )
 
 func get(ctx context.Context, clientset kubernetes.Interface, namespace string, key replicatedMetadataSecretKey, v interface{}) error {
@@ -101,20 +101,21 @@ func get(ctx context.Context, clientset kubernetes.Interface, namespace string, 
 	}
 
 	if kuberneteserrors.IsNotFound(err) {
-		return ErrReplicatedMetadataSecretNotFound
+		return ErrReplicatedMetadataNotFound
 	}
 
 	if len(secret.Data) == 0 {
-		return ErrReplicatedMetadataSecretEmpty
+		return ErrReplicatedMetadataNotFound
 	}
 
 	dataBytes, ok := secret.Data[string(key)]
 	if !ok || len(dataBytes) == 0 {
-		return errors.Wrapf(ErrReplicatedMetadataSecretEmpty, "key (%s) not found in secret", key)
+		return errors.Wrapf(ErrReplicatedMetadataNotFound, "key (%s) not found in secret", key)
 	}
 
 	if err := json.Unmarshal(dataBytes, v); err != nil {
-		return errors.Wrapf(err, "failed to unmarshal secret data for key %s", key)
+		logger.Infof("failed to unmarshal secret data for key %s: %v", key, err)
+		return ErrReplicatedMetadataNotFound
 	}
 
 	return nil
