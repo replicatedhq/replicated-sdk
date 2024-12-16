@@ -45,7 +45,7 @@ jobs:
         with:
           context: deploy
           image-name: ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk:24h
-          git-tag: ${{ github.sha }}
+          git-tag: 1.0.0-${{ github.sha }}
 
       - name: Build replicated chart
         env:
@@ -140,7 +140,7 @@ jobs:
             printf "user-set extraEnv should exist:\n\n%s\n\n" "$output"
             exit 1
           fi
-          
+
           cat << EOF > test-values.yaml 
           tolerations:
           - key: "test-toleration-key"
