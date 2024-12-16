@@ -45,7 +45,7 @@ jobs:
         with:
           context: deploy
           image-name: ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk:24h
-          git-tag: 1.0.0-${{ github.sha }}
+          git-tag: "1.0.0" # can't use ${{ github.sha }} because melange config requires strict format.
 
       - name: Build replicated chart
         env:
