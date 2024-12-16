@@ -162,6 +162,26 @@ jobs:
           fi
 
 
+          cat << EOF > test-values.yaml 
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: production/node-pool
+                    operator: In
+                    values:
+                    - replicated-sdk
+          EOF
+
+          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
+
+          if ! echo $output | grep -q 'affinity:'; then
+            printf "user-set affinity should exist:\n\n%s\n\n" "$output"
+            exit 1
+          fi
+
+
           cat << EOF > test-values.yaml
           statusInformers: []
           EOF
