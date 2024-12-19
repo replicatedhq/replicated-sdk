@@ -45,6 +45,10 @@ type GetCurrentAppInfoResponse struct {
 	ReleaseSequence int64               `json:"releaseSequence"`
 }
 
+type GetCurrentAppStatusResponse struct {
+	AppStatus appstatetypes.AppStatus `json:"appStatus"`
+}
+
 type GetAppHistoryResponse struct {
 	Releases []AppRelease `json:"releases"`
 }
@@ -144,6 +148,45 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			response.CurrentRelease.HelmReleaseNamespace = helmRelease.Namespace
 			response.CurrentRelease.DeployedAt = helmRelease.Info.LastDeployed.Format(time.RFC3339)
 		}
+	}
+
+	JSON(w, http.StatusOK, response)
+}
+
+func GetCurrentAppStatus(w http.ResponseWriter, r *http.Request) {
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isIntegrationModeEnabled {
+		response := GetCurrentAppStatusResponse{}
+
+		// TODO: mock app status
+		// mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
+		// if err != nil {
+		// 	logger.Errorf("failed to get mock data: %v", err)
+		// 	w.WriteHeader(http.StatusInternalServerError)
+		// 	return
+		// }
+
+		// response.AppStatus = mockData.AppStatus
+
+		JSON(w, http.StatusOK, response)
+		return
+	}
+
+	response := GetCurrentAppStatusResponse{
+		AppStatus: store.GetStore().GetAppStatus(),
 	}
 
 	JSON(w, http.StatusOK, response)

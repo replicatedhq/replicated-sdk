@@ -5,7 +5,7 @@ import (
 )
 
 type MockData struct {
-	AppStatus         appstatetypes.State `json:"appStatus,omitempty" yaml:"appStatus,omitempty"`
+	AppStatus         appstatetypes.State `json:"appStatus,omitempty" yaml:"appStatus,omitempty"` // TODO: detailed status
 	HelmChartURL      string              `json:"helmChartURL,omitempty" yaml:"helmChartURL,omitempty"`
 	CurrentRelease    *MockRelease        `json:"currentRelease,omitempty" yaml:"currentRelease,omitempty"`
 	DeployedReleases  []MockRelease       `json:"deployedReleases,omitempty" yaml:"deployedReleases,omitempty"`
