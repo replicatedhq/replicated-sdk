@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration/types"
@@ -18,7 +19,7 @@ var (
 	defaultMockDataYAML []byte
 )
 
-func GetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string) (*types.MockData, error) {
+func GetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string) (types.MockData, error) {
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 
@@ -29,23 +30,23 @@ func GetMockData(ctx context.Context, clientset kubernetes.Interface, namespace 
 	if err == nil {
 		b := secret.Data[integrationMockDataKey]
 		if len(b) != 0 {
-			var mockData types.MockData
-			if err := yaml.Unmarshal(b, &mockData); err != nil {
+			mockData, err := UnmarshalYAML(b)
+			if err != nil {
 				return nil, errors.Wrap(err, "failed to unmarshal mock data")
 			}
-			return &mockData, nil
+			return mockData, nil
 		}
 	}
 
 	return GetDefaultMockData(ctx)
 }
 
-func GetDefaultMockData(ctx context.Context) (*types.MockData, error) {
-	var mockData types.MockData
-	if err := yaml.Unmarshal(defaultMockDataYAML, &mockData); err != nil {
+func GetDefaultMockData(ctx context.Context) (types.MockData, error) {
+	mockData, err := UnmarshalYAML(defaultMockDataYAML)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal default mock data")
 	}
-	return &mockData, nil
+	return mockData, nil
 }
 
 func SetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string, mockData types.MockData) error {
@@ -73,4 +74,58 @@ func SetMockData(ctx context.Context, clientset kubernetes.Interface, namespace 
 	}
 
 	return nil
+}
+
+func UnmarshalJSON(b []byte) (types.MockData, error) {
+	version := types.MockDataVersion{}
+	err := json.Unmarshal(b, &version)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal mock data version")
+	}
+
+	switch version.Version {
+	case "v1", "":
+		mockData := &types.MockDataV1{}
+		err = json.Unmarshal(b, &mockData)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal mock data v1")
+		}
+		return mockData, nil
+	case "v2":
+		mockData := &types.MockDataV2{}
+		err = json.Unmarshal(b, &mockData)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal mock data v2")
+		}
+		return mockData, nil
+	default:
+		return nil, errors.Errorf("unknown mock data version: %s", version.Version)
+	}
+}
+
+func UnmarshalYAML(b []byte) (types.MockData, error) {
+	version := types.MockDataVersion{}
+	err := yaml.Unmarshal(b, &version)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal mock data version")
+	}
+
+	switch version.Version {
+	case "v1", "":
+		mockData := &types.MockDataV1{}
+		err = yaml.Unmarshal(b, &mockData)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal mock data v1")
+		}
+		return mockData, nil
+	case "v2":
+		mockData := &types.MockDataV2{}
+		err = yaml.Unmarshal(b, &mockData)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal mock data v2")
+		}
+		return mockData, nil
+	default:
+		return nil, errors.Errorf("unknown mock data version: %s", version.Version)
+	}
 }

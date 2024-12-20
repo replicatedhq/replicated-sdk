@@ -45,6 +45,10 @@ type GetCurrentAppInfoResponse struct {
 	ReleaseSequence int64               `json:"releaseSequence"`
 }
 
+type GetCurrentAppStatusResponse struct {
+	AppStatus appstatetypes.AppStatus `json:"appStatus"`
+}
+
 type GetAppHistoryResponse struct {
 	Releases []AppRelease `json:"releases"`
 }
@@ -102,11 +106,21 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.AppStatus = mockData.AppStatus
-		response.HelmChartURL = mockData.HelmChartURL
-
-		if mockData.CurrentRelease != nil {
-			response.CurrentRelease = mockReleaseToAppRelease(*mockData.CurrentRelease)
+		switch mockData := mockData.(type) {
+		case *integrationtypes.MockDataV1:
+			response.AppStatus = mockData.AppStatus
+			response.HelmChartURL = mockData.HelmChartURL
+			if mockData.CurrentRelease != nil {
+				response.CurrentRelease = mockReleaseToAppRelease(*mockData.CurrentRelease)
+			}
+		case *integrationtypes.MockDataV2:
+			response.AppStatus = mockData.AppStatus.State
+			response.HelmChartURL = mockData.HelmChartURL
+			if mockData.CurrentRelease != nil {
+				response.CurrentRelease = mockReleaseToAppRelease(*mockData.CurrentRelease)
+			}
+		default:
+			logger.Errorf("unknown mock data type: %T", mockData)
 		}
 
 		JSON(w, http.StatusOK, response)
@@ -149,6 +163,53 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, response)
 }
 
+func GetCurrentAppStatus(w http.ResponseWriter, r *http.Request) {
+	clientset, err := k8sutil.GetClientset()
+	if err != nil {
+		logger.Error(errors.Wrap(err, "failed to get clientset"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	isIntegrationModeEnabled, err := integration.IsEnabled(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	if err != nil {
+		logger.Errorf("failed to check if integration mode is enabled: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if isIntegrationModeEnabled {
+		response := GetCurrentAppStatusResponse{}
+
+		mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
+		if err != nil {
+			logger.Errorf("failed to get mock data: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		switch mockData := mockData.(type) {
+		case *integrationtypes.MockDataV1:
+			logger.Errorf("app status is not supported in v1 mock data")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		case *integrationtypes.MockDataV2:
+			response.AppStatus = mockData.AppStatus
+		default:
+			logger.Errorf("unknown mock data type: %T", mockData)
+		}
+
+		JSON(w, http.StatusOK, response)
+		return
+	}
+
+	response := GetCurrentAppStatusResponse{
+		AppStatus: store.GetStore().GetAppStatus(),
+	}
+
+	JSON(w, http.StatusOK, response)
+}
+
 func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	if util.IsAirgap() {
 		JSON(w, http.StatusOK, []upstreamtypes.ChannelRelease{})
@@ -178,7 +239,18 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response := []upstreamtypes.ChannelRelease{}
-		for _, mockRelease := range mockData.AvailableReleases {
+		var avalableReleases []integrationtypes.MockRelease
+
+		switch mockData := mockData.(type) {
+		case *integrationtypes.MockDataV1:
+			avalableReleases = mockData.AvailableReleases
+		case *integrationtypes.MockDataV2:
+			avalableReleases = mockData.AvailableReleases
+		default:
+			logger.Errorf("unknown mock data type: %T", mockData)
+		}
+
+		for _, mockRelease := range avalableReleases {
 			response = append(response, upstreamtypes.ChannelRelease{
 				VersionLabel: mockRelease.VersionLabel,
 				CreatedAt:    mockRelease.CreatedAt,
@@ -244,10 +316,21 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var deployedReleases []integrationtypes.MockRelease
+
+		switch mockData := mockData.(type) {
+		case *integrationtypes.MockDataV1:
+			deployedReleases = mockData.DeployedReleases
+		case *integrationtypes.MockDataV2:
+			deployedReleases = mockData.DeployedReleases
+		default:
+			logger.Errorf("unknown mock data type: %T", mockData)
+		}
+
 		response := GetAppHistoryResponse{
 			Releases: []AppRelease{},
 		}
-		for _, mockRelease := range mockData.DeployedReleases {
+		for _, mockRelease := range deployedReleases {
 			response.Releases = append(response.Releases, mockReleaseToAppRelease(mockRelease))
 		}
 

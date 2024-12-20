@@ -1,4 +1,11 @@
-appStatus: ready
+version: v2
+appStatus:
+  resourceStates:
+    - kind: deployment
+      name: dev-app
+      namespace: default
+      state: ready
+  state: ready
 helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
 currentRelease:
   versionLabel: 0.1.3
