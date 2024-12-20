@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
-	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
@@ -36,9 +35,16 @@ func PostIntegrationMockData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mockDataRequest := integrationtypes.MockData{}
-	if err := json.NewDecoder(r.Body).Decode(&mockDataRequest); err != nil {
-		logger.Error(err)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("failed to read request body: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	mockDataRequest, err := integration.UnmarshalJSON(body)
+	if err != nil {
+		logger.Errorf("failed to read request body: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

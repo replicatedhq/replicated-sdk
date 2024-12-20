@@ -43,20 +43,20 @@ func (s StatusInformerString) Parse() (i StatusInformer, err error) {
 }
 
 type AppStatus struct {
-	AppSlug        string         `json:"appSlug"`
-	ResourceStates ResourceStates `json:"resourceStates" hash:"set"`
-	UpdatedAt      time.Time      `json:"updatedAt" hash:"ignore"`
-	State          State          `json:"state"`
-	Sequence       int64          `json:"sequence"`
+	AppSlug        string         `json:"appSlug" yaml:"appSlug"`
+	ResourceStates ResourceStates `json:"resourceStates" yaml:"resourceStates" hash:"set"`
+	UpdatedAt      time.Time      `json:"updatedAt" yaml:"updatedAt" hash:"ignore"`
+	State          State          `json:"state" yaml:"state"`
+	Sequence       int64          `json:"sequence" yaml:"sequence"`
 }
 
 type ResourceStates []ResourceState
 
 type ResourceState struct {
-	Kind      string `json:"kind"`
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-	State     State  `json:"state"`
+	Kind      string `json:"kind" yaml:"kind"`
+	Name      string `json:"name" yaml:"name"`
+	Namespace string `json:"namespace" yaml:"namespace"`
+	State     State  `json:"state" yaml:"state"`
 }
 
 type State string
