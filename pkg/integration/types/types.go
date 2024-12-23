@@ -42,4 +42,8 @@ type MockRelease struct {
 	HelmReleaseName      string `json:"helmReleaseName" yaml:"helmReleaseName"`
 	HelmReleaseRevision  int    `json:"helmReleaseRevision" yaml:"helmReleaseRevision"`
 	HelmReleaseNamespace string `json:"helmReleaseNamespace" yaml:"helmReleaseNamespace"`
+	ChannelID            string `json:"channelID" yaml:"channelID"`
+	ChannelName          string `json:"channelName" yaml:"channelName"`
+	ChannelSequence      int64  `json:"channelSequence" yaml:"channelSequence"`
+	ReleaseSequence      int64  `json:"releaseSequence" yaml:"releaseSequence"`
 }

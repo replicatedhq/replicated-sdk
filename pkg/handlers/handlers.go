@@ -7,6 +7,10 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 )
 
+const (
+	MockDataHeader = "X-Replicated-Mock-Data"
+)
+
 func JSON(w http.ResponseWriter, code int, payload interface{}) {
 	response, err := json.Marshal(payload)
 	if err != nil {

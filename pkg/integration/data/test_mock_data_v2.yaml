@@ -15,6 +15,10 @@ currentRelease:
   helmReleaseName: custom-helm-release-name
   helmReleaseRevision: 4
   helmReleaseNamespace: default
+  channelID: dev-channel
+  channelName: Dev Channel
+  channelSequence: 13
+  releaseSequence: 113
 deployedReleases:
 - versionLabel: custom-version-label-1
   releaseNotes: "custom release notes 1"
