@@ -193,8 +193,6 @@ func TestMock_SetMockData(t *testing.T) {
 					t.Errorf("SetMockData() \n\n%q", fmtJSONDiff(gotV2, testMockDataV2))
 				}
 			},
-			// want:    testMockDataV2,
-			// wantErr: false,
 		},
 	}
 	for _, tt := range tests {

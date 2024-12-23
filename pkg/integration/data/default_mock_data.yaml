@@ -8,30 +8,34 @@ appStatus:
   state: ready
 helmChartURL: oci://registry.replicated.com/dev-app/dev-channel/dev-parent-chart
 currentRelease:
-  versionLabel: 0.1.3
-  releaseNotes: "release notes 0.1.3"
+  versionLabel: 0.1.3-mock-release
+  releaseNotes: "mock release notes for 0.1.3"
   createdAt: 2023-05-23T20:58:07Z
   deployedAt: 2023-05-23T21:58:07Z
   helmReleaseName: dev-parent-chart
   helmReleaseRevision: 3
   helmReleaseNamespace: default
+  channelID: dev-channel
+  channelName: Dev Channel
+  channelSequence: 13
+  releaseSequence: 113
 deployedReleases:
 - versionLabel: 0.1.1
-  releaseNotes: "release notes 0.1.1"
+  releaseNotes: "mock release release notes for 0.1.1"
   createdAt: 2023-05-21T20:58:07Z
   deployedAt: 2023-05-21T21:58:07Z
   helmReleaseName: dev-parent-chart
   helmReleaseRevision: 1
   helmReleaseNamespace: default
 - versionLabel: 0.1.2
-  releaseNotes: "release notes 0.1.2"
+  releaseNotes: "mock release release notes for 0.1.2"
   createdAt: 2023-05-22T20:58:07Z
   deployedAt: 2023-05-22T21:58:07Z
   helmReleaseName: dev-parent-chart
   helmReleaseRevision: 2
   helmReleaseNamespace: default
 - versionLabel: 0.1.3
-  releaseNotes: "release notes 0.1.3"
+  releaseNotes: "mock release release notes for 0.1.3"
   createdAt: 2023-05-23T20:58:07Z
   deployedAt: 2023-05-23T21:58:07Z
   helmReleaseName: dev-parent-chart
@@ -39,10 +43,10 @@ deployedReleases:
   helmReleaseNamespace: default
 availableReleases:
 - versionLabel: 0.1.4
-  releaseNotes: "release notes 0.1.4"
+  releaseNotes: "mock release release notes for 0.1.4"
   createdAt: 2023-05-24T20:58:07Z
   deployedAt: 2023-05-24T21:58:07Z
 - versionLabel: 0.1.5
-  releaseNotes: "release notes 0.1.5"
+  releaseNotes: "mock release release notes for 0.1.5"
   createdAt: 2023-06-01T20:58:07Z
   deployedAt: 2023-06-01T21:58:07Z

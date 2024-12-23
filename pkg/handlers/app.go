@@ -89,21 +89,17 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isIntegrationModeEnabled {
-		response := GetCurrentAppInfoResponse{
-			InstanceID:      store.GetStore().GetAppID(),
-			AppSlug:         store.GetStore().GetAppSlug(),
-			AppName:         store.GetStore().GetAppName(),
-			ChannelID:       store.GetStore().GetChannelID(),
-			ChannelName:     store.GetStore().GetChannelName(),
-			ChannelSequence: store.GetStore().GetChannelSequence(),
-			ReleaseSequence: store.GetStore().GetReleaseSequence(),
-		}
-
 		mockData, err := integration.GetMockData(r.Context(), clientset, store.GetStore().GetNamespace())
 		if err != nil {
 			logger.Errorf("failed to get mock data: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
+		}
+
+		response := GetCurrentAppInfoResponse{
+			InstanceID: store.GetStore().GetAppID(),
+			AppSlug:    store.GetStore().GetAppSlug(),
+			AppName:    store.GetStore().GetAppName(),
 		}
 
 		switch mockData := mockData.(type) {
@@ -113,15 +109,26 @@ func GetCurrentAppInfo(w http.ResponseWriter, r *http.Request) {
 			if mockData.CurrentRelease != nil {
 				response.CurrentRelease = mockReleaseToAppRelease(*mockData.CurrentRelease)
 			}
+			response.ChannelID = store.GetStore().GetChannelID()
+			response.ChannelName = store.GetStore().GetChannelName()
+			response.ChannelSequence = store.GetStore().GetChannelSequence()
+			response.ReleaseSequence = store.GetStore().GetReleaseSequence()
+
 		case *integrationtypes.MockDataV2:
 			response.AppStatus = mockData.AppStatus.State
 			response.HelmChartURL = mockData.HelmChartURL
 			if mockData.CurrentRelease != nil {
 				response.CurrentRelease = mockReleaseToAppRelease(*mockData.CurrentRelease)
+				response.ChannelID = mockData.CurrentRelease.ChannelID
+				response.ChannelName = mockData.CurrentRelease.ChannelName
+				response.ChannelSequence = mockData.CurrentRelease.ChannelSequence
+				response.ReleaseSequence = mockData.CurrentRelease.ReleaseSequence
 			}
 		default:
 			logger.Errorf("unknown mock data type: %T", mockData)
 		}
+
+		w.Header().Set(MockDataHeader, "true")
 
 		JSON(w, http.StatusOK, response)
 		return
@@ -199,6 +206,8 @@ func GetCurrentAppStatus(w http.ResponseWriter, r *http.Request) {
 			logger.Errorf("unknown mock data type: %T", mockData)
 		}
 
+		w.Header().Set(MockDataHeader, "true")
+
 		JSON(w, http.StatusOK, response)
 		return
 	}
@@ -257,6 +266,8 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 				ReleaseNotes: mockRelease.ReleaseNotes,
 			})
 		}
+
+		w.Header().Set(MockDataHeader, "true")
 
 		JSON(w, http.StatusOK, response)
 		return
@@ -333,6 +344,8 @@ func GetAppHistory(w http.ResponseWriter, r *http.Request) {
 		for _, mockRelease := range deployedReleases {
 			response.Releases = append(response.Releases, mockReleaseToAppRelease(mockRelease))
 		}
+
+		w.Header().Set(MockDataHeader, "true")
 
 		JSON(w, http.StatusOK, response)
 		return
@@ -511,6 +524,7 @@ func DeleteCustomAppMetricsKey(w http.ResponseWriter, r *http.Request) {
 
 	JSON(w, http.StatusNoContent, "")
 }
+
 func validateCustomAppMetricsData(data CustomAppMetricsData) error {
 	if len(data) == 0 {
 		return errors.New("no data provided")
