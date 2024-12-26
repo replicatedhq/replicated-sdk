@@ -31,6 +31,18 @@ jobs:
       - uses: replicatedhq/action-install-pact@v1
       - run: make test
 
+  cmx-versions:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cmx-versions
+        id: cmx-versions-to-test
+        with:
+          replicated-api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
+          include-distributions: '["k3s", "kind", "gke", "eks", "openshift", "oke"]'
+    outputs:
+      versions-to-test: ${{ steps.cmx-versions-to-test.outputs.versions-to-test }}
+
   build-and-push-e2e:
     runs-on: ubuntu-22.04
     steps:
@@ -241,17 +253,11 @@ jobs:
 
   validate-e2e:
     runs-on: ubuntu-22.04
-    needs: [ create-test-release ]
+    needs: [ create-test-release, cmx-versions ]
     strategy:
       fail-fast: false
       matrix:
-        cluster: [
-          {distribution: k3s, version: 1.26},
-          {distribution: kind, version: 1.27},
-          {distribution: gke, version: 1.28},
-          {distribution: eks, version: 1.29},
-          {distribution: openshift, version: 4.14.0-okd}
-        ]
+        cluster: ${{ fromJson(needs.cmx-versions.outputs.versions-to-test) }}
     env:
       LICENSE_ID: ${{ needs.create-test-release.outputs.license-id }}
       CHANNEL_SLUG: ${{ needs.create-test-release.outputs.channel-slug }}

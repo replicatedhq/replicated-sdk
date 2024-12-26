@@ -1,0 +1,19 @@
+name: 'Get CMX Versions'
+description: 'Retrieves a list of the CMX versions to test against'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+
+inputs:
+  replicated-api-token:
+    description: 'Replicated API token for CMX'
+    required: true
+
+  include-distributions:
+    description: 'A list of distributions to include in the versions to test against'
+    default: '["k3s"]'
+    required: false
+
+outputs:
+  versions-to-test:
+    description: 'A JSON string containing the CMX versions to test against'
