@@ -250,6 +250,7 @@ jobs:
             - name: "num_seats"
               value: "10"
           is-kots-install-enabled: "false"
+          is-dev-mode-enabled: "true"
 
   validate-e2e:
     runs-on: ubuntu-22.04
