@@ -33,6 +33,9 @@ helm.sh/chart: {{ include "replicated.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- with .Values.labels }}
+{{- toYaml . | nindent 0 }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -125,3 +128,15 @@ Resource Names
 {{- define "replicated.supportBundleName" -}}
   {{ include "replicated.name" . }}-supportbundle
 {{- end -}}
+
+{{/*
+Merge multiple maps
+Usage: include "replicated.merge" (list $map1 $map2 $map3)
+*/}}
+{{- define "replicated.mergeValues" -}}
+{{- $result := dict }}
+{{- range . }}
+{{- $result = merge $result . }}
+{{- end }}
+{{- toYaml $result }}
+{{- end }}

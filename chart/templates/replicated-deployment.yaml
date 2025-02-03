@@ -31,7 +31,7 @@ spec:
       annotations:
         checksum/replicated-secret: {{ include (print $.Template.BasePath "/replicated-secret.yaml") . | sha256sum }}
       labels:
-        {{- include "replicated.labels" . | nindent 8 }}
+        {{- include "replicated.mergeValues" (list (include "replicated.labels" . | fromYaml) .Values.podLabels) | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

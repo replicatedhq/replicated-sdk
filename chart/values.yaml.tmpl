@@ -5,6 +5,11 @@
 global:
   imageRegistry: ""
 
+# Additional labels to add to all resources created by this chart
+labels: {}
+  # app.kubernetes.io/part-of: my-app
+  # environment: production
+
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
 # 
@@ -46,6 +51,11 @@ containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop: ["ALL"]
+
+# Additional labels to add only to the pod template
+podLabels: {}
+  # example.com/custom-label: value
+  # monitoring: enabled
 
 podSecurityContext:
   enabled: true
