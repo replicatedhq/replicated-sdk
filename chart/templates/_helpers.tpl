@@ -131,7 +131,7 @@ Resource Names
 
 {{/*
 Merge multiple maps
-Usage: include "replicated.merge" (list $map1 $map2 $map3)
+Usage: include "replicated.mergeValues" (list $map1 $map2 $map3)
 */}}
 {{- define "replicated.mergeValues" -}}
 {{- $result := dict }}
