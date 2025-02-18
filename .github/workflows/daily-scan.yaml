@@ -36,13 +36,13 @@ jobs:
         uses: ./.github/actions/build-push-action
         with:
           context: deploy
-          image-name: replicated/replicated-sdk:${{ github.sha }}
+          image-name: ttl.sh/replicated/replicated-sdk:${{ github.sha }}
           git-tag: "1.0.0" # can't use ${{ github.sha }} because melange config requires strict format.
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'replicated/replicated-sdk:${{ github.sha }}'
+          image-ref: 'ttl.sh/replicated/replicated-sdk:${{ github.sha }}'
           format: 'sarif'          
           output: 'trivy-results.sarif'
           ignore-unfixed: true
