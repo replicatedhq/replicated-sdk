@@ -5,9 +5,14 @@ on:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
+permissions: {}  # Remove all permissions by default
+
 jobs:
   scan_filesystem:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read        # For checkout
+      security-events: write # For uploading SARIF results
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,30 +30,42 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
+    timeout-minutes: 30
 
-  scan_image:
-    runs-on: ubuntu-22.04
+  scan-release:
+    name: Scan Current Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read        # For reading releases
+      security-events: write # For uploading SARIF results
+      
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build replicated image
-        uses: ./.github/actions/build-push-action
+      - name: Get latest release
+        id: get_release
+        uses: actions/github-script@v6
         with:
-          context: deploy
-          image-name: ttl.sh/replicated/replicated-sdk:${{ github.sha }}
-          git-tag: "1.0.0" # can't use ${{ github.sha }} because melange config requires strict format.
-          
+          script: |
+            const release = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            core.setOutput('tag_name', release.data.tag_name);
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'ttl.sh/replicated/replicated-sdk:${{ github.sha }}'
-          format: 'sarif'          
+          image-ref: 'index.docker.io/replicated/replicated-sdk:${{ steps.get_release.outputs.tag_name }}'
+          format: 'sarif'
           output: 'trivy-results.sarif'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
+          category: 'release-cve-scan'
+    timeout-minutes: 30
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
