@@ -30,6 +30,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
+          category: 'filesystem-scan'  # Added explicit category for filesystem scan
     timeout-minutes: 30
 
   scan-release:
@@ -63,7 +64,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
-          category: 'release-cve-scan'
+          category: 'image-scan-replicated-sdk-${{ steps.get_release.outputs.tag_name }}'  # Changed to include image name and tag
     timeout-minutes: 30
 
 concurrency:
