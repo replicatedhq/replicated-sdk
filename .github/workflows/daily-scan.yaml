@@ -66,7 +66,8 @@ jobs:
                     "fullName": "Trivy Vulnerability Scanner",
                     "version": "0.57.1",
                     "rules": [
-                      {{ range . }}{{- if not (eq .VulnerabilityID "") -}}
+                      {{ range $result := . }}
+                      {{- range .Vulnerabilities -}}
                       {
                         "id": {{ .VulnerabilityID | toJson }},
                         "name": {{ printf "%s-%s" .PkgName .VulnerabilityID | toJson }},
@@ -91,7 +92,9 @@ jobs:
                           ],
                           "precision": "very-high"
                         }
-                      }{{ if not (last $) }},{{ end }}{{ end }}{{ end }}
+                      }{{ if not (last $) }},{{ end }}
+                      {{- end -}}
+                      {{ end }}
                     ]
                   }
                 },
@@ -100,7 +103,8 @@ jobs:
                   "guid": "${{ github.run_id }}-${{ github.run_attempt }}"
                 },
                 "results": [
-                  {{ range . }}{{- if not (eq .VulnerabilityID "") -}}
+                  {{ range $result := . }}
+                  {{- range .Vulnerabilities -}}
                   {
                     "ruleId": {{ .VulnerabilityID | toJson }},
                     "message": {
@@ -110,7 +114,7 @@ jobs:
                       {
                         "physicalLocation": {
                           "artifactLocation": {
-                            "uri": "Dockerfile",
+                            "uri": {{ $result.Target | toJson }},
                             "uriBaseId": "ROOTPATH"
                           },
                           "region": {
@@ -134,7 +138,9 @@ jobs:
                         "tag": "${{ steps.get_release.outputs.tag_name }}"
                       }
                     }
-                  }{{ if not (last $) }},{{ end }}{{ end }}{{ end }}
+                  }{{ if not (last $) }},{{ end }}
+                  {{- end -}}
+                  {{ end }}
                 ],
                 "columnKind": "utf16CodeUnits",
                 "originalUriBaseIds": {
