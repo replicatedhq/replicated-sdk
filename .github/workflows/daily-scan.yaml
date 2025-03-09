@@ -55,7 +55,7 @@ jobs:
         run: |
           cat > trivy-template.tpl << 'EOL'
           {
-            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
             "version": "2.1.0",
             "runs": [
               {
@@ -65,32 +65,34 @@ jobs:
                     "informationUri": "https://github.com/aquasecurity/trivy",
                     "fullName": "Trivy Vulnerability Scanner",
                     "version": "0.57.1",
-                    "rules": {{ range . }}{{- if not (eq .VulnerabilityID "") -}}
-                    {
-                      "id": {{ .VulnerabilityID | toJson }},
-                      "name": "{{ .PkgName }}-{{ .VulnerabilityID }}",
-                      "shortDescription": {
-                        "text": {{ .Title | toJson }}
-                      },
-                      "fullDescription": {
-                        "text": {{ .Description | toJson }}
-                      },
-                      "defaultConfiguration": {
-                        "level": "{{ if eq .Severity `CRITICAL` }}error{{ else if eq .Severity `HIGH` }}error{{ else if eq .Severity `MEDIUM` }}warning{{ else }}note{{ end }}"
-                      },
-                      "help": {
-                        "text": {{ .Description | toJson }},
-                        "markdown": {{ printf "*%s*\n\n%s\n\n**Severity**: %s\n\n**References**:\n%s\n" .Title .Description .Severity .References | toJson }}
-                      },
-                      "properties": {
-                        "tags": [
-                          "vulnerability",
-                          "security",
-                          {{ .Severity | toJson }}
-                        ],
-                        "precision": "very-high"
-                      }
-                    }{{ end }}{{ end }}
+                    "rules": [
+                      {{ range . }}{{- if not (eq .VulnerabilityID "") -}}
+                      {
+                        "id": {{ .VulnerabilityID | toJson }},
+                        "name": "{{ .PkgName }}-{{ .VulnerabilityID }}",
+                        "shortDescription": {
+                          "text": {{ .Title | toJson }}
+                        },
+                        "fullDescription": {
+                          "text": {{ .Description | toJson }}
+                        },
+                        "defaultConfiguration": {
+                          "level": "{{ if eq .Severity \"CRITICAL\" }}error{{ else if eq .Severity \"HIGH\" }}error{{ else if eq .Severity \"MEDIUM\" }}warning{{ else }}note{{ end }}"
+                        },
+                        "help": {
+                          "text": {{ .Description | toJson }},
+                          "markdown": {{ printf "*%s*\n\n%s\n\n**Severity**: %s\n\n**References**:\n%s\n" .Title .Description .Severity .References | toJson }}
+                        },
+                        "properties": {
+                          "tags": [
+                            "vulnerability",
+                            "security",
+                            {{ .Severity | toJson }}
+                          ],
+                          "precision": "very-high"
+                        }
+                      }{{ if not (last $) }},{{ end }}{{ end }}{{ end }}
+                    ]
                   }
                 },
                 "automationDetails": {
@@ -108,7 +110,8 @@ jobs:
                       {
                         "physicalLocation": {
                           "artifactLocation": {
-                            "uri": "Dockerfile"
+                            "uri": "Dockerfile",
+                            "uriBaseId": "ROOTPATH"
                           },
                           "region": {
                             "startLine": 1,
@@ -131,8 +134,14 @@ jobs:
                         "tag": "${{ steps.get_release.outputs.tag_name }}"
                       }
                     }
-                  }{{ end }}{{ end }}
-                ]
+                  }{{ if not (last $) }},{{ end }}{{ end }}{{ end }}
+                ],
+                "columnKind": "utf16CodeUnits",
+                "originalUriBaseIds": {
+                  "ROOTPATH": {
+                    "uri": "file:///"
+                  }
+                }
               }
             ]
           }
