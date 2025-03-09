@@ -86,7 +86,7 @@ jobs:
                         "tags": [
                           "vulnerability",
                           "security",
-                          {{ .Severity | toLower | printf "%q" }}
+                          {{ .Severity | toJson }}
                         ],
                         "precision": "very-high"
                       }
