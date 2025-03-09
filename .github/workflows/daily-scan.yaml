@@ -51,43 +51,48 @@ jobs:
             });
             core.setOutput('tag_name', release.data.tag_name);
 
+      - name: Create Trivy config
+        run: |
+          cat > trivy-template.tpl << 'EOL'
+          {
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "Trivy",
+                    "informationUri": "https://github.com/aquasecurity/trivy",
+                    "fullName": "Trivy Vulnerability Scanner",
+                    "version": "0.57.1",
+                    "rules": []
+                  }
+                },
+                "automationDetails": {
+                  "id": "trivy-scan/${{ github.repository }}",
+                  "guid": "${{ github.run_id }}"
+                },
+                "properties": {
+                  "imageRef": "index.docker.io/replicated/replicated-sdk:${{ steps.get_release.outputs.tag_name }}",
+                  "repository": "${{ github.repository }}",
+                  "scanTime": "${{ github.event.repository.updated_at }}",
+                  "imageMetadata": {
+                    "name": "replicated/replicated-sdk",
+                    "tag": "${{ steps.get_release.outputs.tag_name }}"
+                  }
+                },
+                "results": {{ toJson . }}
+              }
+            ]
+          }
+          EOL
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'index.docker.io/replicated/replicated-sdk:${{ steps.get_release.outputs.tag_name }}'
           format: 'template'
-          template: |
-            {
-              "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-              "version": "2.1.0",
-              "runs": [
-                {
-                  "tool": {
-                    "driver": {
-                      "name": "Trivy",
-                      "informationUri": "https://github.com/aquasecurity/trivy",
-                      "fullName": "Trivy Vulnerability Scanner",
-                      "version": "0.57.1",
-                      "rules": []
-                    }
-                  },
-                  "automationDetails": {
-                    "id": "trivy-scan/${{ github.repository }}",
-                    "guid": "${{ github.run_id }}"
-                  },
-                  "properties": {
-                    "imageRef": "index.docker.io/replicated/replicated-sdk:${{ steps.get_release.outputs.tag_name }}",
-                    "repository": "${{ github.repository }}",
-                    "scanTime": "${{ github.event.repository.updated_at }}",
-                    "imageMetadata": {
-                      "name": "replicated/replicated-sdk",
-                      "tag": "${{ steps.get_release.outputs.tag_name }}"
-                    }
-                  },
-                  "results": {{ toJson . }}
-                }
-              ]
-            }
+          template: '@trivy-template.tpl'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
 
