@@ -69,7 +69,7 @@ jobs:
                       {{ range . }}{{- if not (eq .VulnerabilityID "") -}}
                       {
                         "id": {{ .VulnerabilityID | toJson }},
-                        "name": "{{ .PkgName }}-{{ .VulnerabilityID }}",
+                        "name": {{ printf "%s-%s" .PkgName .VulnerabilityID | toJson }},
                         "shortDescription": {
                           "text": {{ .Title | toJson }}
                         },
@@ -77,11 +77,11 @@ jobs:
                           "text": {{ .Description | toJson }}
                         },
                         "defaultConfiguration": {
-                          "level": "{{ if eq .Severity \"CRITICAL\" }}error{{ else if eq .Severity \"HIGH\" }}error{{ else if eq .Severity \"MEDIUM\" }}warning{{ else }}note{{ end }}"
+                          "level": {{ if eq .Severity "CRITICAL" }}{{ "error" | toJson }}{{ else if eq .Severity "HIGH" }}{{ "error" | toJson }}{{ else if eq .Severity "MEDIUM" }}{{ "warning" | toJson }}{{ else }}{{ "note" | toJson }}{{ end }}
                         },
                         "help": {
                           "text": {{ .Description | toJson }},
-                          "markdown": {{ printf "*%s*\n\n%s\n\n**Severity**: %s\n\n**References**:\n%s\n" .Title .Description .Severity .References | toJson }}
+                          "markdown": {{ printf "%s\n\n%s\n\n**Severity**: %s\n\n**References**:\n%s" .Title .Description .Severity .References | toJson }}
                         },
                         "properties": {
                           "tags": [
@@ -104,7 +104,7 @@ jobs:
                   {
                     "ruleId": {{ .VulnerabilityID | toJson }},
                     "message": {
-                      "text": {{ printf "Vulnerability %s found in %s\nSeverity: %s\nInstalled Version: %s\nFixed Version: %s\nDescription: %s" .VulnerabilityID .PkgName .Severity .InstalledVersion .FixedVersion .Description | toJson }}
+                      "text": {{ printf "Vulnerability %s found in %s (Severity: %s, Installed: %s, Fixed: %s)" .VulnerabilityID .PkgName .Severity .InstalledVersion .FixedVersion | toJson }}
                     },
                     "locations": [
                       {
@@ -123,7 +123,7 @@ jobs:
                       }
                     ],
                     "partialFingerprints": {
-                      "primaryLocationLineHash": "{{ sha256sum .VulnerabilityID }}"
+                      "primaryLocationLineHash": {{ .VulnerabilityID | sha256sum | toJson }}
                     },
                     "properties": {
                       "imageRef": "index.docker.io/replicated/replicated-sdk:${{ steps.get_release.outputs.tag_name }}",
