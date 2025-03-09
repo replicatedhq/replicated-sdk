@@ -163,6 +163,13 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'release-cve-scan'
+
+      - name: Upload SARIF file as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+          retention-days: 5
     timeout-minutes: 30
 
 concurrency:
