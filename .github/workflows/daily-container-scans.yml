@@ -1,12 +1,12 @@
 # Container Security Scans
 # This workflow orchestrates security scanning of container images using Anchore scanner.
-# It runs weekly and can be triggered manually to scan various container images for vulnerabilities.
+# It runs nightly and can be triggered manually to scan various container images for vulnerabilities.
 name: Container Security Scans
 
 # Trigger configuration
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Runs weekly at midnight on Sunday (UTC)
+    - cron: '0 0 * * *'  # Runs nightly at midnight (UTC)
   workflow_dispatch:      # Allows manual triggering through GitHub UI
 
 # Security hardening: Start with no permissions and grant only what's needed
