@@ -43,3 +43,6 @@ cmd/replicated/__debug_bin
 pact_logs/
 pact/log/
 pacts/
+
+# Custor Spec Story
+.specstory/
