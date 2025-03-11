@@ -24,6 +24,7 @@ image:
   tag: "${REPLICATED_TAG}"
   pullPolicy: IfNotPresent
 
+# NOTE: The following values are typically injected by the Replicated Registry and should not be modified directly
 license: ""
 licenseFields: ""
 appName: ""
@@ -37,6 +38,11 @@ versionLabel: ""
 parentChartURL: ""
 statusInformers: null
 replicatedAppEndpoint: ""
+
+# Domain for the Replicated App Service - takes precedence over replicatedAppEndpoint if set
+# If not specified, the default domain "replicated.app" will be used
+# Should not include the protocol, just the domain name
+replicatedAppDomain: ""
 
 serviceAccountName: ""
 clusterRole: ""

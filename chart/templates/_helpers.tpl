@@ -137,3 +137,16 @@ Resource Names
 {{- define "replicated.supportBundleName" -}}
   {{ include "replicated.name" . }}-supportbundle
 {{- end -}}
+
+{{/*
+Get the Replicated App Endpoint
+*/}}
+{{- define "replicated.appEndpoint" -}}
+{{- if .Values.replicatedAppDomain -}}
+  {{- printf "https://%s" .Values.replicatedAppDomain -}}
+{{- else if .Values.replicatedAppEndpoint -}}
+  {{- .Values.replicatedAppEndpoint -}}
+{{- else -}}
+  {{- printf "https://replicated.app" -}}
+{{- end -}}
+{{- end -}}
