@@ -101,7 +101,7 @@ func SendOnlineInstanceData(license *v1beta1.License, instanceData *types.Instan
 		return errors.Wrap(err, "failed to marshal request payload")
 	}
 
-	// Get endpoint from store if available, otherwise use the license endpoint
+	// Get endpoint from store if available, otherwise fall back to license endpoint
 	endpoint := store.GetStore().GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint

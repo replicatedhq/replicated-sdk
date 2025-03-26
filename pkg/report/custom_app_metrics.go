@@ -52,7 +52,6 @@ func SendOnlineCustomAppMetrics(sdkStore store.Store, data map[string]interface{
 	license := sdkStore.GetLicense()
 
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
-	// Always use the store endpoint if available, only fall back to license endpoint if store endpoint is empty
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
 	}
