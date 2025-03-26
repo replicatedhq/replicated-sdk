@@ -18,6 +18,7 @@ import (
 
 func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
+	// Always use the store endpoint if available, only fall back to license endpoint if store endpoint is empty
 	if endpoint == "" {
 		endpoint = license.Spec.Endpoint
 	}

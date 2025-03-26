@@ -101,7 +101,13 @@ func SendOnlineInstanceData(license *v1beta1.License, instanceData *types.Instan
 		return errors.Wrap(err, "failed to marshal request payload")
 	}
 
-	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", license.Spec.Endpoint), bytes.NewBuffer(reqBody))
+	// Get endpoint from store if available, otherwise use the license endpoint
+	endpoint := store.GetStore().GetReplicatedAppEndpoint()
+	if endpoint == "" {
+		endpoint = license.Spec.Endpoint
+	}
+
+	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", endpoint), bytes.NewBuffer(reqBody))
 	if err != nil {
 		return errors.Wrap(err, "failed to create http request")
 	}

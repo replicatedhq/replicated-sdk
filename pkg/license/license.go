@@ -25,7 +25,12 @@ type LicenseData struct {
 
 func GetLicenseByID(licenseID string, endpoint string) (*kotsv1beta1.License, error) {
 	if endpoint == "" {
-		endpoint = defaultReplicatedAppEndpoint
+		storeEndpoint := store.GetStore().GetReplicatedAppEndpoint()
+		if storeEndpoint != "" {
+			endpoint = storeEndpoint
+		} else {
+			endpoint = defaultReplicatedAppEndpoint
+		}
 	}
 	url := fmt.Sprintf("%s/license", endpoint)
 
@@ -39,7 +44,12 @@ func GetLicenseByID(licenseID string, endpoint string) (*kotsv1beta1.License, er
 
 func GetLatestLicense(license *kotsv1beta1.License, endpoint string) (*LicenseData, error) {
 	if endpoint == "" {
-		endpoint = license.Spec.Endpoint
+		storeEndpoint := store.GetStore().GetReplicatedAppEndpoint()
+		if storeEndpoint != "" {
+			endpoint = storeEndpoint
+		} else {
+			endpoint = license.Spec.Endpoint
+		}
 	}
 	url := fmt.Sprintf("%s/license/%s", endpoint, license.Spec.AppSlug)
 
@@ -110,7 +120,12 @@ func LicenseIsExpired(license *kotsv1beta1.License) (bool, error) {
 
 func GetLatestLicenseFields(license *kotsv1beta1.License, endpoint string) (types.LicenseFields, error) {
 	if endpoint == "" {
-		endpoint = license.Spec.Endpoint
+		storeEndpoint := store.GetStore().GetReplicatedAppEndpoint()
+		if storeEndpoint != "" {
+			endpoint = storeEndpoint
+		} else {
+			endpoint = license.Spec.Endpoint
+		}
 	}
 	url := fmt.Sprintf("%s/license/fields", endpoint)
 
@@ -149,7 +164,12 @@ func GetLatestLicenseFields(license *kotsv1beta1.License, endpoint string) (type
 
 func GetLatestLicenseField(license *kotsv1beta1.License, endpoint string, fieldName string) (*types.LicenseField, error) {
 	if endpoint == "" {
-		endpoint = license.Spec.Endpoint
+		storeEndpoint := store.GetStore().GetReplicatedAppEndpoint()
+		if storeEndpoint != "" {
+			endpoint = storeEndpoint
+		} else {
+			endpoint = license.Spec.Endpoint
+		}
 	}
 	url := fmt.Sprintf("%s/license/field/%s", endpoint, fieldName)
 
