@@ -1,19 +1,13 @@
 # Container Security Scans
-# This workflow orchestrates security scanning of container images using Anchore scanner.
-# It runs nightly and can be triggered manually to scan various container images for vulnerabilities.
-name: Container Security Scans
+name: Image Security Scans
 
-# Trigger configuration
 on:
   schedule:
     - cron: '0 0 * * *'  # Runs nightly at midnight (UTC)
   workflow_dispatch:      # Allows manual triggering through GitHub UI
 
-# Security hardening: Start with no permissions and grant only what's needed
 permissions: {}  # Remove all permissions by default
 
-# Prevent multiple workflow runs from interfering with each other
-# This ensures only one scan runs at a time and new triggers cancel old runs
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -39,19 +33,19 @@ jobs:
             });
             core.setOutput('tag_name', release.data.tag_name);
   
-  # Scan Replicated SDK container using latest release tag
   scan-replicated-sdk:
     name: Scan Replicated SDK
     needs: get-latest-tag  # Wait for tag to be fetched
-    uses: ./.github/workflows/scan-container-image.yml
-    # Grant required permissions to the reusable workflow
+    uses: ./.github/workflows/scan-image-grype.yml
     permissions:
       contents: read        # Needed to read workflow files
       security-events: write # Needed to upload SARIF results
+      actions: read
     with:
-      # Use the latest release tag from the previous job
       image: replicated/replicated-sdk:${{ needs.get-latest-tag.outputs.tag_name }}
-      # Report findings of medium severity or higher
-      severity-cutoff: medium
-      # Continue even if vulnerabilities are found
+      severity-cutoff: negligible
       fail-build: false
+      output-file: results.sarif
+      timeout-minutes: 30
+      retention-days: 90
+      category-prefix: container-scan-
