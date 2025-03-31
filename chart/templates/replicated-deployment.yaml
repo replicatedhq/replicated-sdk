@@ -81,6 +81,10 @@ spec:
       {{- if .Values.extraVolumes }}
       {{- toYaml .Values.extraVolumes | nindent 6 }}
       {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers:
+      {{- toYaml .Values.initContainers | nindent 6 }}
+      {{- end }}
       containers:
       - name: replicated
         {{- if .Values.images }}

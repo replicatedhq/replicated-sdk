@@ -133,6 +133,15 @@ readinessProbe:
   timeoutSeconds: 1
   successThreshold: 1
 
+# Init containers to run before the app container starts
+initContainers: []
+  # - name: init-myservice
+  #   image: busybox:latest
+  #   command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+  # - name: init-db
+  #   image: busybox:latest
+  #   command: ['sh', '-c', 'until nc -z -w1 postgresql 5432; do echo waiting for database; sleep 2; done;']
+
 service:
   type: ClusterIP
   port: 3000
