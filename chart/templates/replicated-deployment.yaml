@@ -25,6 +25,10 @@ metadata:
   name: {{ include "replicated.deploymentName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if .Values.strategy }}
+  strategy: {{- toYaml .Values.strategy | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "replicated.selectorLabels" . | nindent 6 }}
@@ -53,8 +57,8 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if $podSecurityContext.enabled }}
-      securityContext: {{- omit $podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- if .Values.podSecurityContext }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- end }}
       volumes:
       - name: replicated
@@ -83,8 +87,8 @@ spec:
         image: {{ include "replicated.image" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
         {{- end }}
-        {{- if .Values.containerSecurityContext.enabled }}
-        securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 10 }}
+        {{- if .Values.containerSecurityContext }}
+        securityContext: {{- toYaml .Values.containerSecurityContext | nindent 10 }}
         {{- end }}
         volumeMounts:
         - name: replicated
@@ -149,5 +153,5 @@ spec:
         {{- if .Values.readinessProbe }}
         readinessProbe: {{- toYaml .Values.readinessProbe | nindent 10 }}
         {{- end }}
-      restartPolicy: Always
+      restartPolicy: {{ .Values.restartPolicy }}
       serviceAccountName: {{ include "replicated.serviceAccountName" . }}

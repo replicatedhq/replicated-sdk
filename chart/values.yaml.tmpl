@@ -15,6 +15,21 @@ commonAnnotations: {}
   # example.com/annotation: value
   # prometheus.io/scrape: "true"
 
+# Deployment configuration
+replicaCount: 1
+
+# Pod restart policy
+# Options: Always, OnFailure, Never
+restartPolicy: Always
+
+# Deployment update strategy
+# Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+strategy: {}
+  # type: RollingUpdate
+  # rollingUpdate:
+  #   maxSurge: 1
+  #   maxUnavailable: 0
+
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
 # 
@@ -55,26 +70,28 @@ imagePullSecrets: []
 nameOverride: ""
 namespaceOverride: ""
 
-containerSecurityContext:
-  enabled: true
-  runAsNonRoot: true
-  readOnlyRootFilesystem: true
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop: ["ALL"]
-
 # Additional labels to add to the pod template
 podLabels: {}
   # example.com/custom-label: value
 
+# Pod security context
+# Set to null to disable
 podSecurityContext:
-  enabled: true
   runAsUser: 1001
   runAsGroup: 1001
   fsGroup: 1001
   supplementalGroups: [1001]
   seccompProfile:
     type: "RuntimeDefault"
+
+# Container security context
+# Set to null to disable
+containerSecurityContext:
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
 
 # Container resource requirements
 # Leave empty to remove resource constraints
