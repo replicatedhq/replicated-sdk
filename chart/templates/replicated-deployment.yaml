@@ -78,6 +78,9 @@ spec:
           - key: {{ .Values.privateCASecret.key }}
             path: ca.crt
       {{- end }}
+      {{- if .Values.extraVolumes }}
+      {{- toYaml .Values.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: replicated
         {{- if .Values.images }}
@@ -102,6 +105,9 @@ spec:
         - mountPath: /certs/ca.crt
           subPath: ca.crt
           name: additional-certs
+        {{- end }}
+        {{- if .Values.extraVolumeMounts }}
+        {{- toYaml .Values.extraVolumeMounts | nindent 8 }}
         {{- end }}
         env:
         {{- with .Values.extraEnv }}

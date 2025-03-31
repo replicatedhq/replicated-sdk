@@ -103,6 +103,24 @@ resources:
     cpu: 100m
     memory: 100Mi
 
+# Extra volumes to add to the pod
+extraVolumes: []
+  # - name: config-volume
+  #   configMap:
+  #     name: app-config
+  # - name: secret-volume
+  #   secret:
+  #     secretName: app-secrets
+
+# Extra volume mounts to add to the container
+extraVolumeMounts: []
+  # - name: config-volume
+  #   mountPath: /etc/app/config
+  #   readOnly: true
+  # - name: secret-volume
+  #   mountPath: /etc/app/secrets
+  #   readOnly: true
+
 # Readiness probe configuration
 readinessProbe:
   httpGet:
