@@ -1,20 +1,4 @@
-{{- $podSecurityContext := .Values.podSecurityContext }}
-{{ if eq (include "replicated.isOpenShift" .) "true" }}
-  {{ if eq ($podSecurityContext.runAsUser | int) 1001 }}
-    {{- $_ := unset $podSecurityContext "runAsUser" }}
-  {{- end }}
-  {{ if eq ($podSecurityContext.runAsGroup | int) 1001 }}
-    {{- $_ := unset $podSecurityContext "runAsGroup" }}
-  {{- end }}
-  {{ if eq ($podSecurityContext.fsGroup | int) 1001 }}
-    {{- $_ := unset $podSecurityContext "fsGroup" }}
-  {{- end }}
-  {{ if eq ($podSecurityContext.supplementalGroups | len) 1 }}
-    {{ if eq (index $podSecurityContext.supplementalGroups 0 | int) 1001 }}
-      {{- $_ := unset $podSecurityContext "supplementalGroups" }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+{{- $podSecurityContext := include "replicated.openShiftSecurityContext" .Values.podSecurityContext | fromYaml }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -75,8 +59,8 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.podSecurityContext }}
-      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if $podSecurityContext }}
+      securityContext: {{- toYaml $podSecurityContext | nindent 8 }}
       {{- end }}
       volumes:
       - name: replicated

@@ -150,3 +150,29 @@ Get the Replicated App Endpoint
   {{- printf "https://replicated.app" -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Adjust the pod security context for OpenShift compatibility
+OpenShift runs pods with a specific UID (1001) and handles security contexts differently
+This helper removes those fields if they match OpenShift defaults to avoid conflicts
+*/}}
+{{- define "replicated.openShiftSecurityContext" -}}
+{{- $podSecurityContext := deepCopy . -}}
+{{- if eq (include "replicated.isOpenShift" $) "true" -}}
+  {{- if eq ($podSecurityContext.runAsUser | int) 1001 -}}
+    {{- $_ := unset $podSecurityContext "runAsUser" -}}
+  {{- end -}}
+  {{- if eq ($podSecurityContext.runAsGroup | int) 1001 -}}
+    {{- $_ := unset $podSecurityContext "runAsGroup" -}}
+  {{- end -}}
+  {{- if eq ($podSecurityContext.fsGroup | int) 1001 -}}
+    {{- $_ := unset $podSecurityContext "fsGroup" -}}
+  {{- end -}}
+  {{- if eq ($podSecurityContext.supplementalGroups | len) 1 -}}
+    {{- if eq (index $podSecurityContext.supplementalGroups 0 | int) 1001 -}}
+      {{- $_ := unset $podSecurityContext "supplementalGroups" -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $podSecurityContext -}}
+{{- end -}}
