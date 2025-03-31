@@ -176,3 +176,27 @@ This helper removes those fields if they match OpenShift defaults to avoid confl
 {{- end -}}
 {{- $podSecurityContext -}}
 {{- end -}}
+
+{{/*
+Return the proper container image
+This helper handles both the legacy .Values.images format and the new
+structured .Values.image format, selecting the appropriate one based on what's defined.
+*/}}
+{{- define "replicated.containerImage" -}}
+{{- if .Values.images -}}
+    {{- index .Values.images "replicated-sdk" -}}
+{{- else -}}
+    {{- include "replicated.image" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the proper image pull policy
+*/}}
+{{- define "replicated.imagePullPolicy" -}}
+{{- if .Values.images -}}
+    {{- print "IfNotPresent" -}}
+{{- else -}}
+    {{- .Values.image.pullPolicy | default "IfNotPresent" -}}
+{{- end -}}
+{{- end -}}

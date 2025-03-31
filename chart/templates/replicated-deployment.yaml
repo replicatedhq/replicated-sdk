@@ -89,13 +89,8 @@ spec:
       {{- end }}
       containers:
       - name: replicated
-        {{- if .Values.images }}
-        image: {{ index .Values.images "replicated-sdk" }}
-        imagePullPolicy: IfNotPresent
-        {{- else }}
-        image: {{ include "replicated.image" . }}
-        imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
-        {{- end }}
+        image: {{ include "replicated.containerImage" . }}
+        imagePullPolicy: {{ include "replicated.imagePullPolicy" . }}
         {{- if .Values.containerSecurityContext }}
         securityContext: {{- toYaml .Values.containerSecurityContext | nindent 10 }}
         {{- end }}
