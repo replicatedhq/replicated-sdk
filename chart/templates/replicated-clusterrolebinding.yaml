@@ -4,6 +4,8 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
   name: {{ include "replicated.roleBindingName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 roleRef:

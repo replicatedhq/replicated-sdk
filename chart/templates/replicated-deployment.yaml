@@ -20,6 +20,8 @@ kind: Deployment
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
   name: {{ include "replicated.deploymentName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 spec:
