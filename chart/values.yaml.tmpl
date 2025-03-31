@@ -13,6 +13,7 @@ commonLabels: {}
 # Additional annotations to add to resources
 commonAnnotations: {}
   # example.com/annotation: value
+  # prometheus.io/scrape: "true"
 
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
@@ -74,6 +75,28 @@ podSecurityContext:
   supplementalGroups: [1001]
   seccompProfile:
     type: "RuntimeDefault"
+
+# Container resource requirements
+# Leave empty to remove resource constraints
+resources:
+  limits:
+    cpu: 500m
+    memory: 500Mi
+  requests:
+    cpu: 100m
+    memory: 100Mi
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 3000
+    scheme: HTTP
+  failureThreshold: 3
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 1
+  successThreshold: 1
 
 service:
   type: ClusterIP
