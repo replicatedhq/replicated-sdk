@@ -162,6 +162,38 @@ isAirgap: false
 replicatedID: ""
 appID: ""
 
+# Kubernetes service account config
+automountServiceAccountToken: false
+
+# Host network configuration
+hostNetwork: false
+hostIPC: false
+
+# Host aliases for the pod's /etc/hosts file
+hostAliases: []
+#  - ip: "192.168.1.10"
+#    hostnames:
+#    - "example.com"
+#    - "www.example.com"
+
+# Pod topology spread constraints
+topologySpreadConstraints: []
+#  - maxSkew: 1
+#    topologyKey: kubernetes.io/hostname
+#    whenUnsatisfiable: DoNotSchedule
+#    labelSelector:
+#      matchLabels:
+#        app.kubernetes.io/name: replicated-sdk
+
+# Pod priority class name
+priorityClassName: ""
+
+# Pod scheduler name
+schedulerName: ""
+
+# Pod termination grace period in seconds
+terminationGracePeriodSeconds: 30
+
 tolerations: []
 
 affinity: ~
