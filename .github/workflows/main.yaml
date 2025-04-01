@@ -650,9 +650,16 @@ jobs:
             sleep 1
           done
 
+      - name: Generate support bundle on failure
+        if: failure()
+        uses: ./.github/actions/generate-support-bundle
+        with:
+          kots-namespace: default
+          artifact-name: ${{ github.job }}-${{ matrix.cluster.distribution }}-${{ matrix.cluster.version }}-support-bundle
+
       - name: Remove Cluster
         uses: replicatedhq/replicated-actions/remove-cluster@v1.17.0
-        if: ${{ success() || cancelled() }}
+        if: ${{ always() }}
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
           cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}
