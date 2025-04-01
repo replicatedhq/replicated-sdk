@@ -32,7 +32,7 @@ jobs:
       - run: make test
 
   cmx-versions:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cmx-versions
@@ -650,9 +650,16 @@ jobs:
             sleep 1
           done
 
+      - name: Generate support bundle on failure
+        if: failure()
+        uses: ./.github/actions/generate-support-bundle
+        with:
+          namespace: default
+          artifact-name: ${{ github.job }}-${{ matrix.cluster.distribution }}-${{ matrix.cluster.version }}-support-bundle
+
       - name: Remove Cluster
         uses: replicatedhq/replicated-actions/remove-cluster@v1.17.0
-        if: ${{ success() || cancelled() }}
+        if: ${{ always() && steps.create-cluster.outputs.cluster-id != '' }}
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
           cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}
