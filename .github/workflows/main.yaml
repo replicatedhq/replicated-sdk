@@ -654,12 +654,12 @@ jobs:
         if: failure()
         uses: ./.github/actions/generate-support-bundle
         with:
-          kots-namespace: default
+          namespace: default
           artifact-name: ${{ github.job }}-${{ matrix.cluster.distribution }}-${{ matrix.cluster.version }}-support-bundle
 
       - name: Remove Cluster
         uses: replicatedhq/replicated-actions/remove-cluster@v1.17.0
-        if: ${{ always() }}
+        if: ${{ always() && steps.create-cluster.outputs.cluster-id != '' }}
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
           cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}

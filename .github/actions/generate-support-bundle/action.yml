@@ -4,15 +4,15 @@ inputs:
   artifact-name:
     description: 'Name of the artifact to be uploaded'
     required: true
-  kots-namespace:
-    description: 'KOTS namespace'
+  namespace:
+    description: 'namespace'
     required: true
 runs:
   using: "composite"
   steps:
     - id: generate-support-bundle
       env:
-        KOTS_NAMESPACE: ${{ inputs.kots-namespace }}
+        NAMESPACE: ${{ inputs.namespace }}
       run: |
         RELEASE="$(
           curl -sfL https://api.github.com/repos/replicatedhq/troubleshoot/releases/latest | \
