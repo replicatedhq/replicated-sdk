@@ -10,8 +10,10 @@ metadata:
     troubleshoot.sh/kind: support-bundle
   name: {{ include "replicated.supportBundleName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
+  {{- if .Values.commonAnnotations }}
   annotations:
     {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
 stringData:
   support-bundle-spec: |-
     apiVersion: troubleshoot.sh/v1beta2
