@@ -152,29 +152,39 @@ Get the Replicated App Endpoint
 {{- end -}}
 
 {{/*
+Process pod security context values
+This helper processes the pod security context values, removing OpenShift default values if needed
+*/}}
+{{- define "replicated.processPodSecurityContext" -}}
+{{- $context := deepCopy . -}}
+{{- if eq ($context.runAsUser | int) 1001 -}}
+  {{- $_ := unset $context "runAsUser" -}}
+{{- end -}}
+{{- if eq ($context.runAsGroup | int) 1001 -}}
+  {{- $_ := unset $context "runAsGroup" -}}
+{{- end -}}
+{{- if eq ($context.fsGroup | int) 1001 -}}
+  {{- $_ := unset $context "fsGroup" -}}
+{{- end -}}
+{{- if eq ($context.supplementalGroups | len) 1 -}}
+  {{- if eq (index $context.supplementalGroups 0 | int) 1001 -}}
+    {{- $_ := unset $context "supplementalGroups" -}}
+  {{- end -}}
+{{- end -}}
+{{- $context -}}
+{{- end -}}
+
+{{/*
 Adjust the pod security context for OpenShift compatibility
 OpenShift runs pods with a specific UID (1001) and handles security contexts differently
 This helper removes those fields if they match OpenShift defaults to avoid conflicts
 */}}
 {{- define "replicated.openShiftSecurityContext" -}}
-{{- $podSecurityContext := deepCopy . -}}
 {{- if eq (include "replicated.isOpenShift" .) "true" -}}
-  {{- if eq ($podSecurityContext.runAsUser | int) 1001 -}}
-    {{- $_ := unset $podSecurityContext "runAsUser" -}}
-  {{- end -}}
-  {{- if eq ($podSecurityContext.runAsGroup | int) 1001 -}}
-    {{- $_ := unset $podSecurityContext "runAsGroup" -}}
-  {{- end -}}
-  {{- if eq ($podSecurityContext.fsGroup | int) 1001 -}}
-    {{- $_ := unset $podSecurityContext "fsGroup" -}}
-  {{- end -}}
-  {{- if eq ($podSecurityContext.supplementalGroups | len) 1 -}}
-    {{- if eq (index $podSecurityContext.supplementalGroups 0 | int) 1001 -}}
-      {{- $_ := unset $podSecurityContext "supplementalGroups" -}}
-    {{- end -}}
-  {{- end -}}
+  {{- include "replicated.processPodSecurityContext" .Values.podSecurityContext -}}
+{{- else -}}
+  {{- .Values.podSecurityContext | toYaml -}}
 {{- end -}}
-{{- $podSecurityContext -}}
 {{- end -}}
 
 {{/*

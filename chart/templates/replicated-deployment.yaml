@@ -1,11 +1,13 @@
-{{- $podSecurityContext := include "replicated.openShiftSecurityContext" .Values.podSecurityContext | fromYaml }}
+{{- $podSecurityContext := include "replicated.openShiftSecurityContext" . | fromYaml }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
   annotations:
     {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
   name: {{ include "replicated.deploymentName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 spec:
@@ -20,16 +22,22 @@ spec:
     metadata:
       annotations:
         checksum/replicated-secret: {{ include (print $.Template.BasePath "/replicated-secret.yaml") . | sha256sum }}
+        {{- if .Values.commonAnnotations }}
         {{- toYaml .Values.commonAnnotations | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "replicated.labels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
         {{- include "replicated.podLabels" . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.automountServiceAccountToken }}
       automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- end }}
       {{- if .Values.hostAliases }}
       hostAliases: {{- toYaml .Values.hostAliases | nindent 8 }}
       {{- end }}
@@ -45,8 +53,12 @@ spec:
       {{- if .Values.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- end }}
+      {{- if .Values.hostNetwork }}
       hostNetwork: {{ .Values.hostNetwork }}
+      {{- end }}
+      {{- if .Values.hostIPC }}
       hostIPC: {{ .Values.hostIPC }}
+      {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
@@ -60,7 +72,8 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- if $podSecurityContext }}
-      securityContext: {{- toYaml $podSecurityContext | nindent 8 }}
+      securityContext:
+        {{- toYaml $podSecurityContext | nindent 8 }}
       {{- end }}
       volumes:
       - name: replicated
@@ -92,7 +105,8 @@ spec:
         image: {{ include "replicated.containerImage" . }}
         imagePullPolicy: {{ include "replicated.imagePullPolicy" . }}
         {{- if .Values.containerSecurityContext }}
-        securityContext: {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
         {{- end }}
         volumeMounts:
         - name: replicated
@@ -126,16 +140,20 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        {{- if .Values.isAirgap }}
         - name: DISABLE_OUTBOUND_CONNECTIONS
-          value: {{ .Values.isAirgap | default "false" | quote }}
+          value: {{ .Values.isAirgap | quote }}
+        {{- end }}
         - name: IS_HELM_MANAGED
           value: "true"
         - name: HELM_RELEASE_NAME
           value: {{ .Release.Name }}
         - name: HELM_RELEASE_NAMESPACE
           value: {{ .Release.Namespace }}
+        {{- if .Values.parentChartURL }}
         - name: HELM_PARENT_CHART_URL
-          value: {{ .Values.parentChartURL | default "" | quote }}
+          value: {{ .Values.parentChartURL | quote }}
+        {{- end }}
         - name: HELM_DRIVER
           value: secret # TODO: support other drivers
         - name: REPLICATED_SECRET_NAME
@@ -160,5 +178,7 @@ spec:
         {{- if .Values.readinessProbe }}
         readinessProbe: {{- toYaml .Values.readinessProbe | nindent 10 }}
         {{- end }}
+      {{- if .Values.restartPolicy }}
       restartPolicy: {{ .Values.restartPolicy }}
+      {{- end }}
       serviceAccountName: {{ include "replicated.serviceAccountName" . }}
