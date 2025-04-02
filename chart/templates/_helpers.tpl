@@ -158,7 +158,7 @@ This helper removes those fields if they match OpenShift defaults to avoid confl
 */}}
 {{- define "replicated.openShiftSecurityContext" -}}
 {{- $podSecurityContext := deepCopy . -}}
-{{- if eq (include "replicated.isOpenShift" $) "true" -}}
+{{- if eq (include "replicated.isOpenShift" .) "true" -}}
   {{- if eq ($podSecurityContext.runAsUser | int) 1001 -}}
     {{- $_ := unset $podSecurityContext "runAsUser" -}}
   {{- end -}}
