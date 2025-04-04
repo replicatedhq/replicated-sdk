@@ -1,4 +1,40 @@
-{{- $podSecurityContext := include "replicated.openShiftSecurityContext" . | fromYaml }}
+{{- $isOpenShift := eq (include "replicated.isOpenShift" .) "true" }}
+{{- $podSecurityContext := .Values.podSecurityContext | deepCopy }}
+{{- if $podSecurityContext }}
+{{- if $isOpenShift }}
+  {{- if eq ($podSecurityContext.runAsUser | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsUser" }}
+  {{- end }}
+  {{- if eq ($podSecurityContext.runAsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsGroup" }}
+  {{- end }}
+  {{- if eq ($podSecurityContext.fsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "fsGroup" }}
+  {{- end }}
+  {{- if $podSecurityContext.supplementalGroups }}
+    {{- $hasOnly1001 := true }}
+    {{- range $podSecurityContext.supplementalGroups }}
+      {{- if ne (. | int) 1001 }}
+        {{- $hasOnly1001 = false }}
+      {{- end }}
+    {{- end }}
+    {{- if $hasOnly1001 }}
+      {{- $_ := unset $podSecurityContext "supplementalGroups" }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if hasKey $podSecurityContext "enabled" }}
+  {{- $_ := unset $podSecurityContext "enabled" }}
+{{- end }}
+{{- end }}
+
+{{- $containerSecurityContext := .Values.containerSecurityContext | deepCopy }}
+{{- if $containerSecurityContext }}
+{{- if hasKey $containerSecurityContext "enabled" }}
+  {{- $_ := unset $containerSecurityContext "enabled" }}
+{{- end }}
+{{- end }}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -71,7 +107,7 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if $podSecurityContext }}
+      {{- if .Values.podSecurityContext }}
       securityContext:
         {{- toYaml $podSecurityContext | nindent 8 }}
       {{- end }}
@@ -106,7 +142,7 @@ spec:
         imagePullPolicy: {{ include "replicated.imagePullPolicy" . }}
         {{- if .Values.containerSecurityContext }}
         securityContext:
-          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+          {{- toYaml $containerSecurityContext | nindent 12 }}
         {{- end }}
         volumeMounts:
         - name: replicated

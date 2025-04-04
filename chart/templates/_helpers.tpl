@@ -95,17 +95,17 @@ License Fields
 {{- end -}}
 
 {{/*
-Is OpenShift
+Detect if we're running on OpenShift
 */}}
 {{- define "replicated.isOpenShift" -}}
-  {{- $isOpenShift := false }}
-  {{- range .Capabilities.APIVersions -}}
-    {{- if hasPrefix "apps.openshift.io/" . -}}
-      {{- $isOpenShift = true }}
-    {{- end -}}
+{{- $isOpenShift := false }}
+{{- range .Capabilities.APIVersions -}}
+  {{- if hasPrefix "apps.openshift.io/" . -}}
+    {{- $isOpenShift = true }}
   {{- end -}}
-  {{- $isOpenShift }}
-{{- end }}
+{{- end -}}
+{{- $isOpenShift }}
+{{- end -}}
 
 {{/*
 Resource Names
@@ -148,42 +148,6 @@ Get the Replicated App Endpoint
   {{- .Values.replicatedAppEndpoint -}}
 {{- else -}}
   {{- printf "https://replicated.app" -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Process pod security context values
-This helper processes the pod security context values, removing OpenShift default values if needed
-*/}}
-{{- define "replicated.processPodSecurityContext" -}}
-{{- $context := deepCopy . -}}
-{{- if eq ($context.runAsUser | int) 1001 -}}
-  {{- $_ := unset $context "runAsUser" -}}
-{{- end -}}
-{{- if eq ($context.runAsGroup | int) 1001 -}}
-  {{- $_ := unset $context "runAsGroup" -}}
-{{- end -}}
-{{- if eq ($context.fsGroup | int) 1001 -}}
-  {{- $_ := unset $context "fsGroup" -}}
-{{- end -}}
-{{- if eq ($context.supplementalGroups | len) 1 -}}
-  {{- if eq (index $context.supplementalGroups 0 | int) 1001 -}}
-    {{- $_ := unset $context "supplementalGroups" -}}
-  {{- end -}}
-{{- end -}}
-{{- $context -}}
-{{- end -}}
-
-{{/*
-Adjust the pod security context for OpenShift compatibility
-OpenShift runs pods with a specific UID (1001) and handles security contexts differently
-This helper removes those fields if they match OpenShift defaults to avoid conflicts
-*/}}
-{{- define "replicated.openShiftSecurityContext" -}}
-{{- if eq (include "replicated.isOpenShift" .) "true" -}}
-  {{- include "replicated.processPodSecurityContext" .Values.podSecurityContext -}}
-{{- else -}}
-  {{- .Values.podSecurityContext | toYaml -}}
 {{- end -}}
 {{- end -}}
 
