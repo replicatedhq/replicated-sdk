@@ -174,3 +174,52 @@ Return the proper image pull policy
     {{- .Values.image.pullPolicy | default "IfNotPresent" -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Process pod security context for OpenShift compatibility
+*/}}
+{{- define "replicated.processPodSecurityContext" -}}
+{{- $isOpenShift := eq (include "replicated.isOpenShift" .) "true" }}
+{{- $podSecurityContext := .Values.podSecurityContext | deepCopy }}
+{{- if $podSecurityContext }}
+{{- if $isOpenShift }}
+  {{- if eq ($podSecurityContext.runAsUser | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsUser" }}
+  {{- end }}
+  {{- if eq ($podSecurityContext.runAsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsGroup" }}
+  {{- end }}
+  {{- if eq ($podSecurityContext.fsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "fsGroup" }}
+  {{- end }}
+  {{- if $podSecurityContext.supplementalGroups }}
+    {{- $hasOnly1001 := true }}
+    {{- range $podSecurityContext.supplementalGroups }}
+      {{- if ne (. | int) 1001 }}
+        {{- $hasOnly1001 = false }}
+      {{- end }}
+    {{- end }}
+    {{- if $hasOnly1001 }}
+      {{- $_ := unset $podSecurityContext "supplementalGroups" }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if hasKey $podSecurityContext "enabled" }}
+  {{- $_ := unset $podSecurityContext "enabled" }}
+{{- end }}
+{{- end }}
+{{- toYaml $podSecurityContext }}
+{{- end -}}
+
+{{/*
+Process container security context
+*/}}
+{{- define "replicated.processContainerSecurityContext" -}}
+{{- $containerSecurityContext := .Values.containerSecurityContext | deepCopy }}
+{{- if $containerSecurityContext }}
+{{- if hasKey $containerSecurityContext "enabled" }}
+  {{- $_ := unset $containerSecurityContext "enabled" }}
+{{- end }}
+{{- end }}
+{{- toYaml $containerSecurityContext }}
+{{- end -}}
