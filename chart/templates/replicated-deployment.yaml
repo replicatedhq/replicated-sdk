@@ -10,10 +10,6 @@ metadata:
   name: {{ include "replicated.deploymentName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 spec:
-  replicas: {{ .Values.replicaCount | default 1 }}
-  {{- if .Values.strategy }}
-  strategy: {{- toYaml .Values.strategy | nindent 4 }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "replicated.selectorLabels" . | nindent 6 }}

@@ -17,22 +17,10 @@ commonAnnotations: {}
   # example.com/annotation: value
   # prometheus.io/scrape: "true"
 
-# Number of replicas to deploy
-replicaCount: 1
-
 # Pod restart policy
 # Controls how pods are restarted when they exit or fail
 # Options: Always, OnFailure, Never
 restartPolicy: Always
-
-# Deployment update strategy
-# Controls how pods are replaced during updates
-# Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
-strategy: {}
-  # type: RollingUpdate  # Options: RollingUpdate, Recreate
-  # rollingUpdate:
-  #   maxSurge: 1        # Maximum number of pods that can be created over desired number
-  #   maxUnavailable: 0  # Maximum number of pods that can be unavailable during update
 
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
