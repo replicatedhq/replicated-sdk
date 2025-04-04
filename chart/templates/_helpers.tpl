@@ -174,7 +174,7 @@ Return the proper image pull policy
 {{/*
 Process pod security context for OpenShift compatibility
 */}}
-{{- define "replicated.processPodSecurityContext" -}}
+{{- define "replicated.podSecurityContext" -}}
 {{- $isOpenShift := eq (include "replicated.isOpenShift" .) "true" }}
 {{- $podSecurityContext := .Values.podSecurityContext | deepCopy }}
 {{- if $podSecurityContext }}
@@ -210,7 +210,7 @@ Process pod security context for OpenShift compatibility
 {{/*
 Process container security context
 */}}
-{{- define "replicated.processContainerSecurityContext" -}}
+{{- define "replicated.containerSecurityContext" -}}
 {{- $containerSecurityContext := .Values.containerSecurityContext | deepCopy }}
 {{- if $containerSecurityContext }}
 {{- if hasKey $containerSecurityContext "enabled" }}
