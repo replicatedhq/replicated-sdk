@@ -95,17 +95,17 @@ License Fields
 {{- end -}}
 
 {{/*
-Is OpenShift
+Detect if we're running on OpenShift
 */}}
 {{- define "replicated.isOpenShift" -}}
-  {{- $isOpenShift := false }}
-  {{- range .Capabilities.APIVersions -}}
-    {{- if hasPrefix "apps.openshift.io/" . -}}
-      {{- $isOpenShift = true }}
-    {{- end -}}
+{{- $isOpenShift := false }}
+{{- range .Capabilities.APIVersions -}}
+  {{- if hasPrefix "apps.openshift.io/" . -}}
+    {{- $isOpenShift = true }}
   {{- end -}}
-  {{- $isOpenShift }}
-{{- end }}
+{{- end -}}
+{{- $isOpenShift }}
+{{- end -}}
 
 {{/*
 Resource Names
@@ -120,10 +120,6 @@ Resource Names
 
 {{- define "replicated.roleBindingName" -}}
   {{ include "replicated.name" . }}-rolebinding
-{{- end -}}
-
-{{- define "replicated.secretName" -}}
-  {{ include "replicated.name" . }}
 {{- end -}}
 
 {{- define "replicated.serviceName" -}}
@@ -148,5 +144,89 @@ Get the Replicated App Endpoint
   {{- .Values.replicatedAppEndpoint -}}
 {{- else -}}
   {{- printf "https://replicated.app" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the proper container image
+This helper handles both the legacy .Values.images format and the new
+structured .Values.image format, selecting the appropriate one based on what's defined.
+*/}}
+{{- define "replicated.containerImage" -}}
+{{- if .Values.images -}}
+    {{- index .Values.images "replicated-sdk" -}}
+{{- else -}}
+    {{- include "replicated.image" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the proper image pull policy
+*/}}
+{{- define "replicated.imagePullPolicy" -}}
+{{- if .Values.images -}}
+    {{- print "IfNotPresent" -}}
+{{- else -}}
+    {{- .Values.image.pullPolicy | default "IfNotPresent" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Process pod security context for OpenShift compatibility
+*/}}
+{{- define "replicated.podSecurityContext" -}}
+{{- $isOpenShift := eq (include "replicated.isOpenShift" .) "true" }}
+{{- $podSecurityContext := .Values.podSecurityContext | deepCopy }}
+{{- if $podSecurityContext }}
+{{- if $isOpenShift }}
+  {{- if eq ($podSecurityContext.runAsUser | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsUser" }}
+  {{- end }}
+  {{- if eq ($podSecurityContext.runAsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "runAsGroup" }}
+  {{- end }}
+  {{- if eq ($podSecurityContext.fsGroup | int) 1001 }}
+    {{- $_ := unset $podSecurityContext "fsGroup" }}
+  {{- end }}
+  {{- if $podSecurityContext.supplementalGroups }}
+    {{- $hasOnly1001 := true }}
+    {{- range $podSecurityContext.supplementalGroups }}
+      {{- if ne (. | int) 1001 }}
+        {{- $hasOnly1001 = false }}
+      {{- end }}
+    {{- end }}
+    {{- if $hasOnly1001 }}
+      {{- $_ := unset $podSecurityContext "supplementalGroups" }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if hasKey $podSecurityContext "enabled" }}
+  {{- $_ := unset $podSecurityContext "enabled" }}
+{{- end }}
+{{- end }}
+{{- toYaml $podSecurityContext }}
+{{- end -}}
+
+{{/*
+Process container security context
+*/}}
+{{- define "replicated.containerSecurityContext" -}}
+{{- $containerSecurityContext := .Values.containerSecurityContext | deepCopy }}
+{{- if $containerSecurityContext }}
+{{- if hasKey $containerSecurityContext "enabled" }}
+  {{- $_ := unset $containerSecurityContext "enabled" }}
+{{- end }}
+{{- end }}
+{{- toYaml $containerSecurityContext }}
+{{- end -}}
+
+{{/*
+Get the secret name to use - either the user-specified existing secret or the default
+*/}}
+{{- define "replicated.secretName" -}}
+{{- if and .Values.existingSecret .Values.existingSecret.name -}}
+  {{- .Values.existingSecret.name -}}
+{{- else -}}
+  {{ include "replicated.name" . }}
 {{- end -}}
 {{- end -}}

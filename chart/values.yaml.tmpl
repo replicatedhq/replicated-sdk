@@ -2,13 +2,25 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Global settings shared across multiple charts
 global:
-  imageRegistry: ""
+  imageRegistry: ""  # Optional registry override to use for all images
 
 # Additional labels to add to all resources created by this chart
+# Useful for organizational or filtering purposes
 commonLabels: {}
   # app.kubernetes.io/part-of: my-app
   # environment: production
+
+# Additional annotations to add to all resources created by this chart
+commonAnnotations: {}
+  # example.com/annotation: value
+  # prometheus.io/scrape: "true"
+
+# Pod restart policy
+# Controls how pods are restarted when they exit or fail
+# Options: Always, OnFailure, Never
+restartPolicy: Always
 
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
@@ -19,10 +31,228 @@ commonLabels: {}
 # Replicated SDK image properties
 # If .Values.images is set, it takes precedence over the following settings.
 image:
-  registry: ${REPLICATED_REGISTRY}
-  repository: "replicated/replicated-sdk"
-  tag: "${REPLICATED_TAG}"
-  pullPolicy: IfNotPresent
+  registry: ${REPLICATED_REGISTRY}     # Registry where the image is hosted
+  repository: "replicated/replicated-sdk"  # Image repository 
+  tag: "${REPLICATED_TAG}"             # Image tag
+  pullPolicy: IfNotPresent             # Image pull policy: Always, IfNotPresent, Never
+
+# Additional labels to add to the pod template only
+# These will not be applied to other resources
+podLabels: {}
+  # example.com/custom-label: value
+
+# Additional environment variables for the container
+# Added as key-value pairs to the container specification
+extraEnv: []
+# - name: LOG_LEVEL
+#   value: "debug"
+# - name: API_KEY
+#   valueFrom:
+#     secretKeyRef:
+#       name: api-secrets
+#       key: api-key
+
+# Pod security context
+# Controls pod-level security attributes and common container settings
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+podSecurityContext:
+  runAsUser: 1001                # User ID to run all containers as
+  runAsGroup: 1001               # Group ID to run all containers as
+  fsGroup: 1001                  # Group ID for volume ownership
+  supplementalGroups: [1001]     # Additional groups for the pod
+  seccompProfile:
+    type: "RuntimeDefault"       # Seccomp profile type for syscall restriction
+
+# Container security context
+# Controls container-level security attributes and capabilities
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+containerSecurityContext:
+  runAsNonRoot: true                   # Ensures container doesn't run as root
+  readOnlyRootFilesystem: true         # Makes root filesystem read-only
+  allowPrivilegeEscalation: false      # Prevents privilege escalation
+  capabilities:
+    drop: ["ALL"]                      # Drops all Linux capabilities
+
+# Readiness probe configuration
+# Determines when the container is ready to serve traffic
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+readinessProbe:
+  httpGet:                         # Uses HTTP GET request to check health
+    path: /healthz                 # Endpoint to query
+    port: 3000                     # Port to use
+    scheme: HTTP                   # Protocol (HTTP or HTTPS)
+  failureThreshold: 3              # Number of failures before marking unready
+  initialDelaySeconds: 10          # Delay before first check
+  periodSeconds: 10                # How often to check
+  timeoutSeconds: 1                # Timeout for each check
+  successThreshold: 1              # Number of successes to mark as ready
+
+# Container resource requirements
+# Controls CPU and memory allocation for the container
+# Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+resources:
+  limits:                        # Maximum resources the container can use
+    cpu: 500m                    # 500 milliCPU = 0.5 CPU cores
+    memory: 500Mi                # 500 MiB memory
+  requests:                      # Minimum resources guaranteed to the container
+    cpu: 100m                    # 100 milliCPU = 0.1 CPU cores
+    memory: 100Mi                # 100 MiB memory
+
+# Init containers to run before the app container starts
+# Useful for setup tasks that must complete before the main app runs
+# Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+initContainers: []
+  # - name: init-myservice           # Wait for a service to be ready
+  #   image: busybox:latest
+  #   command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+  # - name: init-db                  # Wait for database to be ready
+  #   image: busybox:latest
+  #   command: ['sh', '-c', 'until nc -z -w1 postgresql 5432; do echo waiting for database; sleep 2; done;']
+
+# Extra volumes to add to the pod
+# Useful for mounting ConfigMaps, Secrets, or other storage
+# Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+extraVolumes: []
+  # - name: config-volume            # Mount a ConfigMap as a volume
+  #   configMap:
+  #     name: app-config
+  # - name: secret-volume            # Mount a Secret as a volume
+  #   secret:
+  #     secretName: app-secrets
+
+# Extra volume mounts to add to the container
+# Specifies where volumes should be mounted in the container
+extraVolumeMounts: []
+  # - name: config-volume            # Reference to a volume defined in extraVolumes
+  #   mountPath: /etc/app/config     # Path where volume should be mounted
+  #   readOnly: true                 # Whether the mount should be read-only
+  # - name: secret-volume
+  #   mountPath: /etc/app/secrets
+  #   readOnly: true
+
+# Use an existing secret instead of creating a new one
+existingSecret:
+  # Name of the existing secret to use
+  name: ""
+
+# Name of the service account to use
+# If not set and serviceAccount.create is true, a name is generated
+serviceAccountName: ""
+
+# Name of the cluster role to use
+# Only used if service account needs cluster-wide permissions
+clusterRole: ""
+
+# Image pull secrets for private registries
+# List of secrets containing docker registry credentials
+imagePullSecrets: []
+# - name: my-registry-secret
+
+# Override the chart name
+nameOverride: ""
+
+# Override the chart namespace
+namespaceOverride: ""
+
+# ConfigMap containing private CA certificates
+# Used to trust custom certificate authorities
+privateCAConfigmap: ~
+
+# Secret containing private CA certificates
+# Alternative to privateCAConfigmap
+privateCASecret: ~
+
+# Whether to automatically mount the service account token
+# Set to false to improve security when token is not needed
+automountServiceAccountToken: false
+
+# Use the host network namespace
+# Gives the pod access to the host's network interfaces
+hostNetwork: false
+
+# Use the host IPC namespace
+# Gives the pod access to the host's IPC mechanisms
+hostIPC: false
+
+# Host aliases for the pod's /etc/hosts file
+# Adds custom host-to-IP mappings
+hostAliases: []
+#  - ip: "192.168.1.10"
+#    hostnames:
+#    - "example.com"
+#    - "www.example.com"
+
+# Pod topology spread constraints
+# Controls how pods are distributed across the cluster
+# Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+topologySpreadConstraints: []
+#  - maxSkew: 1                      # Maximum difference between zones
+#    topologyKey: kubernetes.io/hostname  # Key to spread by (node, zone, etc)
+#    whenUnsatisfiable: DoNotSchedule     # What to do if constraint can't be met
+#    labelSelector:                       # Which pods to consider for spreading
+#      matchLabels:
+#        app.kubernetes.io/name: replicated-sdk
+
+# Pod priority class name
+# Sets the priority of the pod relative to other pods
+# Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+priorityClassName: ""
+
+# Name of the scheduler to use
+# Can be used to select a custom scheduler
+schedulerName: ""
+
+# Grace period for pod termination in seconds
+# How long to wait for pod to terminate gracefully before force killing
+terminationGracePeriodSeconds: 30
+
+# Node tolerations for pod scheduling
+# Allow pods to be scheduled on nodes with matching taints
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+tolerations: []
+# - key: "key"
+#   operator: "Equal"
+#   value: "value"
+#   effect: "NoSchedule"
+
+# Pod affinity/anti-affinity rules
+# Control which nodes the pod can be scheduled on
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+affinity: ~
+# podAntiAffinity:
+#   requiredDuringSchedulingIgnoredDuringExecution:
+#   - labelSelector:
+#       matchExpressions:
+#       - key: app.kubernetes.io/name
+#         operator: In
+#         values:
+#         - replicated-sdk
+#     topologyKey: "kubernetes.io/hostname"
+
+# Node selector for pod scheduling
+# Only schedule pods on nodes matching these labels
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+nodeSelector: {}
+# kubernetes.io/os: linux
+# node-type: worker
+
+# Service configuration
+# Controls how the pod is exposed
+# Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  type: ClusterIP    # Service type: ClusterIP, NodePort, LoadBalancer, ExternalName
+  port: 3000         # Port the service will be available on
+
+# "integration" mode related values.
+integration:
+  licenseID: ""
+  # enabled: false
+  mockData: ""
+
+isAirgap: false
+
+replicatedID: ""
+appID: ""
 
 # NOTE: The following values are typically injected by the Replicated Registry and should not be modified directly
 license: ""
@@ -43,56 +273,3 @@ replicatedAppEndpoint: ""
 # If not specified, the default domain "replicated.app" will be used
 # Should not include the protocol, just the domain name
 replicatedAppDomain: ""
-
-serviceAccountName: ""
-clusterRole: ""
-imagePullSecrets: []
-nameOverride: ""
-namespaceOverride: ""
-
-containerSecurityContext:
-  enabled: true
-  runAsNonRoot: true
-  readOnlyRootFilesystem: true
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop: ["ALL"]
-
-# Additional labels to add to the pod template
-podLabels: {}
-  # example.com/custom-label: value
-
-podSecurityContext:
-  enabled: true
-  runAsUser: 1001
-  runAsGroup: 1001
-  fsGroup: 1001
-  supplementalGroups: [1001]
-  seccompProfile:
-    type: "RuntimeDefault"
-
-service:
-  type: ClusterIP
-  port: 3000
-
-privateCAConfigmap: ~
-privateCASecret: ~
-
-extraEnv: []
-
-# "integration" mode related values.
-integration:
-  licenseID: ""
-  # enabled: false
-  mockData: ""
-
-isAirgap: false
-
-replicatedID: ""
-appID: ""
-
-tolerations: []
-
-affinity: ~
-
-nodeSelector: {}

@@ -9,6 +9,10 @@ kind: ConfigMap
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
   name: replicated-sdk
   namespace: {{ include "replicated.namespace" . | quote }}
 data:

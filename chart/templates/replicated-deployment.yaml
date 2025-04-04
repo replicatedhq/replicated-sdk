@@ -1,25 +1,12 @@
-{{- $podSecurityContext := .Values.podSecurityContext }}
-{{ if eq (include "replicated.isOpenShift" .) "true" }}
-  {{ if eq ($podSecurityContext.runAsUser | int) 1001 }}
-    {{- $_ := unset $podSecurityContext "runAsUser" }}
-  {{- end }}
-  {{ if eq ($podSecurityContext.runAsGroup | int) 1001 }}
-    {{- $_ := unset $podSecurityContext "runAsGroup" }}
-  {{- end }}
-  {{ if eq ($podSecurityContext.fsGroup | int) 1001 }}
-    {{- $_ := unset $podSecurityContext "fsGroup" }}
-  {{- end }}
-  {{ if eq ($podSecurityContext.supplementalGroups | len) 1 }}
-    {{ if eq (index $podSecurityContext.supplementalGroups 0 | int) 1001 }}
-      {{- $_ := unset $podSecurityContext "supplementalGroups" }}
-    {{- end }}
-  {{- end }}
-{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
   name: {{ include "replicated.deploymentName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 spec:
@@ -30,13 +17,42 @@ spec:
     metadata:
       annotations:
         checksum/replicated-secret: {{ include (print $.Template.BasePath "/replicated-secret.yaml") . | sha256sum }}
+        {{- if .Values.commonAnnotations }}
+        {{- toYaml .Values.commonAnnotations | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "replicated.labels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
         {{- include "replicated.podLabels" . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.automountServiceAccountToken }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- toYaml .Values.hostAliases | nindent 8 }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- toYaml .Values.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName }}
+      {{- end }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      {{- if .Values.hostNetwork }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      {{- end }}
+      {{- if .Values.hostIPC }}
+      hostIPC: {{ .Values.hostIPC }}
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
@@ -50,8 +66,9 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if $podSecurityContext.enabled }}
-      securityContext: {{- omit $podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- if .Values.podSecurityContext }}
+      securityContext:
+        {{- include "replicated.podSecurityContext" . | nindent 8 }}
       {{- end }}
       volumes:
       - name: replicated
@@ -71,17 +88,20 @@ spec:
           - key: {{ .Values.privateCASecret.key }}
             path: ca.crt
       {{- end }}
+      {{- if .Values.extraVolumes }}
+      {{- toYaml .Values.extraVolumes | nindent 6 }}
+      {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers:
+      {{- toYaml .Values.initContainers | nindent 6 }}
+      {{- end }}
       containers:
       - name: replicated
-        {{- if .Values.images }}
-        image: {{ index .Values.images "replicated-sdk" }}
-        imagePullPolicy: IfNotPresent
-        {{- else }}
-        image: {{ include "replicated.image" . }}
-        imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
-        {{- end }}
-        {{- if .Values.containerSecurityContext.enabled }}
-        securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 10 }}
+        image: {{ include "replicated.containerImage" . }}
+        imagePullPolicy: {{ include "replicated.imagePullPolicy" . }}
+        {{- if .Values.containerSecurityContext }}
+        securityContext:
+          {{- include "replicated.containerSecurityContext" . | nindent 12 }}
         {{- end }}
         volumeMounts:
         - name: replicated
@@ -95,6 +115,9 @@ spec:
         - mountPath: /certs/ca.crt
           subPath: ca.crt
           name: additional-certs
+        {{- end }}
+        {{- if .Values.extraVolumeMounts }}
+        {{- toYaml .Values.extraVolumeMounts | nindent 8 }}
         {{- end }}
         env:
         {{- with .Values.extraEnv }}
@@ -112,16 +135,20 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        {{- if .Values.isAirgap }}
         - name: DISABLE_OUTBOUND_CONNECTIONS
-          value: {{ .Values.isAirgap | default "false" | quote }}
+          value: {{ .Values.isAirgap | quote }}
+        {{- end }}
         - name: IS_HELM_MANAGED
           value: "true"
         - name: HELM_RELEASE_NAME
           value: {{ .Release.Name }}
         - name: HELM_RELEASE_NAMESPACE
           value: {{ .Release.Namespace }}
+        {{- if .Values.parentChartURL }}
         - name: HELM_PARENT_CHART_URL
-          value: {{ .Values.parentChartURL | default "" | quote }}
+          value: {{ .Values.parentChartURL | quote }}
+        {{- end }}
         - name: HELM_DRIVER
           value: secret # TODO: support other drivers
         - name: REPLICATED_SECRET_NAME
@@ -140,20 +167,13 @@ spec:
         ports:
         - containerPort: 3000
           name: http
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /healthz
-            port: 3000
-            scheme: HTTP
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        resources:
-          limits:
-            cpu: 500m
-            memory: 500Mi
-          requests:
-            cpu: 100m
-            memory: 100Mi
-      restartPolicy: Always
+        {{- if .Values.resources }}
+        resources: {{- toYaml .Values.resources | nindent 10 }}
+        {{- end }}
+        {{- if .Values.readinessProbe }}
+        readinessProbe: {{- toYaml .Values.readinessProbe | nindent 10 }}
+        {{- end }}
+      {{- if .Values.restartPolicy }}
+      restartPolicy: {{ .Values.restartPolicy }}
+      {{- end }}
       serviceAccountName: {{ include "replicated.serviceAccountName" . }}
