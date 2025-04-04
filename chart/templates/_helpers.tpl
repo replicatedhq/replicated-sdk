@@ -122,10 +122,6 @@ Resource Names
   {{ include "replicated.name" . }}-rolebinding
 {{- end -}}
 
-{{- define "replicated.secretName" -}}
-  {{ include "replicated.name" . }}
-{{- end -}}
-
 {{- define "replicated.serviceName" -}}
   {{ include "replicated.name" . }}
 {{- end -}}
@@ -222,4 +218,15 @@ Process container security context
 {{- end }}
 {{- end }}
 {{- toYaml $containerSecurityContext }}
+{{- end -}}
+
+{{/*
+Get the secret name to use - either the user-specified existing secret or the default
+*/}}
+{{- define "replicated.secretName" -}}
+{{- if and .Values.existingSecret .Values.existingSecret.name -}}
+  {{- .Values.existingSecret.name -}}
+{{- else -}}
+  {{ include "replicated.name" . }}
+{{- end -}}
 {{- end -}}

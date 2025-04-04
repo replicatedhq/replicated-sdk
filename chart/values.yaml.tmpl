@@ -142,6 +142,11 @@ extraVolumeMounts: []
   #   mountPath: /etc/app/secrets
   #   readOnly: true
 
+# Use an existing secret instead of creating a new one
+existingSecret:
+  # Name of the existing secret to use
+  name: ""
+
 # Name of the service account to use
 # If not set and serviceAccount.create is true, a name is generated
 serviceAccountName: ""
