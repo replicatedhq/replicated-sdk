@@ -73,9 +73,6 @@ The Helm charts are published to two registries:
    registry.replicated.com/library
    ```
 
-For backwards compatibility, each release publishes two charts:
-- `replicated` (new name)
-- `replicated-sdk` (legacy name)
 
 ## Verification
 
