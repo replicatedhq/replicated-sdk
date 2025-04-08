@@ -24,7 +24,7 @@ restartPolicy: Always
 
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
-# 
+#
 # images:
 #   replicated-sdk: ${REPLICATED_REGISTRY}/replicated/replicated-sdk:${REPLICATED_TAG}
 
@@ -32,7 +32,7 @@ restartPolicy: Always
 # If .Values.images is set, it takes precedence over the following settings.
 image:
   registry: ${REPLICATED_REGISTRY}     # Registry where the image is hosted
-  repository: "replicated/replicated-sdk"  # Image repository 
+  repository: "library/replicated-sdk"  # Image repository
   tag: "${REPLICATED_TAG}"             # Image tag
   pullPolicy: IfNotPresent             # Image pull policy: Always, IfNotPresent, Never
 
