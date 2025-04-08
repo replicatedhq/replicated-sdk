@@ -135,7 +135,6 @@ jobs:
     - name: Run Package and Publish Staging
       env:
         REPLICATED_TAG: ${{ github.ref_name }}
-        REPLICATED_REGISTRY: registry.staging.replicated.com
         REPLICATED_CHART_NAME: replicated
         REPLICATED_CHART_VERSION: ${{ github.ref_name }}
         REPLICATED_USER_STAGING: ${{secrets.REPLICATED_USER_STAGING}}
@@ -189,7 +188,6 @@ jobs:
     - name: Run Package and Publish Production
       env:
         REPLICATED_TAG: ${{ github.ref_name }}
-        REPLICATED_REGISTRY: proxy.replicated.com
         REPLICATED_CHART_NAME: replicated
         REPLICATED_CHART_VERSION: ${{ github.ref_name }}
         REPLICATED_USER_PROD: ${{secrets.REPLICATED_USER_PROD}}
