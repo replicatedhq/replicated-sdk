@@ -31,9 +31,9 @@ restartPolicy: Always
 # Replicated SDK image properties
 # If .Values.images is set, it takes precedence over the following settings.
 image:
-  registry: ${REPLICATED_REGISTRY}     # Registry where the image is hosted
-  repository: "library/replicated-sdk"  # Image repository
-  tag: "${REPLICATED_TAG}"             # Image tag
+  registry: registry.replicated.com    # Registry where the image is hosted
+  repository: "library/replicated-sdk" # Image repository
+  tag: "1.0.0"                         # Image tag, replaced in our pipeline
   pullPolicy: IfNotPresent             # Image pull policy: Always, IfNotPresent, Never
 
 # Additional labels to add to the pod template only

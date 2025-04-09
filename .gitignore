@@ -21,8 +21,6 @@ vendor
 
 # packaged charts
 /chart/replicated-*.tgz
-/chart/Chart.yaml
-/chart/values.yaml
 
 # packaged test charts
 /test-chart/Chart.yaml
