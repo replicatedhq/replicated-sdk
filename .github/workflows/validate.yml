@@ -26,7 +26,7 @@ jobs:
         with:
           verb: call
           args: validate --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT
-
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
   validate-e2e:
     runs-on: ubuntu-22.04
