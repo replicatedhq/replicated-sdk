@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: 1.16.0
+description: A test Helm chart with Replicated as a subchart
+name: test-chart
+type: application
+version: 0.1.0
+

@@ -23,7 +23,6 @@ vendor
 /chart/replicated-*.tgz
 
 # packaged test charts
-/test-chart/Chart.yaml
 /test-chart/Chart.lock
 /test-chart/charts/
 /test-chart/test-chart-*.tgz
