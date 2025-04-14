@@ -7,61 +7,49 @@ import (
 	"strings"
 )
 
-func buildChainguardImage(
-	ctx context.Context,
-	source *dagger.Directory,
-	version string,
-) (*dagger.ApkoImage, error) {
-	// build the melange.yaml with the correct version
+func buildChainguardImage(ctx context.Context, dag *dagger.Client, source *dagger.Directory, version string) (*dagger.Container, *dagger.Container, error) {
+	// Update melange.yaml with correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", version), 1)
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
 
-	// Initialize melange module for AMD64
-	amdPackages := dag.Melange().Build(
-		source.File("deploy/melange.yaml"),
-		dagger.MelangeBuildOpts{
-			SourceDir: source,
-			Arch:      "x86_64",
-		},
-	)
+	// Build AMD64 package with melange
+	amdPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
+		SourceDir: source,
+		Arch:      "x86_64",
+	})
 
 	// Get the signing key from melange build
 	melangeKey := amdPackages.File("melange.rsa.pub")
 
-	// Initialize melange module for ARM64
-	armPackages := dag.Melange().Build(
-		source.File("deploy/melange.yaml"),
-		dagger.MelangeBuildOpts{
-			SourceDir: source,
-			Arch:      "aarch64",
-		},
-	)
+	// Build ARM64 package with melange
+	armPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
+		SourceDir: source,
+		Arch:      "aarch64",
+	})
 
-	// build the apko.yaml with the correct version
+	// Update apko.yaml with correct version
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	apkoYaml = strings.Replace(apkoYaml, "VERSION: 1.0.0", fmt.Sprintf("VERSION: %s", version), 1)
 	source = source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
-	// Create source with packages and signing key for both architectures
-	multiArchSource := source.
-		WithDirectory("packages/x86_64", amdPackages).
-		WithDirectory("packages/aarch64", armPackages).
-		WithFile("melange.rsa.pub", melangeKey)
-
-	// Build and publish multi-arch image
+	// Publish multi-arch image with apko
 	image := dag.Apko().Publish(
-		multiArchSource,
+		source.WithDirectory("packages", amdPackages).
+			WithDirectory("packages", armPackages).
+			WithFile("melange.rsa.pub", melangeKey),
 		source.File("deploy/apko.yaml"),
-		[]string{fmt.Sprintf("ttl.sh/replicated-sdk-%s:1h", version)},
-		dagger.ApkoPublishOpts{}, // No arch specified for multi-arch build
-	)
+		[]string{fmt.Sprintf("ttl.sh/replicated-sdk:%s-1h", version)},
+		dagger.ApkoPublishOpts{
+			Arch: "x86_64,aarch64",
+		},
+	).Container()
 
-	return image, nil
+	return image, image, nil
 }

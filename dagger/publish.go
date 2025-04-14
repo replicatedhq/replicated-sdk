@@ -20,17 +20,17 @@ func (m *ReplicatedSdk) Publish(
 		return err
 	}
 
-	image, err := buildChainguardImage(ctx, source, "0.0.1")
+	image, _, err := buildChainguardImage(ctx, dag, source, "0.0.1")
 	if err != nil {
 		return err
 	}
 
-	digest, err := image.Digest(ctx)
+	id, err := image.ID(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Multi-arch Image:", digest)
+	fmt.Println("Multi-arch Image:", id)
 
 	return nil
 }
