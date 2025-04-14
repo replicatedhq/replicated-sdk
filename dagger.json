@@ -1,0 +1,20 @@
+{
+  "name": "replicated-sdk",
+  "engineVersion": "v0.18.2",
+  "sdk": {
+    "source": "go"
+  },
+  "dependencies": [
+    {
+      "name": "git-info",
+      "source": "github.com/vbehar/daggerverse/git-info@v0.12.1",
+      "pin": "cc1e58c0400999415f0a4ee308b7ca13c12c0248"
+    },
+    {
+      "name": "helm",
+      "source": "github.com/puzzle/dagger-module-helm/helm@v2.0.2",
+      "pin": "921fa6ff73586e403a605e273f30e516079f688f"
+    }
+  ],
+  "source": "dagger"
+}

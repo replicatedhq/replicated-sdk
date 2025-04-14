@@ -16,241 +16,17 @@ env:
   APP_SLUG: replicated-sdk-e2e
 
 jobs:
-  make-tests:
-    env:
-      PACT_VERSION: ${{ github.sha }}
-      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
-      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  validate:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '^1.23'
-          cache: false
-      - uses: replicatedhq/action-install-pact@v1
-      - run: make test
-
-  cmx-versions:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/cmx-versions
-        id: cmx-versions-to-test
-        with:
-          replicated-api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
-          include-distributions: '["k3s", "kind", "gke", "eks", "openshift", "oke"]'
-    outputs:
-      versions-to-test: ${{ steps.cmx-versions-to-test.outputs.versions-to-test }}
-
-  build-and-push-e2e:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '^1.23'
-
-      - name: Build replicated image
-        uses: ./.github/actions/build-push-action
-        with:
-          context: deploy
-          image-name: ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk:24h
-          git-tag: "1.0.0" # can't use ${{ github.sha }} because melange config requires strict format.
-
-      - name: Build replicated chart
+      - uses: dagger/dagger-for-github@8.0.0
         env:
-          USER: automated-${{ github.run_id }}
-        run: make -C chart build-ttl.sh
-
-  validate-chart:
-    runs-on: ubuntu-22.04
-    needs: [ build-and-push-e2e ]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: validate chart
-        run: |
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0)
-
-          if echo $output | grep -q integration-enabled; then
-            printf "'integration-enabled' key should not exist if value is not set by the user:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if echo $output | grep -q 'kind: ConfigMap'; then
-            printf "legacy/deprecated configmap should not exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if ! echo $output | grep -q 'kind: ServiceAccount'; then
-            printf "default service account should exist if user does not set serviceAccountName:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if ! echo $output | grep -q 'kind: Role'; then
-            printf "default role should exist if user does not set serviceAccountName:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if ! echo $output | grep -q 'kind: RoleBinding'; then
-            printf "default rolebinding should exist if user does not set serviceAccountName:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if ! echo $output | grep -q 'statusInformers: null'; then
-            printf "default statusInformers should be null:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.enabled=true)
-
-          if ! echo $output | grep -q integration-enabled; then
-            printf "'integration-enabled' key should exist if value is set by the user:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set isAirgap=true)
-
-          if ! echo $output | grep -q 'name: DISABLE_OUTBOUND_CONNECTIONS value: "true"'; then
-            printf "'DISABLE_OUTBOUND_CONNECTIONS' env var should be set to to 'true' in airgap mode:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set serviceAccountName=foo)
-
-          if echo $output | grep -q 'kind: ServiceAccount'; then
-            printf "default service account should not exist if user sets serviceAccountName:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if echo $output | grep -q 'kind: Role'; then
-            printf "default role should not exist if user sets serviceAccountName:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if echo $output | grep -q 'kind: RoleBinding'; then
-            printf "default rolebinding should not exist if user sets serviceAccountName:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if ! echo $output | grep -q 'serviceAccountName: foo'; then
-            printf "user-set serviceAccountName reference should exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          cat << EOF > test-values.yaml
-          extraEnv:
-          - name: TEST_EXTRA_ENV
-            value: test-extra-env
-          EOF
-
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
-
-          if ! echo $output | grep -q 'TEST_EXTRA_ENV'; then
-            printf "user-set extraEnv should exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          cat << EOF > test-values.yaml 
-          tolerations:
-          - key: "test-toleration-key"
-            operator: "Equal"
-            value: "test-toleration-value"
-            effect: "NoSchedule"
-          EOF
-
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
-
-          if ! echo $output | grep -q 'tolerations:'; then
-            printf "user-set tolerations should exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-          if ! echo $output | grep -q 'test-toleration-key'; then
-            printf "user-set tolerations key should exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-
-          cat << EOF > test-values.yaml 
-          affinity:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                - matchExpressions:
-                  - key: production/node-pool
-                    operator: In
-                    values:
-                    - replicated-sdk
-          EOF
-
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
-
-          if ! echo $output | grep -q 'affinity:'; then
-            printf "user-set affinity should exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-
-          cat << EOF > test-values.yaml
-          statusInformers: []
-          EOF
-
-          output=$(helm template oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --values test-values.yaml)
-
-          if ! echo $output | grep -q 'statusInformers: \[\]'; then
-            printf "user-set empty statusInformers should exist:\n\n%s\n\n" "$output"
-            exit 1
-          fi
-
-  create-test-release:
-    runs-on: ubuntu-22.04
-    needs: [ build-and-push-e2e ]
-    outputs:
-      license-id: ${{ steps.create-customer.outputs.license-id }}
-      customer-id: ${{ steps.create-customer.outputs.customer-id }}
-      channel-slug: ${{ steps.create-release.outputs.channel-slug }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Package test chart
-        env:
-          REPLICATED_CHART_NAME: replicated
-          REPLICATED_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}
-          REPLICATED_CHART_VERSION: 0.0.0
-        run: |
-          cd test-chart
-          envsubst < Chart.yaml.tmpl > Chart.yaml
-          helm dep update
-          helm package .
-
-      - name: Create release
-        id: create-release
-        uses: replicatedhq/replicated-actions/create-release@v1.17.0
+          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
         with:
-          app-slug: ${{ env.APP_SLUG }}
-          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
-          chart: test-chart/test-chart-0.1.0.tgz
-          promote-channel: automated-${{ github.run_id }}
-          version: 0.1.0
-
-      - name: Create customer
-        id: create-customer
-        uses: replicatedhq/replicated-actions/create-customer@main
-        with:
-          app-slug: ${{ env.APP_SLUG }}
-          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
-          customer-name: automated-${{ github.run_id }}
-          customer-email: testcustomer@replicated.com
-          license-type: dev
-          channel-slug: ${{ steps.create-release.outputs.channel-slug }}
-          entitlements: |
-            - name: "num_seats"
-              value: "10"
-          is-kots-install-enabled: "false"
-          is-dev-mode-enabled: "true"
+          verb: call
+          args: validate --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
   validate-e2e:
     runs-on: ubuntu-22.04
@@ -267,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create cluster
-        id: create-cluster 
+        id: create-cluster
         uses: replicatedhq/replicated-actions/create-cluster@v1.17.0
         with:
           api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
@@ -278,7 +54,7 @@ jobs:
           export-kubeconfig: true
 
       - name: Install via Helm as standalone in integration mode
-        run: helm install replicated oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.licenseID=$LICENSE_ID --wait --timeout 2m
+        run: helm install replicated oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.licenseID=$LICENSE_ID --set image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set image.tag=24h --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -292,7 +68,7 @@ jobs:
 
       - name: Install via kubectl as standalone in integration mode
         run: |
-          helm template replicated oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.licenseID=$LICENSE_ID | kubectl apply -f -
+          helm template replicated oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.licenseID=$LICENSE_ID --set image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set image.tag=24h | kubectl apply -f -
           kubectl rollout status deployment replicated --timeout=2m
 
       - name: Validate endpoints
@@ -305,14 +81,14 @@ jobs:
 
       - name: Uninstall replicated via kubectl
         run: |
-          helm template replicated oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.licenseID=$LICENSE_ID | kubectl delete -f -
+          helm template replicated oci://ttl.sh/automated-${{ github.run_id }}/replicated --version 0.0.0 --set integration.licenseID=$LICENSE_ID --set image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set image.tag=24h | kubectl delete -f -
           kubectl wait --for=delete deployment/replicated --timeout=2m
 
       - name: Login to registry
         run: helm registry login registry.replicated.com --username $LICENSE_ID --password $LICENSE_ID
 
       - name: Install via Helm as subchart in integration mode
-        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --wait --timeout 2m
+        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -326,7 +102,7 @@ jobs:
 
       - name: Install via kubectl as subchart in integration mode
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart | kubectl apply -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
           kubectl rollout status deployment replicated --timeout=2m
 
@@ -340,13 +116,13 @@ jobs:
 
       - name: Uninstall test-chart via kubectl
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart | kubectl delete -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h | kubectl delete -f -
           kubectl wait --for=delete deployment/test-chart --timeout=2m
           kubectl wait --for=delete deployment/replicated --timeout=2m
 
       # we have to explicitly disable integration mode here because we're using a "dev" license
       - name: Install via Helm as subchart in production mode
-        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --wait --timeout 2m
+        run: helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h --wait --timeout 2m
 
       - name: Validate endpoints
         uses: ./.github/actions/validate-endpoints
@@ -358,8 +134,8 @@ jobs:
       - name: Upgrade via Helm as subchart in production mode to a new version
         run: |
           oldpodname=$(kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}')
-          
-          helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 --wait --timeout 2m
+
+          helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h --wait --timeout 2m
 
           COUNTER=1
           while kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}' | grep -q $oldpodname; do
@@ -385,7 +161,7 @@ jobs:
       # we have to explicitly disable integration mode here because we're using a "dev" license
       - name: Install via kubectl as subchart in production mode
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false | kubectl apply -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
           kubectl rollout status deployment replicated --timeout=2m
 
@@ -401,7 +177,7 @@ jobs:
         run: |
           oldpodname=$(kubectl get pods -l app.kubernetes.io/name=replicated -o jsonpath='{.items[0].metadata.name}')
 
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 | kubectl apply -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.versionLabel=1.0.0 --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
           kubectl rollout status deployment replicated --timeout=2m
 
@@ -426,7 +202,7 @@ jobs:
 
       - name: Uninstall test-chart via kubectl
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false | kubectl delete -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h | kubectl delete -f -
           kubectl wait --for=delete deployment/test-chart --timeout=2m
           kubectl wait --for=delete deployment/replicated --timeout=2m
 
@@ -437,10 +213,10 @@ jobs:
           replicated:
             statusInformers: []
           EOF
-    
+
       - name: Install via Helm as subchart in production mode and pass empty status informers
         run: |
-          helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml --wait --timeout 2m
+          helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h -f test-values.yaml --wait --timeout 2m
 
           COUNTER=1
           while ! kubectl logs deploy/replicated | grep -qv 'Generating status informers from Helm release'; do
@@ -455,7 +231,7 @@ jobs:
 
       - name: Upgrade via Helm as subchart in production mode to use default status informers
         run: |
-          helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --wait --timeout 2m
+          helm upgrade test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h --wait --timeout 2m
 
           COUNTER=1
           while ! kubectl logs deploy/replicated | grep -q 'Generating status informers from Helm release'; do
@@ -473,7 +249,7 @@ jobs:
 
       - name: Install via kubectl as subchart in production mode and pass empty status informers
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml | kubectl apply -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h -f test-values.yaml | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
           kubectl rollout status deployment replicated --timeout=2m
 
@@ -490,10 +266,10 @@ jobs:
 
       - name: Uninstall test-chart via kubectl
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false -f test-values.yaml | kubectl delete -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h -f test-values.yaml | kubectl delete -f -
           kubectl wait --for=delete deployment/test-chart --timeout=2m
           kubectl wait --for=delete deployment/replicated --timeout=2m
-      
+
       # validate airgap
       - name: Download support-bundle binary
         run: |
@@ -507,8 +283,8 @@ jobs:
 
       - name: Install via Helm as subchart in production airgap mode
         run: |
-          helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --wait --timeout 2m
-          
+          helm install test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h --wait --timeout 2m
+
           COUNTER=1
           while ! kubectl get secret/replicated-instance-report; do
             ((COUNTER += 1))
@@ -564,7 +340,7 @@ jobs:
       - name: Uninstall test-chart via Helm
         run: |
           helm uninstall test-chart --wait --timeout 2m
-          
+
           COUNTER=1
           while kubectl get secret/replicated-instance-report; do
             ((COUNTER += 1))
@@ -577,10 +353,10 @@ jobs:
 
       - name: Install via kubectl as subchart in production airgap mode
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true | kubectl apply -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h | kubectl apply -f -
           kubectl rollout status deployment test-chart --timeout=2m
           kubectl rollout status deployment replicated --timeout=2m
-          
+
           COUNTER=1
           while ! kubectl get secret/replicated-instance-report; do
             ((COUNTER += 1))
@@ -636,7 +412,7 @@ jobs:
 
       - name: Uninstall test-chart via kubectl
         run: |
-          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true | kubectl delete -f -
+          helm template test-chart oci://registry.replicated.com/$APP_SLUG/$CHANNEL_SLUG/test-chart --set replicated.integration.enabled=false --set replicated.isAirgap=true --set replicated.image.repository=ttl.sh/automated-${{ github.run_id }}/replicated/replicated-sdk --set replicated.image.tag=24h | kubectl delete -f -
           kubectl wait --for=delete deployment/test-chart --timeout=2m
           kubectl wait --for=delete deployment/replicated --timeout=2m
 
@@ -672,7 +448,7 @@ jobs:
         if: ${{ needs.create-test-release.outputs.customer-id != '' }}
         uses: replicatedhq/replicated-actions/archive-customer@v1.17.0
         with:
-          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }} 
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
           customer-id: ${{ needs.create-test-release.outputs.customer-id }}
 
       - name: Archive Channel
@@ -680,5 +456,5 @@ jobs:
         uses: replicatedhq/replicated-actions/archive-channel@v1.17.0
         with:
           app-slug: ${{ env.APP_SLUG }}
-          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }} 
+          api-token: ${{ secrets.C11Y_MATRIX_TOKEN }}
           channel-slug: ${{ needs.create-test-release.outputs.channel-slug }}
