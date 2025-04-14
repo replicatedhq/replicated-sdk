@@ -13,12 +13,16 @@ func buildAndPublishChainguardImage(
 	source *dagger.Directory,
 	version string,
 ) (*dagger.Directory, *dagger.Directory, *dagger.File, error) {
+	// Format version for Alpine/Wolfi compatibility
+	// Replace -beta. with _beta. for prerelease versions and append -r0
+	packageVersion := strings.Replace(version, "-beta.", "_beta.", 1) + "-r0"
+
 	// Update melange.yaml with correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", version), 1)
+	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", packageVersion), 1)
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
 
 	// Build AMD64 package with melange
@@ -36,7 +40,7 @@ func buildAndPublishChainguardImage(
 		Arch:      "aarch64",
 	})
 
-	// Update apko.yaml with correct version
+	// Update apko.yaml with just the VERSION environment variable
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
 		return nil, nil, nil, err
@@ -59,19 +63,39 @@ func publishChainguardImage(
 	username string,
 	password *dagger.Secret,
 ) (string, error) {
-	image := dag.Apko(dagger.ApkoOpts{
-		RegistryUsername: username,
-		RegistryPassword: password,
-	}).Publish(
-		source.WithDirectory("packages", amdPackages).
-			WithDirectory("packages", armPackages).
-			WithFile("melange.rsa.pub", melangeKey),
-		source.File("deploy/apko.yaml"),
-		[]string{fmt.Sprintf("%s:%s", imagePath, version)},
-		dagger.ApkoPublishOpts{
-			Arch: "x86_64,aarch64",
-		},
+	// Format version for package constraints
+	// Replace -beta. with _beta. for prerelease versions and append -r0
+	packageVersion := strings.Replace(version, "-beta.", "_beta.", 1) + "-r0"
+
+	// Update apko.yaml to set the package version constraint
+	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// Update the package list to include version constraint
+	apkoYaml = strings.Replace(
+		apkoYaml,
+		"    - replicated\n",
+		fmt.Sprintf("    - replicated=%s\n", packageVersion),
+		1,
 	)
+
+	// Create a new source directory with the updated apko.yaml
+	updatedSource := source.WithNewFile("deploy/apko.yaml", apkoYaml)
+
+	image := dag.Apko().
+		WithRegistryAuth(username, password).
+		Publish(
+			updatedSource.WithDirectory("packages", amdPackages).
+				WithDirectory("packages", armPackages).
+				WithFile("melange.rsa.pub", melangeKey),
+			updatedSource.File("deploy/apko.yaml"),
+			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
+			dagger.ApkoPublishOpts{
+				Arch: "x86_64,aarch64",
+			},
+		)
 
 	// return the image digest
 	digest, err := image.ID(ctx)
