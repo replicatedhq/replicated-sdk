@@ -18,6 +18,12 @@ func (m *ReplicatedSdk) Publish(
 	opServiceAccount *dagger.Secret,
 
 	version string,
+
+	// +default=true
+	staging bool,
+
+	// +default=false
+	production bool,
 ) error {
 	if err := generateReleaseNotesPR(ctx, source, opServiceAccount); err != nil {
 		return err
@@ -29,7 +35,7 @@ func (m *ReplicatedSdk) Publish(
 		return err
 	}
 
-	err = buildAndPublishChart(ctx, dag, source, version, true, false)
+	err = buildAndPublishChart(ctx, dag, source, version, staging, production)
 	if err != nil {
 		return err
 	}
