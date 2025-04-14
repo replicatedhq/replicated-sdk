@@ -43,7 +43,7 @@ func (m *ReplicatedSdk) Publish(
 	// if we are running in CI we trigger the SLSA provenance workflow
 	if os.Getenv("CI") == "true" {
 		ghToken := dag.SetSecret("GITHUB_TOKEN", os.Getenv("GITHUB_TOKEN"))
-		ctx := dag.Gh().
+		ctr := dag.Gh().
 			Run(fmt.Sprintf(`api /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
 				-f ref=main \
 				-f inputs[digest]=%s`, digest),
@@ -51,9 +51,9 @@ func (m *ReplicatedSdk) Publish(
 					Token: ghToken,
 				},
 			)
-		stdOut, err := ctx.Stdout(ctx)
+		stdOut, err := ctr.Stdout(ctx)
 		if err != nil {
-			return "", err
+			return err
 		}
 		fmt.Println(stdOut)
 	}
