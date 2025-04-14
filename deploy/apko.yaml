@@ -23,7 +23,7 @@ accounts:
   run-as: replicated
 
 environment:
-  VERSION: ${GIT_TAG}
+  VERSION: 1.0.0
 
 entrypoint:
   command: /replicated api

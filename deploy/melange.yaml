@@ -1,6 +1,6 @@
 package:
   name: replicated
-  version: 1.0.0 # our versioning is not compatible with apk
+  version: 1.0.0
   epoch: 0
   description: replicated package
   copyright:
