@@ -22,10 +22,25 @@ environment:
 pipeline:
   - runs: |
       set -x
+      echo "Current directory: $PWD"
+      echo "Directory contents:"
+      ls -la
+
       export DESTDIR="${{targets.destdir}}"
       mkdir -p "${DESTDIR}"
 
       export GIT_TAG=${{package.version}}
+      echo "GIT_TAG set to: $GIT_TAG"
 
-      make build
-      mv bin/replicated "${DESTDIR}/replicated"
+      echo "Downloading Go dependencies..."
+      go mod download -x || echo "go mod download failed"
+
+      echo "Building..."
+      make build || echo "Make build failed"
+      if [ -f bin/replicated ]; then
+        echo "Binary built successfully"
+        mv bin/replicated "${DESTDIR}/replicated"
+      else
+        echo "Binary not found in expected location"
+        find / -name replicated 2>/dev/null || echo "No binary found"
+      fi

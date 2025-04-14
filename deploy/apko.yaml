@@ -6,7 +6,7 @@ contents:
     - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     - ./melange.rsa.pub
   packages:
-    - replicated  # This is expected to be built locally by `melange`.
+    - replicated
     - bash
     - busybox
     - curl

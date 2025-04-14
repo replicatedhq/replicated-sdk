@@ -11,7 +11,7 @@ func buildChainguardImage(
 	ctx context.Context,
 	source *dagger.Directory,
 	version string,
-) (*dagger.Container, *dagger.Container, error) {
+) (*dagger.ApkoImage, *dagger.ApkoImage, error) {
 	// build the melange.yaml with the correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
 	if err != nil {
@@ -21,20 +21,23 @@ func buildChainguardImage(
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
 
 	// Initialize melange module for AMD64
-	amdDirectory := dag.Melange().Build(
+	amdPackages := dag.Melange().Build(
 		source.File("deploy/melange.yaml"),
 		dagger.MelangeBuildOpts{
 			SourceDir: source,
-			Arch:      "x86_64", // Use x86_64 instead of amd64 for Wolfi
+			Arch:      "x86_64",
 		},
 	)
 
+	// Get the signing key from melange build
+	melangeKey := amdPackages.File("melange.rsa.pub")
+
 	// Initialize melange module for ARM64
-	armDirectory := dag.Melange().Build(
+	armPackages := dag.Melange().Build(
 		source.File("deploy/melange.yaml"),
 		dagger.MelangeBuildOpts{
 			SourceDir: source,
-			Arch:      "aarch64", // Use aarch64 instead of arm64 for Wolfi
+			Arch:      "aarch64",
 		},
 	)
 
@@ -46,28 +49,35 @@ func buildChainguardImage(
 	apkoYaml = strings.Replace(apkoYaml, "VERSION: 1.0.0", fmt.Sprintf("VERSION: %s", version), 1)
 	source = source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
-	// Build AMD64 image
-	amdBuild := dag.Apko().Build(
-		amdDirectory,
+	// Create source with packages and signing key for AMD64
+	amdSource := source.
+		WithDirectory("packages", amdPackages).
+		WithFile("melange.rsa.pub", melangeKey)
+
+	// Create source with packages and signing key for ARM64
+	armSource := source.
+		WithDirectory("packages", armPackages).
+		WithFile("melange.rsa.pub", melangeKey)
+
+	// Build and publish AMD64 image
+	amdImage := dag.Apko().Publish(
+		amdSource,
 		source.File("deploy/apko.yaml"),
-		"x86_64", // Use x86_64 instead of amd64 for Wolfi
-		dagger.ApkoBuildOpts{
+		[]string{fmt.Sprintf("ttl.sh/replicated-sdk-amd64-%s:1h", version)},
+		dagger.ApkoPublishOpts{
 			Arch: "x86_64",
 		},
 	)
 
-	// Build ARM64 image
-	armBuild := dag.Apko().Build(
-		armDirectory,
+	// Build and publish ARM64 image
+	armImage := dag.Apko().Publish(
+		armSource,
 		source.File("deploy/apko.yaml"),
-		"aarch64", // Use aarch64 instead of arm64 for Wolfi
-		dagger.ApkoBuildOpts{
+		[]string{fmt.Sprintf("ttl.sh/replicated-sdk-arm64-%s:1h", version)},
+		dagger.ApkoPublishOpts{
 			Arch: "aarch64",
 		},
 	)
 
-	fmt.Println("amdBuild", amdBuild)
-	fmt.Println("armBuild", armBuild)
-
-	return nil, nil, nil
+	return armImage, amdImage, nil
 }
