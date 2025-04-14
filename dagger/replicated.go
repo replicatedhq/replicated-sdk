@@ -14,7 +14,7 @@ func createAppTestRelease(
 	opServiceAccount *dagger.Secret,
 	sdkChartRepository string,
 ) (string, error) {
-	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account")
+	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
 
 	source = source.Directory("test-chart")
 
@@ -65,7 +65,7 @@ func createCustomer(
 	channelSlug string,
 	opServiceAccount *dagger.Secret,
 ) (string, string, error) {
-	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account")
+	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
 
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).

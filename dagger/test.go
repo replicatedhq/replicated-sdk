@@ -64,7 +64,7 @@ func testPact(
 		return err
 	}
 
-	pactToken := mustGetSecret(ctx, opServiceAccount, "Pactflow read-only token", "credential")
+	pactToken := mustGetSecret(ctx, opServiceAccount, "Pactflow read-only token", "credential", VaultDeveloperAutomation)
 
 	ctr = ctr.
 		WithEnvVariable("PACT_VERSION", commitHash).

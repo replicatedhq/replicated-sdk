@@ -8,9 +8,14 @@ import (
 	onepassword "github.com/1password/onepassword-sdk-go"
 )
 
-const vaultUUID = "ikfulaksdrbqtjgybu2vkcggeu" // Developer Automation
+type Vault string
 
-func mustGetItemUUID(ctx context.Context, opServiceAccount *dagger.Secret, itemName string) string {
+const (
+	VaultDeveloperAutomation           Vault = "ikfulaksdrbqtjgybu2vkcggeu"
+	VaultDeveloperAutomationProduction Vault = "4r7lasfjeevrao4qi4wsqgnn6e"
+)
+
+func mustGetItemUUID(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, vault Vault) string {
 	opServiceAccountPlaintext, err := opServiceAccount.Plaintext(ctx)
 	if err != nil {
 		panic(err)
@@ -20,7 +25,7 @@ func mustGetItemUUID(ctx context.Context, opServiceAccount *dagger.Secret, itemN
 		onepassword.WithIntegrationInfo("Dagger Workflow", "v0.0.1"),
 	)
 
-	items, err := client.Items.ListAll(ctx, vaultUUID)
+	items, err := client.Items.ListAll(ctx, string(vault))
 	if err != nil {
 		panic(err)
 	}
@@ -40,8 +45,8 @@ func mustGetItemUUID(ctx context.Context, opServiceAccount *dagger.Secret, itemN
 	}
 }
 
-func mustGetSecretAsPlaintext(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string) string {
-	secret := mustGetSecret(ctx, opServiceAccount, itemName, field)
+func mustGetSecretAsPlaintext(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string, vault Vault) string {
+	secret := mustGetSecret(ctx, opServiceAccount, itemName, field, vault)
 
 	pt, err := secret.Plaintext(ctx)
 	if err != nil {
@@ -51,8 +56,8 @@ func mustGetSecretAsPlaintext(ctx context.Context, opServiceAccount *dagger.Secr
 	return pt
 }
 
-func mustGetSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string) *dagger.Secret {
-	opItemUUID := mustGetItemUUID(ctx, opServiceAccount, itemName)
+func mustGetSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string, vault Vault) *dagger.Secret {
+	opItemUUID := mustGetItemUUID(ctx, opServiceAccount, itemName, vault)
 
 	opServiceAccountPlaintext, err := opServiceAccount.Plaintext(ctx)
 	if err != nil {
@@ -66,7 +71,7 @@ func mustGetSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemNam
 		panic(err)
 	}
 
-	onePasswordURI := fmt.Sprintf("op://%s/%s/%s", vaultUUID, opItemUUID, field)
+	onePasswordURI := fmt.Sprintf("op://%s/%s/%s", vault, opItemUUID, field)
 	item, err := client.Secrets.Resolve(context.Background(), onePasswordURI)
 	if err != nil {
 		panic(fmt.Errorf("failed to get field %s from item %s: %w", field, itemName, err))
@@ -75,8 +80,8 @@ func mustGetSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemNam
 	return dagger.Connect().SetSecret(itemName, item)
 }
 
-func mustGetNonSensitiveSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string) string {
-	opItemUUID := mustGetItemUUID(ctx, opServiceAccount, itemName)
+func mustGetNonSensitiveSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string, vault Vault) string {
+	opItemUUID := mustGetItemUUID(ctx, opServiceAccount, itemName, vault)
 
 	opServiceAccountPlaintext, err := opServiceAccount.Plaintext(ctx)
 	if err != nil {
@@ -87,7 +92,7 @@ func mustGetNonSensitiveSecret(ctx context.Context, opServiceAccount *dagger.Sec
 		onepassword.WithIntegrationInfo("Dagger Workflow", "v0.0.1"),
 	)
 
-	onePasswordURI := fmt.Sprintf("op://%s/%s/%s", vaultUUID, opItemUUID, field)
+	onePasswordURI := fmt.Sprintf("op://%s/%s/%s", vault, opItemUUID, field)
 	item, err := client.Secrets.Resolve(context.Background(), onePasswordURI)
 	if err != nil {
 		panic(fmt.Errorf("failed to get field %s from item %s: %w", field, itemName, err))

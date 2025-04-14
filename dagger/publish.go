@@ -17,6 +17,7 @@ func (m *ReplicatedSdk) Publish(
 	source *dagger.Directory,
 
 	opServiceAccount *dagger.Secret,
+	opServiceAccountProduction *dagger.Secret,
 
 	version string,
 
@@ -57,24 +58,42 @@ func (m *ReplicatedSdk) Publish(
 	}
 
 	if staging {
-		username := ""
-		var password *dagger.Secret
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk", username, password)
+		username := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "username", VaultDeveloperAutomationProduction)
+		password := mustGetSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "password", VaultDeveloperAutomationProduction)
+
+		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
+		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_password", VaultDeveloperAutomationProduction)
+
+		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password)
+		if err != nil {
+			return err
+		}
+
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk", libraryUsername, libraryPassword)
 		if err != nil {
 			return err
 		}
 	}
 
 	if production {
-		username := ""
-		var password *dagger.Secret
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk", username, password)
+		username := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "username", VaultDeveloperAutomationProduction)
+		password := mustGetSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "password", VaultDeveloperAutomationProduction)
+
+		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
+		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_password", VaultDeveloperAutomationProduction)
+
+		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password)
+		if err != nil {
+			return err
+		}
+
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk", libraryUsername, libraryPassword)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = buildAndPublishChart(ctx, dag, source, version, staging, production)
+	err = buildAndPublishChart(ctx, dag, source, version, staging, production, opServiceAccount)
 	if err != nil {
 		return err
 	}

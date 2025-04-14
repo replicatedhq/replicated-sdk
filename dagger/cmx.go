@@ -15,7 +15,7 @@ func listCMXDistributionsAndVersions(
 	ctx context.Context,
 	opServiceAccount *dagger.Secret,
 ) ([]DistributionVersion, error) {
-	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account")
+	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
 
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
