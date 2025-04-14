@@ -11,11 +11,11 @@ func buildChainguardImage(
 	ctx context.Context,
 	source *dagger.Directory,
 	version string,
-) (*dagger.ApkoImage, *dagger.ApkoImage, error) {
+) (*dagger.ApkoImage, error) {
 	// build the melange.yaml with the correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", version), 1)
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
@@ -44,40 +44,24 @@ func buildChainguardImage(
 	// build the apko.yaml with the correct version
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	apkoYaml = strings.Replace(apkoYaml, "VERSION: 1.0.0", fmt.Sprintf("VERSION: %s", version), 1)
 	source = source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
-	// Create source with packages and signing key for AMD64
-	amdSource := source.
-		WithDirectory("packages", amdPackages).
+	// Create source with packages and signing key for both architectures
+	multiArchSource := source.
+		WithDirectory("packages/x86_64", amdPackages).
+		WithDirectory("packages/aarch64", armPackages).
 		WithFile("melange.rsa.pub", melangeKey)
 
-	// Create source with packages and signing key for ARM64
-	armSource := source.
-		WithDirectory("packages", armPackages).
-		WithFile("melange.rsa.pub", melangeKey)
-
-	// Build and publish AMD64 image
-	amdImage := dag.Apko().Publish(
-		amdSource,
+	// Build and publish multi-arch image
+	image := dag.Apko().Publish(
+		multiArchSource,
 		source.File("deploy/apko.yaml"),
-		[]string{fmt.Sprintf("ttl.sh/replicated-sdk-amd64-%s:1h", version)},
-		dagger.ApkoPublishOpts{
-			Arch: "x86_64",
-		},
+		[]string{fmt.Sprintf("ttl.sh/replicated-sdk-%s:1h", version)},
+		dagger.ApkoPublishOpts{}, // No arch specified for multi-arch build
 	)
 
-	// Build and publish ARM64 image
-	armImage := dag.Apko().Publish(
-		armSource,
-		source.File("deploy/apko.yaml"),
-		[]string{fmt.Sprintf("ttl.sh/replicated-sdk-arm64-%s:1h", version)},
-		dagger.ApkoPublishOpts{
-			Arch: "aarch64",
-		},
-	)
-
-	return armImage, amdImage, nil
+	return image, nil
 }

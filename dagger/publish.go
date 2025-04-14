@@ -20,23 +20,17 @@ func (m *ReplicatedSdk) Publish(
 		return err
 	}
 
-	armImage, amdImage, err := buildChainguardImage(ctx, source, "0.0.1")
+	image, err := buildChainguardImage(ctx, source, "0.0.1")
 	if err != nil {
 		return err
 	}
 
-	armDigest, err := armImage.Digest(ctx)
+	digest, err := image.Digest(ctx)
 	if err != nil {
 		return err
 	}
 
-	amdDigest, err := amdImage.Digest(ctx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("ARM64 Image:", armDigest)
-	fmt.Println("AMD64 Image:", amdDigest)
+	fmt.Println("Multi-arch Image:", digest)
 
 	return nil
 }
