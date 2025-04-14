@@ -4,6 +4,7 @@ import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
 	"fmt"
+	"os"
 )
 
 // Publish publishes the Replicated SDK images and chart
@@ -15,22 +16,41 @@ func (m *ReplicatedSdk) Publish(
 	source *dagger.Directory,
 
 	opServiceAccount *dagger.Secret,
+
+	version string,
 ) error {
 	if err := generateReleaseNotesPR(ctx, source, opServiceAccount); err != nil {
 		return err
 	}
 
-	image, _, err := buildChainguardImage(ctx, dag, source, "0.0.1")
+	// version must be passed in, it will be used to tag the image
+	digest, err := buildAndPublishChainguardImage(ctx, dag, source, version)
 	if err != nil {
 		return err
 	}
 
-	id, err := image.ID(ctx)
+	err = buildAndPublishChart(ctx, dag, source, version, true, false)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Multi-arch Image:", id)
+	// if we are running in CI we trigger the SLSA provenance workflow
+	if os.Getenv("CI") == "true" {
+		ghToken := dag.SetSecret("GITHUB_TOKEN", os.Getenv("GITHUB_TOKEN"))
+		ctx := dag.Gh().
+			Run(fmt.Sprintf(`api /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
+				-f ref=main \
+				-f inputs[digest]=%s`, digest),
+				dagger.GhRunOpts{
+					Token: ghToken,
+				},
+			)
+		stdOut, err := ctx.Stdout(ctx)
+		if err != nil {
+			return "", err
+		}
+		fmt.Println(stdOut)
+	}
 
 	return nil
 }

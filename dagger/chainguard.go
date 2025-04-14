@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-func buildChainguardImage(ctx context.Context, dag *dagger.Client, source *dagger.Directory, version string) (*dagger.Container, *dagger.Container, error) {
+func buildAndPublishChainguardImage(ctx context.Context, dag *dagger.Client, source *dagger.Directory, version string) (string, error) {
 	// Update melange.yaml with correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
 	if err != nil {
-		return nil, nil, err
+		return "", err
 	}
 	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", version), 1)
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
@@ -34,22 +34,46 @@ func buildChainguardImage(ctx context.Context, dag *dagger.Client, source *dagge
 	// Update apko.yaml with correct version
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
-		return nil, nil, err
+		return "", err
 	}
 	apkoYaml = strings.Replace(apkoYaml, "VERSION: 1.0.0", fmt.Sprintf("VERSION: %s", version), 1)
 	source = source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
-	// Publish multi-arch image with apko
+	// publish to docker hub (legacy, will be removed in the future)
 	image := dag.Apko().Publish(
 		source.WithDirectory("packages", amdPackages).
 			WithDirectory("packages", armPackages).
 			WithFile("melange.rsa.pub", melangeKey),
 		source.File("deploy/apko.yaml"),
-		[]string{fmt.Sprintf("ttl.sh/replicated-sdk:%s-1h", version)},
+		[]string{fmt.Sprintf("index.docker.io/replicated/replicated-sdk:%s", version)},
 		dagger.ApkoPublishOpts{
 			Arch: "x86_64,aarch64",
 		},
 	).Container()
 
-	return image, image, nil
+	// publish to staging
+	dag.Apko().Publish(
+		source.WithDirectory("packages", amdPackages).
+			WithDirectory("packages", armPackages).
+			WithFile("melange.rsa.pub", melangeKey),
+		source.File("deploy/apko.yaml"),
+		[]string{fmt.Sprintf("registry.staging.replicated.com/library/replicated-sdk:%s", version)},
+	)
+
+	// publish to production
+	dag.Apko().Publish(
+		source.WithDirectory("packages", amdPackages).
+			WithDirectory("packages", armPackages).
+			WithFile("melange.rsa.pub", melangeKey),
+		source.File("deploy/apko.yaml"),
+		[]string{fmt.Sprintf("registry.replicated.com/library/replicated-sdk:%s", version)},
+	)
+
+	// return the image digest
+	digest, err := image.ID(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return string(digest), nil
 }

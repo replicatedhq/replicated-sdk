@@ -6,6 +6,7 @@ require (
 	github.com/1password/onepassword-sdk-go v0.1.5
 	github.com/99designs/gqlgen v0.17.70
 	github.com/Khan/genqlient v0.8.0
+	github.com/google/go-github/v60 v60.0.0
 	github.com/vektah/gqlparser/v2 v2.5.23
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.8.0
@@ -24,6 +25,8 @@ require (
 	golang.org/x/sync v0.12.0
 	google.golang.org/grpc v1.71.0
 )
+
+require github.com/google/go-querystring v1.1.0 // indirect
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
