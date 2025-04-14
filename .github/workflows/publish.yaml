@@ -37,23 +37,23 @@ jobs:
             });
             core.setOutput("previous-tag", previous.tag_name.replace(/^v/, ''));
 
-  generate-release-notes-pr:
-    runs-on: ubuntu-22.04
-    needs: [get-tags]
-    if: github.ref_type != 'branch'
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  # generate-release-notes-pr:
+  #   runs-on: ubuntu-22.04
+  #   needs: [get-tags]
+  #   if: github.ref_type != 'branch'
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Generate Release Notes PR
-      env:
-        GIT_PREV_TAG: ${{ needs.get-tags.outputs.previous-tag }}
-        GH_PAT: ${{ secrets.GH_PAT }}
-      run: |
-        curl -H "Authorization: token $GH_PAT" \
-          -H 'Accept: application/json' \
-          -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
-          "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
+  #   - name: Generate Release Notes PR
+  #     env:
+  #       GIT_PREV_TAG: ${{ needs.get-tags.outputs.previous-tag }}
+  #       GH_PAT: ${{ secrets.GH_PAT }}
+  #     run: |
+  #       curl -H "Authorization: token $GH_PAT" \
+  #         -H 'Accept: application/json' \
+  #         -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
+  #         "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
 
   make-tests:
     runs-on: ubuntu-22.04
