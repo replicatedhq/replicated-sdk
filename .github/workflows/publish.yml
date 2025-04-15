@@ -67,7 +67,8 @@ jobs:
         id: dagger-publish
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+          OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
         with:
           verb: call
-          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --version ${{ github.ref_name }}
+          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=true --production=true --version ${{ github.ref_name }}
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
