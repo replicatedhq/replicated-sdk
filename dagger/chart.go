@@ -53,7 +53,7 @@ func buildAndPublishChart(
 		valuesYaml = strings.Replace(valuesYaml, `registry: registry.replicated.com`, `registry: registry.staging.replicated.com`, 1)
 
 		username := mustGetNonSensitiveSecret(ctx, opServiceAccount, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
-		password := mustGetSecret(ctx, opServiceAccount, "Replicated SDK Publish", "library_password", VaultDeveloperAutomationProduction)
+		password := mustGetSecret(ctx, opServiceAccount, "Replicated SDK Publish", "staging_library_password", VaultDeveloperAutomationProduction)
 
 		ctr := dag.Container().From("alpine/helm:latest").
 			WithMountedDirectory("/source", source).

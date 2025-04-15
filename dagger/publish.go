@@ -93,7 +93,7 @@ func (m *ReplicatedSdk) Publish(
 		}
 	}
 
-	err = buildAndPublishChart(ctx, dag, source, version, staging, production, opServiceAccount)
+	err = buildAndPublishChart(ctx, dag, source, version, staging, production, opServiceAccountProduction)
 	if err != nil {
 		return err
 	}

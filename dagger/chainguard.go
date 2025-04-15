@@ -76,18 +76,22 @@ func publishChainguardImage(
 	// Create a new source directory with the updated apko.yaml
 	updatedSource := source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
-	image := dag.Apko().
-		WithRegistryAuth(username, password).
-		Publish(
+	build := dag.Apko().
+		Build(
 			updatedSource.WithDirectory("packages", amdPackages).
 				WithDirectory("packages", armPackages).
 				WithFile("melange.rsa.pub", melangeKey),
 			updatedSource.File("deploy/apko.yaml"),
-			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
-			dagger.ApkoPublishOpts{
+			fmt.Sprintf("%s:%s", imagePath, version),
+			dagger.ApkoBuildOpts{
 				Arch: "x86_64,aarch64",
 			},
 		)
+
+	image := build.Publish(dagger.ApkoBuildPublishOpts{
+		RegistryUsername: username,
+		RegistryPassword: password,
+	})
 
 	// return the image digest
 	digest, err := image.ID(ctx)
