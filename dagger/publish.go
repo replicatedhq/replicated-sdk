@@ -69,7 +69,7 @@ func (m *ReplicatedSdk) Publish(
 			return err
 		}
 
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk", libraryUsername, libraryPassword)
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword)
 		if err != nil {
 			return err
 		}
@@ -87,7 +87,7 @@ func (m *ReplicatedSdk) Publish(
 			return err
 		}
 
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk", libraryUsername, libraryPassword)
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword)
 		if err != nil {
 			return err
 		}

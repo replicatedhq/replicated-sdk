@@ -35,11 +35,11 @@ func buildAndPublishChart(
 			WithMountedDirectory("/source", source).
 			WithWorkdir("/source/chart").
 			WithNewFile("/source/chart/values.yaml", valuesYaml).
-			WithEnvVariable("HELM_REGISTRY_USERNAME", username).
-			WithSecretVariable("HELM_REGISTRY_PASSWORD", password).
+			WithEnvVariable("HELM_USERNAME", username).
+			WithSecretVariable("HELM_PASSWORD", password).
 			WithExec([]string{"helm", "dependency", "update"}).
 			WithExec([]string{"helm", "package", "--version", version, "--app-version", version, "."}).
-			WithExec([]string{"helm", "registry", "login", "registry.replicated.com"}).
+			WithExec([]string{"sh", "-c", "helm registry login registry.replicated.com --username $HELM_USERNAME --password $HELM_PASSWORD"}).
 			WithExec([]string{"helm", "push", helmChartFilename, "oci://registry.replicated.com/library"})
 		stdout, err := ctr.Stdout(ctx)
 		if err != nil {
@@ -59,11 +59,11 @@ func buildAndPublishChart(
 			WithMountedDirectory("/source", source).
 			WithWorkdir("/source/chart").
 			WithNewFile("/source/chart/values.yaml", valuesYaml).
-			WithEnvVariable("HELM_REGISTRY_USERNAME", username).
-			WithSecretVariable("HELM_REGISTRY_PASSWORD", password).
+			WithEnvVariable("HELM_USERNAME", username).
+			WithSecretVariable("HELM_PASSWORD", password).
 			WithExec([]string{"helm", "dependency", "update"}).
 			WithExec([]string{"helm", "package", "--version", version, "--app-version", version, "."}).
-			WithExec([]string{"helm", "registry", "login", "registry.staging.replicated.com"}).
+			WithExec([]string{"sh", "-c", "helm registry login registry.staging.replicated.com --username $HELM_USERNAME --password $HELM_PASSWORD"}).
 			WithExec([]string{"helm", "push", helmChartFilename, "oci://registry.staging.replicated.com/library"})
 		stdout, err := ctr.Stdout(ctx)
 		if err != nil {
