@@ -17,6 +17,8 @@ func (m *ReplicatedSdk) Publish(
 	source *dagger.Directory,
 
 	opServiceAccount *dagger.Secret,
+
+	// +optional
 	opServiceAccountProduction *dagger.Secret,
 
 	version string,
@@ -39,8 +41,10 @@ func (m *ReplicatedSdk) Publish(
 	// +optional
 	githubToken *dagger.Secret,
 ) error {
-	if err := generateReleaseNotesPR(ctx, source, opServiceAccount); err != nil {
-		return err
+	if production {
+		if err := generateReleaseNotesPR(ctx, source, opServiceAccount); err != nil {
+			return err
+		}
 	}
 
 	// version must be passed in, it will be used to tag the image
