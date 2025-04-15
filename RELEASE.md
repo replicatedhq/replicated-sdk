@@ -145,7 +145,7 @@ After a release is published, verify:
 
 1. Docker Image:
    ```bash
-   docker pull replicated/replicated-sdk:X.Y.Z
+   docker pull registry.replicated/replicated-sdk-image:X.Y.Z
    ```
 
 2. Helm Charts:
