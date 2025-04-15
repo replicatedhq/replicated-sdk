@@ -16,14 +16,19 @@ environment:
       - ca-certificates-bundle
       - busybox
       - go
+      - make
   environment:
     GOMODCACHE: '/var/cache/melange'
+    CGO_ENABLED: '0'
 
 pipeline:
   - runs: |
-      set -x
+      set -ex
       echo "Current directory: $PWD"
-      echo "Directory contents:"
+
+      BUILDDIR=$(mktemp -d)
+      cp -r ./* "${BUILDDIR}/"
+      cd "${BUILDDIR}"
       ls -la
 
       export DESTDIR="${{targets.destdir}}"
@@ -32,15 +37,15 @@ pipeline:
       export GIT_TAG=${{package.version}}
       echo "GIT_TAG set to: $GIT_TAG"
 
-      echo "Downloading Go dependencies..."
-      go mod download -x || echo "go mod download failed"
+      go mod download
+      make build
 
-      echo "Building..."
-      make build || echo "Make build failed"
       if [ -f bin/replicated ]; then
         echo "Binary built successfully"
         mv bin/replicated "${DESTDIR}/replicated"
+        chmod +x "${DESTDIR}/replicated"
       else
         echo "Binary not found in expected location"
-        find / -name replicated 2>/dev/null || echo "No binary found"
+        find . -name replicated
+        exit 1
       fi
