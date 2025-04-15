@@ -13,16 +13,12 @@ func buildAndPublishChainguardImage(
 	source *dagger.Directory,
 	version string,
 ) (*dagger.Directory, *dagger.Directory, *dagger.File, error) {
-	// Format version for Alpine/Wolfi compatibility
-	// Replace -beta. with _beta. for prerelease versions and append -r0
-	packageVersion := strings.Replace(version, "-beta.", "_beta.", 1) + "-r0"
-
 	// Update melange.yaml with correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", packageVersion), 1)
+	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", sanitizeVersionForMelange(version)), 1)
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
 
 	// Build AMD64 package with melange
@@ -63,10 +59,6 @@ func publishChainguardImage(
 	username string,
 	password *dagger.Secret,
 ) (string, error) {
-	// Format version for package constraints
-	// Replace -beta. with _beta. for prerelease versions and append -r0
-	packageVersion := strings.Replace(version, "-beta.", "_beta.", 1) + "-r0"
-
 	// Update apko.yaml to set the package version constraint
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
@@ -77,7 +69,7 @@ func publishChainguardImage(
 	apkoYaml = strings.Replace(
 		apkoYaml,
 		"    - replicated\n",
-		fmt.Sprintf("    - replicated=%s\n", packageVersion),
+		fmt.Sprintf("    - replicated=%s-r0\n", sanitizeVersionForMelange(version)),
 		1,
 	)
 
@@ -104,4 +96,11 @@ func publishChainguardImage(
 	}
 
 	return string(digest), nil
+}
+
+func sanitizeVersionForMelange(version string) string {
+	v := strings.ReplaceAll(version, "-beta.", "_beta")
+	v = strings.ReplaceAll(v, "-alpha.", "_alpha")
+	v = strings.ReplaceAll(v, "-", "_") // catch any remaining dashes
+	return v
 }
