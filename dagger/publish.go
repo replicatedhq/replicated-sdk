@@ -35,18 +35,9 @@ func (m *ReplicatedSdk) Publish(
 	// +default=false
 	slsa bool,
 
-	// +default="ttl.sh"
-	chartRegistry string,
-
 	// +optional
 	githubToken *dagger.Secret,
 ) error {
-	if production {
-		if err := generateReleaseNotesPR(ctx, source, opServiceAccount); err != nil {
-			return err
-		}
-	}
-
 	// version must be passed in, it will be used to tag the image
 	amdPackages, armPackages, melangeKey, err := buildAndPublishChainguardImage(ctx, dag, source, version)
 	if err != nil {
