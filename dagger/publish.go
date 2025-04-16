@@ -110,5 +110,17 @@ func (m *ReplicatedSdk) Publish(
 		fmt.Println(stdOut)
 	}
 
+	if production {
+		// create a release on github
+		if err := dag.Gh().
+			WithToken(githubToken).
+			WithRepo("replicatedhq/replicated-sdk").
+			WithSource(source).
+			Release().
+			Create(ctx, version, version); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
