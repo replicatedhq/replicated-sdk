@@ -1,0 +1,37 @@
+name: publish
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: 'Digest to publish'
+        required: true
+
+jobs:
+  provenance-staging:
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    if: success() && needs.package-and-publish-staging.result == 'success'
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    with:
+      image: registry.staging.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
+      digest: ${{ inputs.digest }}
+    secrets:
+      registry-password: ${{ secrets.REPLICATED_PASS_STAGING }}
+      registry-username: ${{ secrets.REPLICATED_USER_STAGING }}
+
+  provenance-production:
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    if: success() && needs.package-and-publish-production.result == 'success'
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    with:
+      image: registry.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
+      digest: ${{ inputs.digest }}
+    secrets:
+      registry-password: ${{ secrets.REPLICATED_PASS_PROD }}
+      registry-username: ${{ secrets.REPLICATED_USER_PROD }}
+

@@ -6,6 +6,16 @@
   },
   "dependencies": [
     {
+      "name": "apko",
+      "source": "github.com/opopops/daggerverse/apko@apko/v1.6.3",
+      "pin": "0f19935ac8b7de7b473694c15b89a6e176ee549f"
+    },
+    {
+      "name": "gh",
+      "source": "github.com/luanmtruong/daggerverse/gh@03d45e70a7b356a9fc7c081d48b8d2e042a7a76c",
+      "pin": "03d45e70a7b356a9fc7c081d48b8d2e042a7a76c"
+    },
+    {
       "name": "git-info",
       "source": "github.com/vbehar/daggerverse/git-info@v0.12.1",
       "pin": "cc1e58c0400999415f0a4ee308b7ca13c12c0248"
@@ -14,6 +24,11 @@
       "name": "helm",
       "source": "github.com/puzzle/dagger-module-helm/helm@v2.0.2",
       "pin": "921fa6ff73586e403a605e273f30e516079f688f"
+    },
+    {
+      "name": "melange",
+      "source": "github.com/opopops/daggerverse/melange@melange/v1.3.5",
+      "pin": "078d3e017bd37e1efc26da3ac41c11cbfe8a1829"
     }
   ],
   "source": "dagger"

@@ -1,0 +1,51 @@
+package:
+  name: replicated
+  version: 1.0.0
+  epoch: 0
+  description: replicated package
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - ca-certificates-bundle
+      - busybox
+      - go
+      - make
+  environment:
+    GOMODCACHE: '/var/cache/melange'
+    CGO_ENABLED: '0'
+
+pipeline:
+  - runs: |
+      set -ex
+      echo "Current directory: $PWD"
+
+      BUILDDIR=$(mktemp -d)
+      cp -r ./* "${BUILDDIR}/"
+      cd "${BUILDDIR}"
+      ls -la
+
+      export DESTDIR="${{targets.destdir}}"
+      mkdir -p "${DESTDIR}"
+
+      export GIT_TAG=${{package.version}}
+      echo "GIT_TAG set to: $GIT_TAG"
+
+      go mod download
+      make build
+
+      if [ -f bin/replicated ]; then
+        echo "Binary built successfully"
+        mv bin/replicated "${DESTDIR}/replicated"
+        chmod +x "${DESTDIR}/replicated"
+      else
+        echo "Binary not found in expected location"
+        find . -name replicated
+        exit 1
+      fi

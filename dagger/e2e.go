@@ -18,7 +18,7 @@ func e2e(
 ) error {
 	fmt.Printf("Creating cluster for distribution %s and version %s\n", distribution, version)
 
-	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account")
+	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
 
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
