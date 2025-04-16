@@ -79,7 +79,7 @@ jobs:
           OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
         with:
           verb: call
-          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=true --production=false --version ${{ github.ref_name }}
+          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=true --version ${{ github.ref_name }}
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
   production:
@@ -100,7 +100,8 @@ jobs:
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
           OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           verb: call
-          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=false --production=true --version ${{ github.ref_name }}
+          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --production=true --version ${{ github.ref_name }} --github-token=env:GITHUB_TOKEN
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
