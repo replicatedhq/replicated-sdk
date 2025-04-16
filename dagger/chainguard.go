@@ -79,15 +79,20 @@ func publishChainguardImage(
 	// get the registry address from the image path
 	registry := strings.Split(imagePath, "/")[0]
 
+	// Create a fresh Apko instance and explicitly set auth
 	apko := dag.Apko()
 
+	var apkoWithAuth *dagger.Apko
+	// Now set the actual auth
 	if username != "" && password != nil {
-		apko = apko.WithRegistryAuth(username, password, dagger.ApkoWithRegistryAuthOpts{
+		apkoWithAuth = apko.WithRegistryAuth(username, password, dagger.ApkoWithRegistryAuthOpts{
 			Address: registry,
 		})
+	} else {
+		apkoWithAuth = apko
 	}
 
-	image := apko.
+	image := apkoWithAuth.
 		Publish(
 			updatedSource.WithDirectory("packages", amdPackages).
 				WithDirectory("packages", armPackages).
