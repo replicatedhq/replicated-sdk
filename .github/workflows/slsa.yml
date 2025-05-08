@@ -18,7 +18,7 @@ jobs:
       id-token: write
       packages: write
     if: ${{ inputs.production == false }}
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: registry.staging.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
       digest: ${{ inputs.digest }}
@@ -32,7 +32,7 @@ jobs:
       id-token: write
       packages: write
     if: ${{ inputs.production == true }}
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: registry.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
       digest: ${{ inputs.digest }}
