@@ -98,7 +98,8 @@ func (m *ReplicatedSdk) Publish(
 		ctr := dag.Gh().
 			Run(fmt.Sprintf(`api /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
 				-f ref=main \
-				-f inputs[digest]=%s`, digest),
+				-f inputs[digest]=%s \
+				-f inputs[production]=%t`, digest, production),
 				dagger.GhRunOpts{
 					Token: githubToken,
 				},

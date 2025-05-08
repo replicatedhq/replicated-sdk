@@ -5,6 +5,11 @@ on:
       digest:
         description: "Digest to publish"
         required: true
+      production:
+        description: "Publish production (false for staging)"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   provenance-staging:
@@ -12,7 +17,7 @@ jobs:
       actions: read
       id-token: write
       packages: write
-    if: success() && needs.package-and-publish-staging.result == 'success'
+    if: ${{ inputs.production == false }}
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
     with:
       image: registry.staging.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
@@ -26,7 +31,7 @@ jobs:
       actions: read
       id-token: write
       packages: write
-    if: success() && needs.package-and-publish-production.result == 'success'
+    if: ${{ inputs.production == true }}
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
     with:
       image: registry.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
