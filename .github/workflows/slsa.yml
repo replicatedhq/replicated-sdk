@@ -1,9 +1,9 @@
-name: publish
+name: publish-slsa
 on:
   workflow_dispatch:
     inputs:
       digest:
-        description: 'Digest to publish'
+        description: "Digest to publish"
         required: true
 
 jobs:
@@ -34,4 +34,3 @@ jobs:
     secrets:
       registry-password: ${{ secrets.REPLICATED_PASS_PROD }}
       registry-username: ${{ secrets.REPLICATED_USER_PROD }}
-
