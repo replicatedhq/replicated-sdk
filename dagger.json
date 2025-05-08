@@ -1,14 +1,14 @@
 {
   "name": "replicated-sdk",
-  "engineVersion": "v0.18.2",
+  "engineVersion": "v0.18.6",
   "sdk": {
     "source": "go"
   },
   "dependencies": [
     {
       "name": "apko",
-      "source": "github.com/opopops/daggerverse/apko@apko/v1.6.3",
-      "pin": "0f19935ac8b7de7b473694c15b89a6e176ee549f"
+      "source": "github.com/opopops/daggerverse/apko@apko/v1.7.1",
+      "pin": "e446e7916e92a57003733cee5ff10ed194e72e06"
     },
     {
       "name": "gh",

@@ -94,12 +94,12 @@ func publishChainguardImage(
 
 	image := apkoWithAuth.
 		Publish(
-			updatedSource.WithDirectory("packages", amdPackages).
-				WithDirectory("packages", armPackages).
-				WithFile("melange.rsa.pub", melangeKey),
 			updatedSource.File("deploy/apko.yaml"),
 			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
 			dagger.ApkoPublishOpts{
+				Context: updatedSource.WithDirectory("packages", amdPackages).
+					WithDirectory("packages", armPackages).
+					WithFile("melange.rsa.pub", melangeKey),
 				Sbom: true,
 				Arch: "x86_64,aarch64",
 			},
