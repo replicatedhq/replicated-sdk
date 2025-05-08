@@ -106,12 +106,12 @@ func publishChainguardImage(
 		)
 
 	// return the image digest
-	digest, err := image.ID(ctx)
+	digest, err := image.Digest(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	return string(digest), nil
+	return digest, nil
 }
 
 func sanitizeVersionForMelange(version string) string {
