@@ -97,11 +97,11 @@ func publishChainguardImage(
 			updatedSource.File("deploy/apko.yaml"),
 			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
 			dagger.ApkoPublishOpts{
-				Context: updatedSource.WithDirectory("packages", amdPackages).
+				Arch: []dagger.Platform{dagger.Platform("linux/amd64"), dagger.Platform("linux/arm64")},
+				Source: updatedSource.WithDirectory("packages", amdPackages).
 					WithDirectory("packages", armPackages).
 					WithFile("melange.rsa.pub", melangeKey),
 				Sbom: true,
-				Arch: "x86_64,aarch64",
 			},
 		)
 
@@ -111,6 +111,22 @@ func publishChainguardImage(
 		return "", err
 	}
 
+	// Verify SBOM was generated and attached
+	ctr := dag.Container().
+		From("gcr.io/go-containerregistry/crane:latest").
+		WithExec([]string{"manifest", fmt.Sprintf("%s:%s", imagePath, version)})
+
+	manifest, err := ctr.Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get image manifest: %w", err)
+	}
+
+	// Check for SBOM attestation in the manifest
+	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
+		return "", fmt.Errorf("SBOM attestation not found in image manifest for %s:%s", imagePath, version)
+	}
+
+	fmt.Printf("Successfully verified SBOM generation and attachment for image %s:%s\n", imagePath, version)
 	return digest, nil
 }
 

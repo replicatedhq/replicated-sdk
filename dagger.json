@@ -7,8 +7,8 @@
   "dependencies": [
     {
       "name": "apko",
-      "source": "github.com/opopops/daggerverse/apko@apko/v1.7.1",
-      "pin": "e446e7916e92a57003733cee5ff10ed194e72e06"
+      "source": "github.com/opopops/daggerverse/apko@apko/v1.12.1",
+      "pin": "182a7f073ae270ad14e161e68ab478471f0bd81f"
     },
     {
       "name": "gh",

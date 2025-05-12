@@ -68,6 +68,7 @@ func (m *ReplicatedSdk) Publish(
 		if err != nil {
 			return err
 		}
+
 	}
 
 	if production {
@@ -96,10 +97,10 @@ func (m *ReplicatedSdk) Publish(
 	// if we are running in CI we trigger the SLSA provenance workflow
 	if slsa {
 		ctr := dag.Gh().
-			Run(fmt.Sprintf(`api /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
-				-f ref=main \
+			Run(fmt.Sprintf(`api --method POST /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
+				-f ref=%s \
 				-f inputs[digest]=%s \
-				-f inputs[production]=%t`, digest, production),
+				-f inputs[production]=%t`, version, digest, production),
 				dagger.GhRunOpts{
 					Token: githubToken,
 				},
