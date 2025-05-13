@@ -111,12 +111,21 @@ func publishChainguardImage(
 		return "", err
 	}
 
+	//
 	// Verify SBOM was generated and attached
-	ctr := dag.Container().
-		From("gcr.io/go-containerregistry/crane:latest").
-		WithExec([]string{"manifest", fmt.Sprintf("%s:%s", imagePath, version)})
+	//
+	craneContainer := dag.Container().From("gcr.io/go-containerregistry/crane:latest")
 
-	manifest, err := ctr.Stdout(ctx)
+	if username != "" && password != nil {
+		craneContainer = craneContainer.
+			WithEnvVariable("CRANE_USERNAME", username).
+			WithSecretVariable("CRANE_PASSWORD", password)
+	}
+
+	// Get the manifest using environment variables for auth
+	manifest, err := craneContainer.
+		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, version)}).
+		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get image manifest: %w", err)
 	}
