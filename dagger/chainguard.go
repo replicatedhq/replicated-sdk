@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -58,6 +59,7 @@ func publishChainguardImage(
 	imagePath string,
 	username string,
 	password *dagger.Secret,
+	cosignKey *dagger.Secret,
 ) (string, error) {
 	// Update apko.yaml to set the package version constraint
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
@@ -127,7 +129,113 @@ func publishChainguardImage(
 		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, version)}).
 		Stdout(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get image manifest: %w", err)
+		fmt.Printf("Failed to get manifest with crane, will attempt SBOM generation: %v\n", err)
+
+		// Get the SBOMs that were generated during publish
+		sbomDir := image.Sbom()
+		sbomFiles, err := sbomDir.Entries(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to list SBOM files: %w", err)
+		}
+		if len(sbomFiles) == 0 {
+			return "", fmt.Errorf("no SBOM files were generated during image publish")
+		}
+
+		// Parse the manifest to get digests for each architecture
+		var manifestObj struct {
+			Manifests []struct {
+				Digest   string `json:"digest"`
+				Platform struct {
+					Architecture string `json:"architecture"`
+				} `json:"platform"`
+			} `json:"manifests"`
+		}
+
+		if err := json.Unmarshal([]byte(manifest), &manifestObj); err != nil {
+			return "", fmt.Errorf("failed to parse manifest: %w", err)
+		}
+
+		// Map of architecture to its digest
+		archDigests := make(map[string]string)
+		for _, m := range manifestObj.Manifests {
+			archDigests[m.Platform.Architecture] = m.Digest
+			fmt.Printf("Found digest %s for architecture %s\n", m.Digest, m.Platform.Architecture)
+		}
+
+		// For each architecture
+		for _, arch := range []string{"amd64", "arm64"} {
+			digest, ok := archDigests[arch]
+			if !ok {
+				return "", fmt.Errorf("digest not found for architecture %s", arch)
+			}
+
+			// Find matching SBOM file for this architecture
+			var sbomFile string
+			archMapping := map[string]string{
+				"amd64": "x86_64",
+				"arm64": "aarch64",
+			}
+			mappedArch := archMapping[arch]
+			for _, f := range sbomFiles {
+				if strings.Contains(f, mappedArch) {
+					sbomFile = f
+					break
+				}
+			}
+			if sbomFile == "" {
+				return "", fmt.Errorf("no SBOM file found for architecture %s (mapped to %s) in files: %v", arch, mappedArch, sbomFiles)
+			}
+
+			// Create a temporary directory with the SBOM file
+			tmpDir := dag.Directory()
+			tmpDir = tmpDir.WithFile(sbomFile, sbomDir.File(sbomFile))
+
+			// Use cosign to create SBOM attestation
+			cosignContainer := dag.Container().From("gcr.io/projectsigstore/cosign:v2.2.3")
+			if username != "" && password != nil {
+				cosignContainer = cosignContainer.
+					WithEnvVariable("COSIGN_USERNAME", username).
+					WithSecretVariable("COSIGN_PASSWORD", password)
+			}
+
+			// Set up cosign key if provided
+			if cosignKey != nil {
+				cosignContainer = cosignContainer.
+					WithSecretVariable("COSIGN_PASSWORD", password). // Reuse registry password for key encryption
+					WithNewFile("/cosign.key", cosignKey)
+			}
+
+			// Set COSIGN_YES to skip confirmation prompts
+			cosignContainer = cosignContainer.WithEnvVariable("COSIGN_YES", "true")
+
+			// Build cosign command based on whether we have a key
+			var attestArgs []string
+			if cosignKey != nil {
+				attestArgs = []string{
+					"cosign", "attest",
+					"--key", "/cosign.key",
+					"--type", "spdxjson",
+					"--predicate", sbomFile,
+					fmt.Sprintf("%s@%s", imagePath, digest),
+				}
+			} else {
+				return "", fmt.Errorf("cosign key is required for SBOM attestation")
+			}
+
+			attestContainer := cosignContainer.
+				WithMountedDirectory("/sbom", tmpDir).
+				WithWorkdir("/sbom").
+				WithExec(attestArgs)
+
+			if _, err := attestContainer.Sync(ctx); err != nil {
+				return "", fmt.Errorf("failed to create SBOM attestation for %s: %w", arch, err)
+			}
+
+			fmt.Printf("Successfully created SBOM attestation for %s\n", arch)
+		}
+
+		fmt.Printf("Successfully created all SBOM attestations\n")
+		return digest, nil
 	}
 
 	// Check for SBOM attestation in the manifest
