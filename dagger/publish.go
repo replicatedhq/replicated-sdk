@@ -40,6 +40,9 @@ func (m *ReplicatedSdk) Publish(
 
 	// +optional
 	cosignKey *dagger.Secret,
+
+	// +optional
+	cosignPassword *dagger.Secret,
 ) error {
 	// version must be passed in, it will be used to tag the image
 	amdPackages, armPackages, melangeKey, err := buildAndPublishChainguardImage(ctx, dag, source, version)
@@ -49,7 +52,7 @@ func (m *ReplicatedSdk) Publish(
 
 	digest := ""
 	if dev {
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey)
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -62,12 +65,12 @@ func (m *ReplicatedSdk) Publish(
 		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
 		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "staging_library_password", VaultDeveloperAutomationProduction)
 
-		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey)
+		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey)
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -81,12 +84,12 @@ func (m *ReplicatedSdk) Publish(
 		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
 		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_password", VaultDeveloperAutomationProduction)
 
-		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey)
+		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey)
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}

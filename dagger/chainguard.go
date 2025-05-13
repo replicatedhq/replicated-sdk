@@ -55,11 +55,18 @@ func publishChainguardImage(
 	amdPackages *dagger.Directory,
 	armPackages *dagger.Directory,
 	melangeKey *dagger.File,
+	// version to tag the image with
 	version string,
+	// full image path including registry (e.g. "ttl.sh/replicated/replicated-sdk")
 	imagePath string,
+	// registry username (empty for ttl.sh)
 	username string,
+	// registry password (nil for ttl.sh)
 	password *dagger.Secret,
+	// cosign private key for signing SBOM attestations
 	cosignKey *dagger.Secret,
+	// password to decrypt the cosign private key
+	cosignPassword *dagger.Secret,
 ) (string, error) {
 	// Update apko.yaml to set the package version constraint
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
@@ -129,7 +136,12 @@ func publishChainguardImage(
 		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, version)}).
 		Stdout(ctx)
 	if err != nil {
-		fmt.Printf("Failed to get manifest with crane, will attempt SBOM generation: %v\n", err)
+		return "", fmt.Errorf("failed to get manifest: %w", err)
+	}
+
+	// Check for SBOM attestation in the manifest
+	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
+		fmt.Printf("SBOM attestation not found in manifest, will attempt to create it...\n")
 
 		// Get the SBOMs that were generated during publish
 		sbomDir := image.Sbom()
@@ -201,8 +213,8 @@ func publishChainguardImage(
 			// Set up cosign key if provided
 			if cosignKey != nil {
 				cosignContainer = cosignContainer.
-					WithSecretVariable("COSIGN_PASSWORD", password). // Reuse registry password for key encryption
-					WithNewFile("/cosign.key", cosignKey)
+					WithSecretVariable("COSIGN_PASSWORD", cosignPassword).
+					WithSecretVariable("COSIGN_KEY", cosignKey)
 			}
 
 			// Set COSIGN_YES to skip confirmation prompts
@@ -212,8 +224,8 @@ func publishChainguardImage(
 			var attestArgs []string
 			if cosignKey != nil {
 				attestArgs = []string{
-					"cosign", "attest",
-					"--key", "/cosign.key",
+					"cosign", "attest", "--yes",
+					"--key", "env://COSIGN_KEY",
 					"--type", "spdxjson",
 					"--predicate", sbomFile,
 					fmt.Sprintf("%s@%s", imagePath, digest),
@@ -235,15 +247,10 @@ func publishChainguardImage(
 		}
 
 		fmt.Printf("Successfully created all SBOM attestations\n")
-		return digest, nil
+	} else {
+		fmt.Printf("SBOM attestation already exists in manifest for %s:%s\n", imagePath, version)
 	}
 
-	// Check for SBOM attestation in the manifest
-	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
-		return "", fmt.Errorf("SBOM attestation not found in image manifest for %s:%s", imagePath, version)
-	}
-
-	fmt.Printf("Successfully verified SBOM generation and attachment for image %s:%s\n", imagePath, version)
 	return digest, nil
 }
 
