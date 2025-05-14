@@ -116,6 +116,63 @@ func publishChainguardImage(
 			},
 		)
 
+	// Get the SBOMs that were generated during publish
+	sbomDir := image.Sbom()
+	sbomFiles, err := sbomDir.Entries(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to list SBOM files: %w", err)
+	}
+	if len(sbomFiles) == 0 {
+		return "", fmt.Errorf("no SBOM files were generated during image publish")
+	}
+
+	// For each SBOM file, modify it to add Replicated, Inc. to the creators field
+	for _, sbomFile := range sbomFiles {
+		// Read the SBOM content
+		sbomContent, err := sbomDir.File(sbomFile).Contents(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to read SBOM file %s: %w", sbomFile, err)
+		}
+
+		// Parse the SBOM JSON
+		var sbom map[string]interface{}
+		if err := json.Unmarshal([]byte(sbomContent), &sbom); err != nil {
+			return "", fmt.Errorf("failed to parse SBOM JSON: %w", err)
+		}
+
+		// Add Replicated, Inc. to the creators field if it exists
+		if creationInfo, ok := sbom["creationInfo"].(map[string]interface{}); ok {
+			if creators, ok := creationInfo["creators"].([]interface{}); ok {
+				// Add Replicated, Inc. if not already present
+				replicatedCreator := "Organization: Replicated, Inc."
+				hasReplicated := false
+				for _, creator := range creators {
+					if creator.(string) == replicatedCreator {
+						hasReplicated = true
+						break
+					}
+				}
+				if !hasReplicated {
+					creationInfo["creators"] = append(creators, replicatedCreator)
+				}
+			} else {
+				// If no creators field exists, create it
+				creationInfo["creators"] = []interface{}{
+					"Organization: Replicated, Inc.",
+				}
+			}
+		}
+
+		// Convert back to JSON
+		modifiedSbom, err := json.MarshalIndent(sbom, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal modified SBOM: %w", err)
+		}
+
+		// Update the SBOM file in the directory
+		sbomDir = sbomDir.WithNewFile(sbomFile, string(modifiedSbom))
+	}
+
 	// Get the manifest to find the correct digests
 	craneContainer := dag.Container().From("gcr.io/go-containerregistry/crane:latest")
 
@@ -172,8 +229,7 @@ func publishChainguardImage(
 		// Convert decoded bytes back to a dagger.Secret
 		decodedCosignKey := dag.SetSecret("decodedCosignKey", string(decodedBytes))
 
-		// Get the SBOMs that were generated during publish
-		sbomDir := image.Sbom()
+		// Use our modified SBOM directory that includes Replicated, Inc.
 		sbomFiles, err := sbomDir.Entries(ctx)
 		if err != nil {
 			return "", fmt.Errorf("failed to list SBOM files: %w", err)
