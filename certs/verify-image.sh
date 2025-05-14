@@ -167,7 +167,7 @@ else
 fi
 
 # Step 2: Image Signature Verification
-# Validates the image signature using environment-specific keys or keyless verification
+# Validates the image signature using environment-specific keys
 echo -e "\n🔏 Step 2: Verifying image signature..."
 if [ "$ENV" = "dev" ]; then
     # Development environment uses a development signing key for verification
@@ -202,16 +202,15 @@ elif [ "$ENV" = "stage" ]; then
         exit 1
     fi
 else
-    # Production environment uses keyless verification with GitHub Actions OIDC
+    # Production environment uses production-specific signing key
     if VERIFICATION_OUTPUT=$(cosign verify-attestation \
+      --key ./cosign-prod.pub \
       --type spdxjson \
-      --certificate-identity "https://github.com/replicated/replicated-sdk/.github/workflows/release.yml@refs/heads/main" \
-      --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
       ${IMAGE_WITH_DIGEST} 2>/dev/null); then
         echo "✅ Image signature verification successful"
         echo "Signature details:"
         echo "$VERIFICATION_OUTPUT" | jq -r '
-          "  • Certificate: \(.optional.bundle.Payload.certificate)",
+          "  • Attestation type: \(.payloadType)",
           "  • Signature timestamp: \(.optional.sig.timestamp // "N/A")"
         '
     else
@@ -253,11 +252,8 @@ echo "$DECODED_PAYLOAD" | jq -r '
   "  • Created: \(.predicate.creationInfo.created // "N/A")",
   "  • Created By: \(.predicate.creationInfo.creators | map(select(startswith("Organization: Replicated"))) | .[0] // "N/A")",
   "  • Tool: \(.predicate.creationInfo.creators | map(select(startswith("Tool:"))) | .[0] // "N/A")",
-  "  • Total Packages: \(.predicate.packages | length) packages",
-  "\nKey Packages:",
-  (.predicate.packages[] | select(.name | contains("replicated") or contains("curl") or contains("openssl")) | 
-    "  • \(.name)@\(.versionInfo)\n    License: \(.licenseDeclared // "N/A")\n    Supplier: \(.supplier // "N/A")"
-  )'
+  "  • Total Packages: \(.predicate.packages | length) packages"
+'
 
 # Optionally display full SBOM content if requested
 if [ "$SHOW_SBOM" = "true" ]; then
