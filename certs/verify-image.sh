@@ -1,6 +1,50 @@
 #!/bin/bash
 
-# Help function
+#####################################################################
+# verify-image.sh
+#
+# Description:
+#   This script verifies the authenticity and integrity of the Replicated SDK
+#   container images by performing three key security checks:
+#   1. SLSA Provenance verification - Ensures build chain integrity
+#   2. Image signature verification - Validates image authenticity
+#   3. SBOM attestation verification - Checks software bill of materials
+#
+# Usage:
+#   ./verify-image.sh [OPTIONS]
+#
+# Required Arguments:
+#   -e, --env ENV      Environment to verify (dev|stage|prod)
+#   -v, --version VER  Version to verify
+#   -d, --digest DIG   Image digest to verify
+#
+# Optional Arguments:
+#   --show-sbom       Show full SBOM content
+#   -h, --help        Show this help message
+#
+# Environment-specific Behavior:
+#   - dev: Uses ttl.sh registry with dev signing keys
+#   - stage: Uses staging registry with staging signing keys
+#   - prod: Uses production registry with keyless verification
+#
+# Examples:
+#   ./verify-image.sh --env dev \
+#     --version 1.5.3-beta.3 \
+#     --digest sha256:5b064832df6bfb934c081fa0263134bc9845525211f09a752d5684306310f3c5
+#
+#   ./verify-image.sh --env prod \
+#     --version 1.5.3 \
+#     --digest sha256:7cb8e0c8e0fba8e4a7157b4fcef9e7345538f7543a4e5925bb8b30c9c1375400
+#
+# Exit Codes:
+#   0 - All verifications passed
+#   1 - Verification failed or invalid arguments
+#
+# Author: Replicated, Inc.
+# License: Apache-2.0
+#####################################################################
+
+# Help function to display usage information and examples
 show_help() {
     echo "Usage: $0 [OPTIONS]"
     echo "Verify SLSA attestation and SBOM for Replicated SDK"
@@ -17,7 +61,7 @@ show_help() {
     echo "  $0 --env stage --version 1.5.3-beta.3 --digest sha256:7cb8e0c8e0fba8e4a7157b4fcef9e7345538f7543a4e5925bb8b30c9c1375400"
 }
 
-# Parse command line arguments
+# Parse command line arguments using a while loop for flexibility
 while [[ $# -gt 0 ]]; do
     case $1 in
         -e|--env)
@@ -48,51 +92,58 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate required arguments
+# Validate required arguments to ensure script can proceed
 if [ -z "$ENV" ] || [ -z "$TEST_VERSION" ] || [ -z "$DIGEST" ]; then
     echo "Error: Environment (-e), version (-v), and digest (-d) are required"
     show_help
     exit 1
 fi
 
-# Validate environment
+# Validate environment value to prevent invalid configurations
 if [[ ! "$ENV" =~ ^(dev|stage|prod)$ ]]; then
     echo "Error: Environment (-e, --env) must be one of: dev, stage, prod"
     exit 1
 fi
 
-# Set environment-specific variables
+# Set environment-specific variables for registry paths and image names
 case $ENV in
     dev)
+        # Development environment uses ttl.sh for temporary image storage
         REGISTRY="ttl.sh"
         IMAGE="${REGISTRY}/replicated/replicated-sdk"
         ;;
     stage)
+        # Staging environment uses staging registry for pre-release testing
         REGISTRY="registry.staging.replicated.com"
         IMAGE="${REGISTRY}/library/replicated-sdk-image"
         ;;
     prod)
+        # Production environment uses main registry for released images
         REGISTRY="registry.replicated.com"
         IMAGE="${REGISTRY}/library/replicated-sdk-image"
         ;;
 esac
 
-# Set the full image reference with digest
+# Construct full image reference with digest for unique identification
 IMAGE_WITH_DIGEST="${IMAGE}@${DIGEST}"
 
+# Define source repository for SLSA verification
 SOURCE_REPO=github.com/replicatedhq/replicated-sdk
 
 echo "==============================================="
 echo "Starting verification for ${IMAGE_WITH_DIGEST}"
 echo "==============================================="
 
+# Step 1: SLSA Provenance Verification
+# This step ensures the image was built through our secure build pipeline
 echo -e "\n📋 Step 1: Verifying SLSA provenance..."
 if [ "$ENV" != "dev" ]; then
-    # Only run SLSA verification for staging and production
+    # SLSA verification is skipped for dev environment as it uses different build process
     if COSIGN_REPOSITORY=${REGISTRY}/library/replicated-sdk-image slsa-verifier verify-image "${IMAGE_WITH_DIGEST}" \
       --source-uri ${SOURCE_REPO} \
       --source-tag ${TEST_VERSION} \
       --print-provenance | tee /tmp/slsa_output.json | jq -r '
+        # Format and display relevant build information from SLSA attestation
         "✅ SLSA Verification: SUCCESS",
         "Build Details:",
         "  • Builder: \(.predicate.builder.id | split("@")[0])",
@@ -115,11 +166,13 @@ else
     echo "ℹ️  SLSA verification skipped in dev mode"
 fi
 
+# Step 2: Image Signature Verification
+# Validates the image signature using environment-specific keys or keyless verification
 echo -e "\n🔏 Step 2: Verifying image signature..."
 if [ "$ENV" = "dev" ]; then
-    # Use cosign-dev.pub for dev mode
+    # Development environment uses a development signing key for verification
     if VERIFICATION_OUTPUT=$(cosign verify-attestation \
-      --key certs/cosign-dev.pub \
+      --key ./cosign-dev.pub \
       --type spdxjson \
       ${IMAGE_WITH_DIGEST} 2>/dev/null); then
         echo "✅ Image signature verification successful"
@@ -133,9 +186,9 @@ if [ "$ENV" = "dev" ]; then
         exit 1
     fi
 elif [ "$ENV" = "stage" ]; then
-    # Use cosign-stage.pub for staging mode
+    # Staging environment uses staging-specific signing key
     if VERIFICATION_OUTPUT=$(cosign verify-attestation \
-      --key certs/cosign-stage.pub \
+      --key ./cosign-stage.pub \
       --type spdxjson \
       ${IMAGE_WITH_DIGEST} 2>/dev/null); then
         echo "✅ Image signature verification successful"
@@ -149,7 +202,7 @@ elif [ "$ENV" = "stage" ]; then
         exit 1
     fi
 else
-    # Use keyless verification for prod
+    # Production environment uses keyless verification with GitHub Actions OIDC
     if VERIFICATION_OUTPUT=$(cosign verify-attestation \
       --type spdxjson \
       --certificate-identity "https://github.com/replicated/replicated-sdk/.github/workflows/release.yml@refs/heads/main" \
@@ -167,9 +220,11 @@ else
     fi
 fi
 
+# Step 3: SBOM Attestation Verification
+# Verifies and displays the Software Bill of Materials attached to the image
 echo -e "\n📦 Step 3: Verifying SBOM attestation..."
 
-# Try both predicate types
+# Try both SPDX predicate types for compatibility with different SBOM formats
 if ! RAW_ATTESTATION=$(cosign download attestation \
   --predicate-type spdxjson \
   ${IMAGE_WITH_DIGEST} 2>/dev/null) && \
@@ -181,6 +236,7 @@ if ! RAW_ATTESTATION=$(cosign download attestation \
     exit 1
 fi
 
+# Ensure the attestation is not empty
 if [ -z "$RAW_ATTESTATION" ]; then
     echo "❌ Empty SPDX attestation found"
     echo "This may indicate an issue during the build process"
@@ -190,6 +246,7 @@ fi
 echo "✅ SBOM verification successful"
 DECODED_PAYLOAD=$(echo "$RAW_ATTESTATION" | jq -r '.payload' | base64 -d)
 
+# Display formatted SBOM information focusing on key details
 echo "SBOM details:"
 echo "$DECODED_PAYLOAD" | jq -r '
   "  • Document Name: \(.predicate.name // "N/A")",
@@ -202,6 +259,7 @@ echo "$DECODED_PAYLOAD" | jq -r '
     "  • \(.name)@\(.versionInfo)\n    License: \(.licenseDeclared // "N/A")\n    Supplier: \(.supplier // "N/A")"
   )'
 
+# Optionally display full SBOM content if requested
 if [ "$SHOW_SBOM" = "true" ]; then
     echo -e "\nFull SBOM Content:"
     echo "$DECODED_PAYLOAD" | jq '.'
