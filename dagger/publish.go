@@ -37,6 +37,12 @@ func (m *ReplicatedSdk) Publish(
 
 	// +optional
 	githubToken *dagger.Secret,
+
+	// +optional
+	cosignKey *dagger.Secret,
+
+	// +optional
+	cosignPassword *dagger.Secret,
 ) error {
 	// version must be passed in, it will be used to tag the image
 	amdPackages, armPackages, melangeKey, err := buildAndPublishChainguardImage(ctx, dag, source, version)
@@ -46,43 +52,61 @@ func (m *ReplicatedSdk) Publish(
 
 	digest := ""
 	if dev {
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "ttl.sh/replicated/replicated-sdk", "", nil)
+		// In dev mode, get cosign key from dev vault if not provided
+		if cosignKey == nil {
+			cosignKey = mustGetSecret(ctx, opServiceAccount, "Replicated-SDK-Dev-Cosign.key", "cosign.key", VaultDeveloperAutomation)
+			cosignPassword = mustGetSecret(ctx, opServiceAccount, "Replicated-SDK-Dev-Cosign.info", "password", VaultDeveloperAutomation)
+		}
+		// in dev mode we don't have username/password for the registry
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 	}
 
 	if staging {
+		// In staging, get cosign key from production vault if not provided
+		if cosignKey == nil {
+			cosignKey = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Staging-Cosign.key", "cosign.key", VaultDeveloperAutomationProduction)
+			cosignPassword = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Staging-Cosign.key", "password", VaultDeveloperAutomationProduction)
+		}
+
 		username := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "username", VaultDeveloperAutomationProduction)
 		password := mustGetSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "password", VaultDeveloperAutomationProduction)
 
 		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
 		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "staging_library_password", VaultDeveloperAutomationProduction)
 
-		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password)
+		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword)
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 	}
 
 	if production {
+		// In production, get cosign key from production vault if not provided
+		if cosignKey == nil {
+			cosignKey = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Production-Cosign.key", "cosign.key", VaultDeveloperAutomationProduction)
+			cosignPassword = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Production-Cosign.key", "password", VaultDeveloperAutomationProduction)
+		}
+
 		username := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "username", VaultDeveloperAutomationProduction)
 		password := mustGetSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "password", VaultDeveloperAutomationProduction)
 
 		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
 		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_password", VaultDeveloperAutomationProduction)
 
-		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password)
+		_, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 
-		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword)
+		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -96,10 +120,10 @@ func (m *ReplicatedSdk) Publish(
 	// if we are running in CI we trigger the SLSA provenance workflow
 	if slsa {
 		ctr := dag.Gh().
-			Run(fmt.Sprintf(`api /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
-				-f ref=main \
+			Run(fmt.Sprintf(`api --method POST /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
+				-f ref=%s \
 				-f inputs[digest]=%s \
-				-f inputs[production]=%t`, digest, production),
+				-f inputs[production]=%t`, version, digest, production),
 				dagger.GhRunOpts{
 					Token: githubToken,
 				},
