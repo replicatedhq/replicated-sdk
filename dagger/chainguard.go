@@ -69,11 +69,6 @@ func publishChainguardImage(
 	// password to decrypt the cosign private key
 	cosignPassword *dagger.Secret,
 ) (string, error) {
-	fmt.Printf("Debug: Starting publishChainguardImage\n")
-	fmt.Printf("Debug: cosignKey is nil? %v\n", cosignKey == nil)
-	fmt.Printf("Debug: cosignPassword is nil? %v\n", cosignPassword == nil)
-	fmt.Printf("Debug: imagePath: %s\n", imagePath)
-	fmt.Printf("Debug: version: %s\n", version)
 
 	// Update apko.yaml to set the package version constraint
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
@@ -121,15 +116,7 @@ func publishChainguardImage(
 			},
 		)
 
-	// return the image digest
-	digest, err := image.Digest(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	//
-	// Verify SBOM was generated and attached
-	//
+	// Get the manifest to find the correct digests
 	craneContainer := dag.Container().From("gcr.io/go-containerregistry/crane:latest")
 
 	if username != "" && password != nil {
@@ -138,13 +125,32 @@ func publishChainguardImage(
 			WithSecretVariable("CRANE_PASSWORD", password)
 	}
 
-	// Get the manifest using environment variables for auth
 	manifest, err := craneContainer.
 		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, version)}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get manifest: %w", err)
 	}
+
+	// Parse the manifest to get digests for each architecture
+	var manifestObj struct {
+		Manifests []struct {
+			Digest   string `json:"digest"`
+			Platform struct {
+				Architecture string `json:"architecture"`
+			} `json:"platform"`
+		} `json:"manifests"`
+	}
+
+	if err := json.Unmarshal([]byte(manifest), &manifestObj); err != nil {
+		return "", fmt.Errorf("failed to parse manifest: %w", err)
+	}
+
+	// Get the first digest as our main reference
+	if len(manifestObj.Manifests) == 0 {
+		return "", fmt.Errorf("no manifests found in image")
+	}
+	mainDigest := manifestObj.Manifests[0].Digest
 
 	// Check for SBOM attestation in the manifest
 	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
@@ -155,17 +161,12 @@ func publishChainguardImage(
 		if err != nil {
 			return "", fmt.Errorf("failed to get cosign key: %w", err)
 		}
-		fmt.Printf("Debug: encodedKeyPlaintext length: %d\n", len(encodedKeyPlaintext))
-		fmt.Printf("Debug: encodedKeyPlaintext: %s\n", encodedKeyPlaintext)
 
 		// Decode the cosignKey from base64
 		decodedBytes, err := base64.StdEncoding.DecodeString(encodedKeyPlaintext)
 		if err != nil {
 			return "", fmt.Errorf("failed to decode base64 key: %w", err)
 		}
-		// debug print the decoded bytes
-		fmt.Printf("Debug: decodedBytes length: %d\n", len(decodedBytes))
-		fmt.Printf("Debug: decodedBytes: %s\n", string(decodedBytes))
 
 		// The Attest function expects a dagger.Secret, so we need to change the type
 		// Convert decoded bytes back to a dagger.Secret
@@ -181,25 +182,10 @@ func publishChainguardImage(
 			return "", fmt.Errorf("no SBOM files were generated during image publish")
 		}
 
-		// Parse the manifest to get digests for each architecture
-		var manifestObj struct {
-			Manifests []struct {
-				Digest   string `json:"digest"`
-				Platform struct {
-					Architecture string `json:"architecture"`
-				} `json:"platform"`
-			} `json:"manifests"`
-		}
-
-		if err := json.Unmarshal([]byte(manifest), &manifestObj); err != nil {
-			return "", fmt.Errorf("failed to parse manifest: %w", err)
-		}
-
 		// Map of architecture to its digest
 		archDigests := make(map[string]string)
 		for _, m := range manifestObj.Manifests {
 			archDigests[m.Platform.Architecture] = m.Digest
-			fmt.Printf("Found digest %s for architecture %s\n", m.Digest, m.Platform.Architecture)
 		}
 
 		// Use cosign module to create SBOM attestation
@@ -233,7 +219,7 @@ func publishChainguardImage(
 			tmpDir := dag.Directory().WithFile(sbomFile, sbomDir.File(sbomFile))
 
 			// Attest the SBOM using the decoded key
-			attestOutput, err := cosignModule.Attest(
+			_, err := cosignModule.Attest(
 				ctx,
 				decodedCosignKey,
 				cosignPassword,
@@ -247,7 +233,7 @@ func publishChainguardImage(
 				return "", fmt.Errorf("failed to create SBOM attestation for %s: %w", arch, err)
 			}
 
-			fmt.Printf("Successfully created SBOM attestation for %s: %s\n", arch, attestOutput)
+			fmt.Printf("Successfully created SBOM attestation for %s\n", arch)
 		}
 
 		fmt.Printf("Successfully created all SBOM attestations\n")
@@ -255,7 +241,21 @@ func publishChainguardImage(
 		fmt.Printf("SBOM attestation already exists in manifest for %s:%s\n", imagePath, version)
 	}
 
-	return digest, nil
+	// Print verification instructions
+	fmt.Printf("\n✨ Image successfully built, published, and signed!\n")
+	fmt.Printf("To verify the image, run:\n\n")
+
+	// Determine environment from image path
+	env := "dev"
+	if strings.Contains(imagePath, "registry.staging.replicated.com") {
+		env = "stage"
+	} else if strings.Contains(imagePath, "registry.replicated.com") {
+		env = "prod"
+	}
+
+	fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, version, mainDigest)
+
+	return mainDigest, nil
 }
 
 func sanitizeVersionForMelange(version string) string {
