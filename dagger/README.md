@@ -107,3 +107,9 @@ Software Bill of Materials (SBOM) is automatically generated during the build pr
   - SBOM data
   - Build provenance
   - Image signatures
+
+For production releases, SLSA provenance is automatically generated:
+- Triggered by the Dagger pipeline during production releases
+- Requires a GitHub token with permissions to trigger the SLSA workflow (`slsa.yml`)
+- The workflow is triggered via GitHub API to generate and attach provenance to the image
+- This step is skipped for development and staging releases
