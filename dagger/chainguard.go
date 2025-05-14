@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -68,6 +69,12 @@ func publishChainguardImage(
 	// password to decrypt the cosign private key
 	cosignPassword *dagger.Secret,
 ) (string, error) {
+	fmt.Printf("Debug: Starting publishChainguardImage\n")
+	fmt.Printf("Debug: cosignKey is nil? %v\n", cosignKey == nil)
+	fmt.Printf("Debug: cosignPassword is nil? %v\n", cosignPassword == nil)
+	fmt.Printf("Debug: imagePath: %s\n", imagePath)
+	fmt.Printf("Debug: version: %s\n", version)
+
 	// Update apko.yaml to set the package version constraint
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
@@ -143,6 +150,27 @@ func publishChainguardImage(
 	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
 		fmt.Printf("SBOM attestation not found in manifest, will attempt to create it...\n")
 
+		// Get the base64 encoded key as a string and decode it
+		encodedKeyPlaintext, err := cosignKey.Plaintext(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to get cosign key: %w", err)
+		}
+		fmt.Printf("Debug: encodedKeyPlaintext length: %d\n", len(encodedKeyPlaintext))
+		fmt.Printf("Debug: encodedKeyPlaintext: %s\n", encodedKeyPlaintext)
+
+		// Decode the cosignKey from base64
+		decodedBytes, err := base64.StdEncoding.DecodeString(encodedKeyPlaintext)
+		if err != nil {
+			return "", fmt.Errorf("failed to decode base64 key: %w", err)
+		}
+		// debug print the decoded bytes
+		fmt.Printf("Debug: decodedBytes length: %d\n", len(decodedBytes))
+		fmt.Printf("Debug: decodedBytes: %s\n", string(decodedBytes))
+
+		// The Attest function expects a dagger.Secret, so we need to change the type
+		// Convert decoded bytes back to a dagger.Secret
+		decodedCosignKey := dag.SetSecret("decodedCosignKey", string(decodedBytes))
+
 		// Get the SBOMs that were generated during publish
 		sbomDir := image.Sbom()
 		sbomFiles, err := sbomDir.Entries(ctx)
@@ -174,6 +202,9 @@ func publishChainguardImage(
 			fmt.Printf("Found digest %s for architecture %s\n", m.Digest, m.Platform.Architecture)
 		}
 
+		// Use cosign module to create SBOM attestation
+		cosignModule := dag.Cosign()
+
 		// For each architecture
 		for _, arch := range []string{"amd64", "arm64"} {
 			digest, ok := archDigests[arch]
@@ -199,51 +230,24 @@ func publishChainguardImage(
 			}
 
 			// Create a temporary directory with the SBOM file
-			tmpDir := dag.Directory()
-			tmpDir = tmpDir.WithFile(sbomFile, sbomDir.File(sbomFile))
+			tmpDir := dag.Directory().WithFile(sbomFile, sbomDir.File(sbomFile))
 
-			// Use cosign to create SBOM attestation
-			cosignContainer := dag.Container().From("gcr.io/projectsigstore/cosign:v2.2.3")
-			if username != "" && password != nil {
-				cosignContainer = cosignContainer.
-					WithEnvVariable("COSIGN_USERNAME", username).
-					WithSecretVariable("COSIGN_PASSWORD", password)
-			}
-
-			// Set up cosign key if provided
-			if cosignKey != nil {
-				cosignContainer = cosignContainer.
-					WithSecretVariable("COSIGN_PASSWORD", cosignPassword).
-					WithSecretVariable("COSIGN_KEY", cosignKey)
-			}
-
-			// Set COSIGN_YES to skip confirmation prompts
-			cosignContainer = cosignContainer.WithEnvVariable("COSIGN_YES", "true")
-
-			// Build cosign command based on whether we have a key
-			var attestArgs []string
-			if cosignKey != nil {
-				attestArgs = []string{
-					"cosign", "attest", "--yes",
-					"--key", "env://COSIGN_KEY",
-					"--type", "spdxjson",
-					"--predicate", sbomFile,
-					fmt.Sprintf("%s@%s", imagePath, digest),
-				}
-			} else {
-				return "", fmt.Errorf("cosign key is required for SBOM attestation")
-			}
-
-			attestContainer := cosignContainer.
-				WithMountedDirectory("/sbom", tmpDir).
-				WithWorkdir("/sbom").
-				WithExec(attestArgs)
-
-			if _, err := attestContainer.Sync(ctx); err != nil {
+			// Attest the SBOM using the decoded key
+			attestOutput, err := cosignModule.Attest(
+				ctx,
+				decodedCosignKey,
+				cosignPassword,
+				fmt.Sprintf("%s@%s", imagePath, digest),
+				tmpDir.File(sbomFile),
+				dagger.CosignAttestOpts{
+					SbomType: "spdxjson",
+				},
+			)
+			if err != nil {
 				return "", fmt.Errorf("failed to create SBOM attestation for %s: %w", arch, err)
 			}
 
-			fmt.Printf("Successfully created SBOM attestation for %s\n", arch)
+			fmt.Printf("Successfully created SBOM attestation for %s: %s\n", arch, attestOutput)
 		}
 
 		fmt.Printf("Successfully created all SBOM attestations\n")

@@ -119,6 +119,8 @@ func testSBOMGeneration(
 		testRegistry,
 		"",
 		nil,
+		nil,
+		nil,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to publish image: %w", err)

@@ -29,6 +29,11 @@
       "name": "melange",
       "source": "github.com/opopops/daggerverse/melange@melange/v1.3.5",
       "pin": "078d3e017bd37e1efc26da3ac41c11cbfe8a1829"
+    },
+    {
+      "name": "cosign",
+      "source": "github.com/puzzle/dagger-module-cosign/cosign@ed23741b9d2aa1fd68e705261814d607ed935b15",
+      "pin": "ed23741b9d2aa1fd68e705261814d607ed935b15"
     }
   ],
   "source": "dagger"

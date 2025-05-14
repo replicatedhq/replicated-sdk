@@ -52,6 +52,12 @@ func (m *ReplicatedSdk) Publish(
 
 	digest := ""
 	if dev {
+		// In dev mode, get cosign key from dev vault if not provided
+		if cosignKey == nil {
+			cosignKey = mustGetSecret(ctx, opServiceAccount, "Replicated-SDK-Dev-Cosign.key", "cosign.key", VaultDeveloperAutomation)
+			cosignPassword = mustGetSecret(ctx, opServiceAccount, "Replicated-SDK-Dev-Cosign.info", "password", VaultDeveloperAutomation)
+		}
+		// in dev mode we don't have username/password for the registry
 		digest, err = publishChainguardImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey, cosignPassword)
 		if err != nil {
 			return err
@@ -59,6 +65,12 @@ func (m *ReplicatedSdk) Publish(
 	}
 
 	if staging {
+		// In staging, get cosign key from production vault if not provided
+		if cosignKey == nil {
+			cosignKey = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Staging-Cosign.key", "cosign.key", VaultDeveloperAutomationProduction)
+			cosignPassword = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Staging-Cosign.key", "password", VaultDeveloperAutomationProduction)
+		}
+
 		username := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "username", VaultDeveloperAutomationProduction)
 		password := mustGetSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "password", VaultDeveloperAutomationProduction)
 
@@ -74,10 +86,15 @@ func (m *ReplicatedSdk) Publish(
 		if err != nil {
 			return err
 		}
-
 	}
 
 	if production {
+		// In production, get cosign key from production vault if not provided
+		if cosignKey == nil {
+			cosignKey = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Production-Cosign.key", "cosign.key", VaultDeveloperAutomationProduction)
+			cosignPassword = mustGetSecret(ctx, opServiceAccountProduction, "Replicated-SDK-Production-Cosign.key", "password", VaultDeveloperAutomationProduction)
+		}
+
 		username := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "username", VaultDeveloperAutomationProduction)
 		password := mustGetSecret(ctx, opServiceAccountProduction, "Docker Hub Release Account", "password", VaultDeveloperAutomationProduction)
 
