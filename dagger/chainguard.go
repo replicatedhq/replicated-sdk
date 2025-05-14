@@ -226,7 +226,9 @@ func publishChainguardImage(
 				fmt.Sprintf("%s@%s", imagePath, digest),
 				tmpDir.File(sbomFile),
 				dagger.CosignAttestOpts{
-					SbomType: "spdxjson",
+					SbomType:         "spdxjson",
+					RegistryUsername: username,
+					RegistryPassword: password,
 				},
 			)
 			if err != nil {
