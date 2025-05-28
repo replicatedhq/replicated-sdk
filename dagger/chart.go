@@ -50,7 +50,7 @@ func buildAndPublishChart(
 	}
 
 	if staging {
-		valuesYaml = strings.Replace(valuesYaml, `registry: registry.replicated.com`, `registry: registry.staging.replicated.com`, 1)
+		valuesYaml = strings.Replace(valuesYaml, `registry: proxy.replicated.com`, `registry: proxy.staging.replicated.com`, 1)
 
 		username := mustGetNonSensitiveSecret(ctx, opServiceAccount, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
 		password := mustGetSecret(ctx, opServiceAccount, "Replicated SDK Publish", "staging_library_password", VaultDeveloperAutomationProduction)
