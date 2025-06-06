@@ -211,14 +211,14 @@ spec:
 		ctr = dag.Container().From("bitnami/kubectl:latest").
 			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-			WithExec([]string{"kubectl", "describe", "deployment/replicated-ssl-test"})
+			WithExec([]string{"kubectl", "describe", "deployment/replicated"})
 		out, err2 := ctr.Stdout(ctx)
 		if err2 != nil {
-			return fmt.Errorf("failed to describe replicated-ssl-test deployment: %w", err2)
+			return fmt.Errorf("failed to describe replicated deployment: %w", err2)
 		}
 		fmt.Println(out)
 
-		return fmt.Errorf("failed to wait for replicated-ssl-test deployment to be ready: %w", err)
+		return fmt.Errorf("failed to wait for replicated deployment to be ready: %w", err)
 	}
 	fmt.Println(out)
 
