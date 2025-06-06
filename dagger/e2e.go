@@ -26,7 +26,7 @@ func e2e(
 
 	out, err := ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create cluster: %w", err)
 	}
 
 	type ReplicatedCluster struct {
@@ -35,7 +35,7 @@ func e2e(
 	}
 	replicatedCluster := ReplicatedCluster{}
 	if err := json.Unmarshal([]byte(out), &replicatedCluster); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal cluster: %w", err)
 	}
 
 	// get the kubeconfig
@@ -45,7 +45,7 @@ func e2e(
 
 	kubeconfig, err := ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get kubeconfig: %w", err)
 	}
 
 	kubeconfigSource := source.WithNewFile("/kubeconfig", kubeconfig)
@@ -57,7 +57,7 @@ func e2e(
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to install chart: %w", err)
 	}
 
 	fmt.Println(out)
@@ -76,6 +76,7 @@ func e2e(
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
+		fmt.Printf("failed to wait for deployment to be ready: %v\n", err)
 		// return err
 	}
 
@@ -91,7 +92,7 @@ func e2e(
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get namespaces: %w", err)
 	}
 
 	fmt.Println(out)
@@ -106,7 +107,7 @@ func e2e(
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get pods: %w", err)
 	}
 
 	fmt.Println(out)

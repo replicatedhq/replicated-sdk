@@ -4,6 +4,8 @@ import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 )
 
@@ -52,6 +54,13 @@ func (m *ReplicatedSdk) Validate(
 	if err != nil {
 		return err
 	}
+
+	shortStrings := []string{}
+	for _, distribution := range cmxDistributions {
+		shortStrings = append(shortStrings, fmt.Sprintf("%s-%s", distribution.Distribution, distribution.Version))
+	}
+	sort.Strings(shortStrings)
+	fmt.Printf("Running E2E tests for the following distributions: %s\n", strings.Join(shortStrings, ", "))
 
 	wg := sync.WaitGroup{}
 	for _, distribution := range cmxDistributions {
