@@ -171,17 +171,22 @@ spec:
   selector:
     matchLabels:
       app: replicated-ssl-test
-  spec:
-    containers:
-    - name: replicated-ssl-test
-      image: alpine/curl:latest
-      ports:
-      - containerPort: 3000
-      readinessProbe:
-        exec:
-          command: ["curl", "-k", "https://replicated.svc:3000/health"]
-        initialDelaySeconds: 10
-        periodSeconds: 10
+  template:
+    metadata:
+      labels:
+        app: replicated-ssl-test
+    spec:
+      containers:
+      - name: replicated-ssl-test
+        image: alpine/curl:latest
+        command: ["sleep", "500d"]
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          exec:
+            command: ["curl", "-k", "https://replicated:3000/health"]
+          initialDelaySeconds: 10
+          periodSeconds: 10
 	`
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
