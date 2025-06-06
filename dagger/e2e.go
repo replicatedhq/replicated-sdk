@@ -159,6 +159,53 @@ func e2e(
 	}
 	fmt.Println(out)
 
+	// create a kubernetes deployment that runs a pod - the pod has a readiness probe that runs 'curl -k https://replicated.svc:3000/health'
+	// this will only pass if the replicated pod is ready and serving TLS traffic
+	deploymentYaml := `
+	apiVersion: apps/v1
+	kind: Deployment
+	metadata:
+		name: replicated-ssl-test
+	spec:
+		replicas: 1
+		selector:
+			matchLabels:
+				app: replicated-ssl-test
+		spec:
+			containers:
+			- name: replicated-ssl-test
+				image: alpine/curl:latest
+				ports:
+				- containerPort: 3000
+				readinessProbe:
+					exec:
+						command: ["curl", "-k", "https://replicated.svc:3000/health"]
+					initialDelaySeconds: 10
+					periodSeconds: 10
+	`
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithNewFile("/deployment.yaml", deploymentYaml).
+		WithExec([]string{"kubectl", "apply", "-f", "/deployment.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to apply replicated-ssl-test deployment: %w", err)
+	}
+	fmt.Println(out)
+
+	// wait for the replicated-ssl-test deployment to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "wait", "--for=condition=available", "deployment/replicated-ssl-test", "--timeout=1m"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for replicated-ssl-test deployment to be ready: %w", err)
+	}
+	fmt.Println(out)
+
 	// print the final pods
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
