@@ -161,8 +161,7 @@ func e2e(
 
 	// create a kubernetes deployment that runs a pod - the pod has a readiness probe that runs 'curl -k https://replicated.svc:3000/health'
 	// this will only pass if the replicated pod is ready and serving TLS traffic
-	deploymentYaml := `
-apiVersion: apps/v1
+	deploymentYaml := `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: replicated-ssl-test
@@ -186,8 +185,7 @@ spec:
           exec:
             command: ["curl", "-k", "https://replicated:3000/health"]
           initialDelaySeconds: 10
-          periodSeconds: 10
-	`
+          periodSeconds: 10`
 	deploymentSource := source.WithNewFile("/replicated-ssl-test.yaml", deploymentYaml)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
@@ -195,11 +193,13 @@ spec:
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithFile("/root/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
 		WithExec([]string{"kubectl", "apply", "-f", "/root/replicated-ssl-test.yaml"})
-	out, err = ctr.Stderr(ctx)
-	fmt.Println(out)
+	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to apply replicated-ssl-test deployment: %w", err)
+		// Get stderr to see the actual error
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply replicated-ssl-test deployment: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
 	}
+	fmt.Println(out)
 
 	// wait for the replicated-ssl-test deployment to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
