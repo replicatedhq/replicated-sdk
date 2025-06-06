@@ -162,26 +162,26 @@ func e2e(
 	// create a kubernetes deployment that runs a pod - the pod has a readiness probe that runs 'curl -k https://replicated.svc:3000/health'
 	// this will only pass if the replicated pod is ready and serving TLS traffic
 	deploymentYaml := `
-	apiVersion: apps/v1
-	kind: Deployment
-	metadata:
-		name: replicated-ssl-test
-	spec:
-		replicas: 1
-		selector:
-			matchLabels:
-				app: replicated-ssl-test
-		spec:
-			containers:
-			- name: replicated-ssl-test
-				image: alpine/curl:latest
-				ports:
-				- containerPort: 3000
-				readinessProbe:
-					exec:
-						command: ["curl", "-k", "https://replicated.svc:3000/health"]
-					initialDelaySeconds: 10
-					periodSeconds: 10
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: replicated-ssl-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: replicated-ssl-test
+  spec:
+    containers:
+    - name: replicated-ssl-test
+      image: alpine/curl:latest
+      ports:
+      - containerPort: 3000
+      readinessProbe:
+        exec:
+          command: ["curl", "-k", "https://replicated.svc:3000/health"]
+        initialDelaySeconds: 10
+        periodSeconds: 10
 	`
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
