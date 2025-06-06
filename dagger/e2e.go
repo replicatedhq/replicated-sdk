@@ -173,5 +173,6 @@ func e2e(
 	}
 	fmt.Println(out)
 
+	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
 	return nil
 }
