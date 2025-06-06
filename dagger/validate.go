@@ -59,7 +59,7 @@ func (m *ReplicatedSdk) Validate(
 		go func(distribution DistributionVersion) {
 			defer wg.Done()
 			if err := e2e(ctx, source, opServiceAccount, licenseID, distribution.Distribution, distribution.Version, channelSlug); err != nil {
-				panic(err)
+				panic(fmt.Sprintf("E2E test failed for distribution %s %s: %v", distribution.Distribution, distribution.Version, err))
 			}
 		}(distribution)
 	}
