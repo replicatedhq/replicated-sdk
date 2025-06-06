@@ -12,8 +12,6 @@ func (m *ReplicatedSdk) TestChart(
 
 	// +defaultPath="/"
 	source *dagger.Directory,
-
-	opServiceAccount *dagger.Secret,
 ) error {
 	imageRegistry, imageRepository, imageTag, err := buildAndPushImageToTTL(ctx, source)
 	if err != nil {
