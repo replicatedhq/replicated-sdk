@@ -29,11 +29,13 @@ func (m *ReplicatedSdk) Validate(
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Image pushed to %s/%s:%s\n", imageRegistry, imageRepository, imageTag)
 
 	chart, err := buildAndPushChartToTTL(ctx, source, imageRegistry, imageRepository, imageTag)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Chart pushed to %s\n", chart)
 
 	channelSlug, err := createAppTestRelease(ctx, source, opServiceAccount, chart)
 	if err != nil {
