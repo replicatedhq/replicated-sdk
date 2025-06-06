@@ -4,6 +4,7 @@ import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
 	"fmt"
+	"time"
 )
 
 // TestChart builds the SDK image and chart and wraps them in a test chart
@@ -29,7 +30,15 @@ func (m *ReplicatedSdk) TestChart(
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Wrapped chart created: %s\n", wrappedChart)
+
+	now := time.Now().Format("20060102150405")
+	chartRef := fmt.Sprintf("oci://ttl.sh/automated-%s/wrapped-chart", now)
+	chartFile := "/chart/test-chart-0.1.0.tgz"
+
+	_ = dag.Container().From("alpine/helm:latest").
+		WithFile("/chart/test-chart-0.1.0.tgz", wrappedChart).
+		WithExec([]string{"helm", "push", chartFile, chartRef})
+	fmt.Printf("\n\nWrapped chart pushed to %s:0.1.0\n\n", chartRef)
 
 	return nil
 }

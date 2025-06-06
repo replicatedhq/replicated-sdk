@@ -58,7 +58,7 @@ vet:
 
 .PHONY: build-ttl.sh
 build-ttl.sh:
-	dagger call test-chart
+	dagger call test-chart --progress=plain
 
 .PHONY: mock
 mock:
