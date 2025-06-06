@@ -22,7 +22,7 @@ func e2e(
 
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
-		WithExec([]string{"/replicated", "cluster", "create", "--distribution", distribution, "--version", version, "--wait", "5m", "--output", "json"})
+		WithExec([]string{"/replicated", "cluster", "create", "--distribution", distribution, "--version", version, "--wait", "15m", "--output", "json"})
 
 	out, err := ctr.Stdout(ctx)
 	if err != nil {
