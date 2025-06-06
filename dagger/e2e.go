@@ -196,10 +196,10 @@ spec:
 		WithFile("/root/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
 		WithExec([]string{"kubectl", "apply", "-f", "/root/replicated-ssl-test.yaml"})
 	out, err = ctr.Stdout(ctx)
+	fmt.Println(out)
 	if err != nil {
 		return fmt.Errorf("failed to apply replicated-ssl-test deployment: %w", err)
 	}
-	fmt.Println(out)
 
 	// wait for the replicated-ssl-test deployment to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
