@@ -208,6 +208,16 @@ spec:
 		WithExec([]string{"kubectl", "wait", "--for=condition=available", "deployment/replicated-ssl-test", "--timeout=1m"})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithExec([]string{"kubectl", "describe", "deployment/replicated-ssl-test"})
+		out, err2 := ctr.Stdout(ctx)
+		if err2 != nil {
+			return fmt.Errorf("failed to describe replicated-ssl-test deployment: %w", err2)
+		}
+		fmt.Println(out)
+
 		return fmt.Errorf("failed to wait for replicated-ssl-test deployment to be ready: %w", err)
 	}
 	fmt.Println(out)
