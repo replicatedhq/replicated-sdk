@@ -80,7 +80,7 @@ readinessProbe:
   httpGet:                         # Uses HTTP GET request to check health
     path: /healthz                 # Endpoint to query
     port: 3000                     # Port to use
-    scheme: HTTPS                  # Protocol (HTTP or HTTPS) # TODO make this based on if a tls cert is provided
+    scheme: HTTP                  # Protocol (HTTP or HTTPS) - change to HTTPS if a TLS cert is provided
   failureThreshold: 3              # Number of failures before marking unready
   initialDelaySeconds: 10          # Delay before first check
   periodSeconds: 10                # How often to check
