@@ -56,6 +56,13 @@ fmt:
 vet:
 	go vet $(BUILDFLAGS) ./pkg/... ./cmd/...
 
+.PHONY: build-ttl.sh
+build-ttl.sh:
+	docker buildx build . -t ttl.sh/${USER}/replicated-sdk:24h -f deploy/Dockerfile --load
+	docker push ttl.sh/${USER}/replicated-sdk:24h
+
+	make -C chart build-ttl.sh
+
 .PHONY: mock
 mock:
 	go install github.com/golang/mock/mockgen@v1.6.0
