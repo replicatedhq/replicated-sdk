@@ -188,12 +188,13 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 10
 	`
+	deploymentSource := source.WithNewFile("/replicated-ssl-test.yaml", deploymentYaml)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithNewFile("/deployment.yaml", deploymentYaml).
-		WithExec([]string{"kubectl", "apply", "-f", "/deployment.yaml"})
+		WithFile("/root/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/root/replicated-ssl-test.yaml"})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to apply replicated-ssl-test deployment: %w", err)
