@@ -113,7 +113,7 @@ func e2e(
 	fmt.Println(out)
 
 	// create a tls cert and key
-	ctr = dag.Container().From("alpine/openssl:latest").
+	certDir := dag.Container().From("alpine/openssl:latest").
 		WithWorkdir("/certs").
 		WithExec([]string{"openssl", "req", "-x509", "-newkey", "rsa:4096", "-keyout", "/certs/test-key.key", "-out", "/certs/test-cert.crt", "-days", "365", "-nodes", "-subj", "/CN=test.com"}).
 		Directory("/certs")
@@ -121,8 +121,8 @@ func e2e(
 	// create a TLS secret within the namespace
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithFile("/certs/test-cert.crt", ctr.File("/certs/test-cert.crt")).
-		WithFile("/certs/test-key.key", ctr.File("/certs/test-key.key")).
+		WithFile("/certs/test-cert.crt", certDir.File("/certs/test-cert.crt")).
+		WithFile("/certs/test-key.key", certDir.File("/certs/test-key.key")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
 			[]string{
