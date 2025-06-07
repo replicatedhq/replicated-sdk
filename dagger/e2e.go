@@ -158,6 +158,36 @@ func e2e(
 		// return err
 	}
 
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec(
+			[]string{
+				"kubectl", "get", "secrets",
+			})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get secrets: %w", err)
+	}
+
+	fmt.Println(out)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec(
+			[]string{
+				"kubectl", "get", "pods",
+			})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pods: %w", err)
+	}
+
+	fmt.Println(out)
+
 	// wait for the pod to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -229,10 +259,10 @@ spec:
 		ctr = dag.Container().From("bitnami/kubectl:latest").
 			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-			WithExec([]string{"kubectl", "describe", "deployment/replicated"})
+			WithExec([]string{"kubectl", "logs", "-p", "-l", "app.kubernetes.io/name=replicated"})
 		out, err2 := ctr.Stdout(ctx)
 		if err2 != nil {
-			return fmt.Errorf("failed to describe replicated deployment: %w", err2)
+			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
 		}
 		fmt.Println(out)
 
