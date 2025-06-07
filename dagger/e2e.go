@@ -140,6 +140,24 @@ func e2e(
 	}
 	fmt.Println(out)
 
+	// delete the replicated pod so that the 'wait' command below will wait for the new pod to be ready properly
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec(
+			[]string{
+				"kubectl", "delete", "pod",
+				"-l", "app.kubernetes.io/name=replicated",
+				"--grace-period=0",
+				"--force",
+			})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for deployment to be ready after enabling TLS: %v\n", err)
+		// return err
+	}
+
 	// wait for the pod to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
