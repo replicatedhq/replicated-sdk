@@ -2,16 +2,22 @@ package apiserver
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type APIServerParams struct {
@@ -32,6 +38,7 @@ type APIServerParams struct {
 	ReplicatedID          string
 	AppID                 string
 	Namespace             string
+	TlsCertSecretName     string
 }
 
 func Start(params APIServerParams) {
@@ -85,7 +92,51 @@ func Start(params APIServerParams) {
 		Addr:    ":3000",
 	}
 
-	log.Printf("Starting Replicated API on port %d...\n", 3000)
+	// Configure TLS if certificate name is provided
+	if params.TlsCertSecretName != "" {
+		clientset, err := k8sutil.GetClientset()
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get clientset"))
+			return
+		}
 
-	log.Fatal(srv.ListenAndServe())
+		tlsConfig, err := loadTLSConfig(clientset, params.Namespace, params.TlsCertSecretName)
+		if err != nil {
+			log.Fatalf("failed to load TLS config: %v", err)
+		}
+		srv.TLSConfig = tlsConfig
+
+		log.Printf("Starting Replicated API on port %d with TLS...\n", 3000)
+		log.Fatal(srv.ListenAndServeTLS("", ""))
+	} else {
+		log.Printf("Starting Replicated API on port %d...\n", 3000)
+		log.Fatal(srv.ListenAndServe())
+	}
+}
+
+// loadTLSConfig loads TLS certificate and key from a Kubernetes secret
+func loadTLSConfig(clientset kubernetes.Interface, namespace, secretName string) (*tls.Config, error) {
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get TLS secret %s", secretName)
+	}
+
+	certData, ok := secret.Data["tls.crt"]
+	if !ok {
+		return nil, errors.Errorf("tls.crt not found in secret %s", secretName)
+	}
+
+	keyData, ok := secret.Data["tls.key"]
+	if !ok {
+		return nil, errors.Errorf("tls.key not found in secret %s", secretName)
+	}
+
+	cert, err := tls.X509KeyPair(certData, keyData)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse TLS certificate and key")
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}, nil
 }
