@@ -126,7 +126,7 @@ func e2e(
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
 			[]string{
-				"kubectl", "create", "secret", "tls", "test-tls", "--cert", "/certs/test-cert.crt", "--key", "/certs/test-key.key",
+				"kubectl", "create", "secret", "tls", "test-tls", "--cert", "/test-cert.crt", "--key", "/test-key.key",
 			})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
