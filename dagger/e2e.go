@@ -115,7 +115,7 @@ func e2e(
 	// create a tls cert and key
 	ctr = dag.Container().From("alpine/openssl:latest").
 		WithWorkdir("/certs").
-		WithExec([]string{"openssl", "req", "-x509", "-newkey", "rsa:4096", "-keyout", "certs/test-key.key", "-out", "certs/test-cert.crt", "-days", "365", "-nodes", "-subj", "/CN=test.com"})
+		WithExec([]string{"openssl", "req", "-x509", "-newkey", "rsa:4096", "-keyout", "/certs/test-key.key", "-out", "/certs/test-cert.crt", "-days", "365", "-nodes", "-subj", "/CN=test.com"})
 
 	// create a TLS secret within the namespace
 	ctr = dag.Container().From("bitnami/kubectl:latest").
