@@ -130,7 +130,8 @@ func e2e(
 			})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create tls secret: %w", err)
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to create tls secret: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
 	}
 	fmt.Println(out)
 
