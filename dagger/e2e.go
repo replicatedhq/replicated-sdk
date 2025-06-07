@@ -121,12 +121,12 @@ func e2e(
 	// create a TLS secret within the namespace
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithFile("/certs/test-cert.crt", certDir.File("/certs/test-cert.crt")).
-		WithFile("/certs/test-key.key", certDir.File("/certs/test-key.key")).
+		WithFile("/certs/test-cert.crt", certDir.File("/test-cert.crt")).
+		WithFile("/certs/test-key.key", certDir.File("/test-key.key")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
 			[]string{
-				"kubectl", "create", "secret", "tls", "test-tls", "--cert", "/test-cert.crt", "--key", "/test-key.key",
+				"kubectl", "create", "secret", "tls", "test-tls", "--cert", "/certs/test-cert.crt", "--key", "/certs/test-key.key",
 			})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
