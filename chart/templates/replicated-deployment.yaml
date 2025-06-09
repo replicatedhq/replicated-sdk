@@ -171,7 +171,12 @@ spec:
         resources: {{- toYaml .Values.resources | nindent 10 }}
         {{- end }}
         {{- if .Values.readinessProbe }}
-        readinessProbe: {{- toYaml .Values.readinessProbe | nindent 10 }}
+        readinessProbe:
+          {{- $readinessProbe := .Values.readinessProbe | deepCopy }}
+          {{- if and .Values.tlsCertSecretName $readinessProbe.httpGet }}
+            {{- $_ := set $readinessProbe.httpGet "scheme" "HTTPS" }}
+          {{- end }}
+          {{- toYaml $readinessProbe | nindent 10 }}
         {{- end }}
       {{- if .Values.restartPolicy }}
       restartPolicy: {{ .Values.restartPolicy }}

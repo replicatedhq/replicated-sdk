@@ -75,12 +75,13 @@ containerSecurityContext:
 
 # Readiness probe configuration
 # Determines when the container is ready to serve traffic
+# Note: The scheme will automatically be set to HTTPS if tlsCertSecretName is provided
 # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 readinessProbe:
   httpGet:                         # Uses HTTP GET request to check health
     path: /healthz                 # Endpoint to query
     port: 3000                     # Port to use
-    scheme: HTTP                   # Protocol (HTTP or HTTPS)
+    scheme: HTTP                   # Protocol (HTTP or HTTPS) - automatically set to HTTPS when TLS is enabled
   failureThreshold: 3              # Number of failures before marking unready
   initialDelaySeconds: 10          # Delay before first check
   periodSeconds: 10                # How often to check
@@ -273,3 +274,7 @@ replicatedAppEndpoint: ""
 # If not specified, the default domain "replicated.app" will be used
 # Should not include the protocol, just the domain name
 replicatedAppDomain: ""
+
+# TLS Certificate Secret Name - the name of the secret containing a TLS certificate and key
+# If not specified, TLS will not be enabled
+tlsCertSecretName: ""

@@ -73,6 +73,7 @@ func APICmd() *cobra.Command {
 				StatusInformers:       replicatedConfig.StatusInformers,
 				ReplicatedID:          replicatedConfig.ReplicatedID,
 				AppID:                 replicatedConfig.AppID,
+				TlsCertSecretName:     replicatedConfig.TlsCertSecretName,
 				Namespace:             namespace,
 			}
 			apiserver.Start(params)

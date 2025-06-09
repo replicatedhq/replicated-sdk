@@ -8,19 +8,17 @@ import (
 	"time"
 )
 
-func createAppTestRelease(
+// createWrappedTestChart creates a test chart with the replicated dependency and returns the chart file
+func createWrappedTestChart(
 	ctx context.Context,
 	source *dagger.Directory,
-	opServiceAccount *dagger.Secret,
 	sdkChartRepository string,
-) (string, error) {
-	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
-
+) (*dagger.File, error) {
 	source = source.Directory("test-chart")
 
 	chartYAML, err := source.File("Chart.yaml").Contents(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// append the dependency to the test-chart chart.yaml
@@ -40,6 +38,22 @@ dependencies:
 		WithExec([]string{"helm", "dep", "update"}).
 		WithExec([]string{"helm", "package", "."}).
 		File("test-chart-0.1.0.tgz")
+
+	return testChartFile, nil
+}
+
+func createAppTestRelease(
+	ctx context.Context,
+	source *dagger.Directory,
+	opServiceAccount *dagger.Secret,
+	sdkChartRepository string,
+) (string, error) {
+	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
+
+	testChartFile, err := createWrappedTestChart(ctx, source, sdkChartRepository)
+	if err != nil {
+		return "", err
+	}
 
 	now := time.Now().Format("20060102150405")
 	channelName := fmt.Sprintf("automated-%s", now)
