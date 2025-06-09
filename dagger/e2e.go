@@ -116,6 +116,8 @@ func e2e(
 	certDir := dag.Container().From("alpine/openssl:latest").
 		WithWorkdir("/certs").
 		WithExec([]string{"openssl", "req", "-x509", "-newkey", "rsa:4096", "-keyout", "/certs/test-key.key", "-out", "/certs/test-cert.crt", "-days", "365", "-nodes", "-subj", "/CN=test.com"}).
+		WithExec([]string{"chmod", "+r", "/certs/test-cert.crt"}).
+		WithExec([]string{"chmod", "+r", "/certs/test-key.key"}).
 		Directory("/certs")
 
 	// create a TLS secret within the namespace
@@ -126,7 +128,7 @@ func e2e(
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
 			[]string{
-				"kubectl", "create", "secret", "tls", "test-tls", "--cert=/certs/test-cert.crt.doesnotexist", "--key=/certs/test-key.key.doesnotexist",
+				"kubectl", "create", "secret", "tls", "test-tls", "--cert=/certs/test-cert.crt", "--key=/certs/test-key.key.doesnotexist",
 			})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
