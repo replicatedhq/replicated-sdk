@@ -85,10 +85,10 @@ func e2e(
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
+		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "ns",
-			})
+			}))
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
@@ -100,10 +100,10 @@ func e2e(
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
+		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "pods",
-			})
+			}))
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
@@ -152,10 +152,10 @@ func e2e(
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
+		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "secrets",
-			})
+			}))
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
@@ -167,10 +167,10 @@ func e2e(
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
+		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "pods",
-			})
+			}))
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
@@ -265,10 +265,10 @@ spec:
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
+		With(CacheBustingExec(
 			[]string{
-				"kubectl", "get", "pods", "-n", "default",
-			})
+				"kubectl", "get", "pods",
+			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get pods: %w", err)
