@@ -163,9 +163,9 @@ func e2e(
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		fmt.Printf("failed to wait for deployment to be ready after enabling TLS: %v\n", err)
-		// return err
+		return fmt.Errorf("failed to delete SDK pod: %w", err)
 	}
+	fmt.Println(out)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -279,13 +279,13 @@ spec:
 	}
 	fmt.Println(out)
 
-	// print the final pods
+	// print all the final pods
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
 			[]string{
-				"kubectl", "get", "pods",
+				"kubectl", "get", "pods", "-A",
 			})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
