@@ -279,13 +279,13 @@ spec:
 	}
 	fmt.Println(out)
 
-	// print all the final pods
+	// print the final pods
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
 			[]string{
-				"kubectl", "get", "pods", "-A",
+				"kubectl", "get", "pods", "-n", "default",
 			})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
