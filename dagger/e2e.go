@@ -267,7 +267,7 @@ spec:
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
 			[]string{
-				"kubectl", "get", "pods", "-n", "default",
+				"kubectl", "get", "pods",
 			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
