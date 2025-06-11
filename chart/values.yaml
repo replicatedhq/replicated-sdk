@@ -31,7 +31,7 @@ restartPolicy: Always
 # Replicated SDK image properties
 # If .Values.images is set, it takes precedence over the following settings.
 image:
-  registry: registry.replicated.com           # Registry where the image is hosted
+  registry: proxy.replicated.com              # Registry where the image is hosted
   repository: "library/replicated-sdk-image"  # Image repository
   tag: "1.0.0"                                # Image tag, replaced in our pipeline
   pullPolicy: IfNotPresent                    # Image pull policy: Always, IfNotPresent, Never
