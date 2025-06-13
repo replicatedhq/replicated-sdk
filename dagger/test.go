@@ -4,6 +4,7 @@ import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
 	"fmt"
+	"strings"
 )
 
 func testUnit(
@@ -89,4 +90,57 @@ func buildEnvSDK(ctx context.Context, source *dagger.Directory) *dagger.Containe
 		WithExec([]string{"go", "mod", "download"})
 
 	return ctr
+}
+
+func testSBOMGeneration(
+	ctx context.Context,
+	dag *dagger.Client,
+	source *dagger.Directory,
+	version string,
+) error {
+	// Build the image first
+	amdPackages, armPackages, melangeKey, err := buildAndPublishChainguardImage(ctx, dag, source, version)
+	if err != nil {
+		return fmt.Errorf("failed to build image: %w", err)
+	}
+
+	// Use a test registry (ttl.sh) to avoid authentication
+	testRegistry := fmt.Sprintf("ttl.sh/replicated-sdk-sbom-test-%s", version)
+
+	// Publish the image with SBOM enabled
+	digest, err := publishChainguardImage(
+		ctx,
+		dag,
+		source,
+		amdPackages,
+		armPackages,
+		melangeKey,
+		version,
+		testRegistry,
+		"",
+		nil,
+		nil,
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to publish image: %w", err)
+	}
+
+	// Use crane to inspect the published image
+	ctr := dag.Container().
+		From("gcr.io/go-containerregistry/crane:latest").
+		WithExec([]string{"manifest", fmt.Sprintf("%s:%s", testRegistry, version)})
+
+	manifest, err := ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get image manifest: %w", err)
+	}
+
+	// Check for SBOM attestation in the manifest
+	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
+		return fmt.Errorf("SBOM attestation not found in image manifest")
+	}
+
+	fmt.Printf("Successfully verified SBOM generation and attachment for image %s:%s with digest %s\n", testRegistry, version, digest)
+	return nil
 }

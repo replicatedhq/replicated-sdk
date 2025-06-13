@@ -22,11 +22,11 @@ func e2e(
 
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
-		WithExec([]string{"/replicated", "cluster", "create", "--distribution", distribution, "--version", version, "--wait", "5m", "--output", "json"})
+		WithExec([]string{"/replicated", "cluster", "create", "--distribution", distribution, "--version", version, "--wait", "15m", "--output", "json"})
 
 	out, err := ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create cluster: %w", err)
 	}
 
 	type ReplicatedCluster struct {
@@ -35,7 +35,7 @@ func e2e(
 	}
 	replicatedCluster := ReplicatedCluster{}
 	if err := json.Unmarshal([]byte(out), &replicatedCluster); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal cluster: %w", err)
 	}
 
 	// get the kubeconfig
@@ -45,7 +45,7 @@ func e2e(
 
 	kubeconfig, err := ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get kubeconfig: %w", err)
 	}
 
 	kubeconfigSource := source.WithNewFile("/kubeconfig", kubeconfig)
@@ -57,7 +57,7 @@ func e2e(
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to install chart: %w", err)
 	}
 
 	fmt.Println(out)
@@ -76,6 +76,7 @@ func e2e(
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
+		fmt.Printf("failed to wait for deployment to be ready: %v\n", err)
 		// return err
 	}
 
@@ -84,14 +85,14 @@ func e2e(
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
+		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "ns",
-			})
+			}))
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get namespaces: %w", err)
 	}
 
 	fmt.Println(out)
@@ -99,17 +100,181 @@ func e2e(
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
+		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "pods",
-			})
+			}))
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get pods: %w", err)
 	}
 
 	fmt.Println(out)
 
+	// create a tls cert and key
+	certDir := dag.Container().From("alpine/openssl:latest").
+		WithWorkdir("/certs").
+		WithExec([]string{"openssl", "req", "-x509", "-newkey", "rsa:4096", "-keyout", "/certs/test-key.key", "-out", "/certs/test-cert.crt", "-days", "365", "-nodes", "-subj", "/CN=test.com"}).
+		WithExec([]string{"chmod", "+r", "/certs/test-cert.crt"}).
+		WithExec([]string{"chmod", "+r", "/certs/test-key.key"}).
+		Directory("/certs")
+
+	// create a TLS secret within the namespace
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithFile("/certs/test-cert.crt", certDir.File("/test-cert.crt")).
+		WithFile("/certs/test-key.key", certDir.File("/test-key.key")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec(
+			[]string{
+				"kubectl", "create", "secret", "tls", "test-tls", "--cert=/certs/test-cert.crt", "--key=/certs/test-key.key",
+			})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to create tls secret: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println(out)
+
+	// update the chart to set TLS to true
+	ctr = dag.Container().From("alpine/helm:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
+		WithExec([]string{"helm", "upgrade", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0", "--set", "replicated.tlsCertSecretName=test-tls"})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
+	}
+	fmt.Println(out)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "secrets",
+			}))
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get secrets: %w", err)
+	}
+
+	fmt.Println(out)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods",
+			}))
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pods: %w", err)
+	}
+
+	fmt.Println(out)
+
+	// wait for the pod to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec(
+			[]string{
+				"kubectl", "wait",
+				"--for=condition=available",
+				"deployment/replicated",
+				"--timeout=1m",
+			})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for deployment to be ready after enabling TLS: %v\n", err)
+		// return err
+	}
+	fmt.Println(out)
+
+	// create a kubernetes deployment that runs a pod - the pod has a readiness probe that runs 'curl -k https://replicated.svc:3000/health'
+	// this will only pass if the replicated pod is ready and serving TLS traffic
+	deploymentYaml := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: replicated-ssl-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: replicated-ssl-test
+  template:
+    metadata:
+      labels:
+        app: replicated-ssl-test
+    spec:
+      containers:
+      - name: replicated-ssl-test
+        image: alpine/curl:latest
+        command: ["sleep", "500d"]
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          exec:
+            command: ["curl", "-k", "https://replicated:3000/health"]
+          initialDelaySeconds: 10
+          periodSeconds: 10`
+	deploymentSource := source.WithNewFile("/replicated-ssl-test.yaml", deploymentYaml)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile("/root/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/root/replicated-ssl-test.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		// Get stderr to see the actual error
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply replicated-ssl-test deployment: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println(out)
+
+	// wait for the replicated-ssl-test deployment to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "wait", "--for=condition=available", "deployment/replicated-ssl-test", "--timeout=1m"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithExec([]string{"kubectl", "logs", "-p", "-l", "app.kubernetes.io/name=replicated"})
+		out, err2 := ctr.Stdout(ctx)
+		if err2 != nil {
+			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+		}
+		fmt.Println(out)
+
+		return fmt.Errorf("failed to wait for replicated deployment to be ready: %w", err)
+	}
+	fmt.Println(out)
+
+	// print the final pods
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pods: %w", err)
+	}
+	fmt.Println(out)
+
+	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
 	return nil
 }

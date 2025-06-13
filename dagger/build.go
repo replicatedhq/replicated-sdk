@@ -41,7 +41,7 @@ func buildAndPushChartToTTL(
 		return "", err
 	}
 
-	valuesYAML = strings.Replace(valuesYAML, "registry: registry.replicated.com", fmt.Sprintf("registry: %s", imageRegistry), 1)
+	valuesYAML = strings.Replace(valuesYAML, "registry: proxy.replicated.com", fmt.Sprintf("registry: %s", imageRegistry), 1)
 	valuesYAML = strings.Replace(valuesYAML, `repository: "library/replicated-sdk-image"`, fmt.Sprintf(`repository: "%s"`, imageRepository), 1)
 	valuesYAML = strings.Replace(valuesYAML, `tag: "1.0.0"`, fmt.Sprintf(`tag: "%s"`, imageTag), 1)
 

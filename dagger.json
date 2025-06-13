@@ -7,8 +7,8 @@
   "dependencies": [
     {
       "name": "apko",
-      "source": "github.com/opopops/daggerverse/apko@apko/v1.7.1",
-      "pin": "e446e7916e92a57003733cee5ff10ed194e72e06"
+      "source": "github.com/opopops/daggerverse/apko@apko/v1.12.1",
+      "pin": "182a7f073ae270ad14e161e68ab478471f0bd81f"
     },
     {
       "name": "gh",
@@ -29,6 +29,11 @@
       "name": "melange",
       "source": "github.com/opopops/daggerverse/melange@melange/v1.3.5",
       "pin": "078d3e017bd37e1efc26da3ac41c11cbfe8a1829"
+    },
+    {
+      "name": "cosign",
+      "source": "github.com/puzzle/dagger-module-cosign/cosign@ed23741b9d2aa1fd68e705261814d607ed935b15",
+      "pin": "ed23741b9d2aa1fd68e705261814d607ed935b15"
     }
   ],
   "source": "dagger"

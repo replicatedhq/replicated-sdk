@@ -13,6 +13,17 @@ The release process is automated through GitHub Actions. When a new version tag 
 
 ## Creating a New Release
 
+### Required Credentials
+
+To create releases, you'll need:
+
+1. **1Password Service Account Tokens**:
+   - For staging environment access
+   - For production environment access
+
+2. **GitHub Token**:
+   - With permissions to trigger the SLSA GitHub workflow
+
 ### Version Tag Format
 
 Supported version tag formats (without 'v' prefix):
@@ -132,6 +143,12 @@ The release process is handled by the `Publish` function in `dagger/publish.go`.
    }
    ```
 
+   Important notes about SLSA provenance:
+   - This step is automatically triggered by the Dagger pipeline during production releases
+   - Requires a GitHub token with permissions to trigger the SLSA workflow (`slsa.yml`)
+   - The workflow is triggered via GitHub API to generate and attach provenance to the image
+   - This step is skipped for development and staging releases
+
 ### Security and Attestations
 
 Each release includes:
@@ -158,6 +175,22 @@ After a release is published, verify:
    helm pull oci://registry.replicated.com/library/replicated --version X.Y.Z
    ```
 
+3. Image Attestations:
+   Use the verification script in the `certs` directory to verify SLSA provenance, image signatures, and SBOM:
+   ```bash
+   ./certs/verify-image.sh --env <dev|stage|prod> --version X.Y.Z --digest <image-digest>
+   ```
+
+   The script verifies:
+   - SLSA provenance attestation
+   - Image signatures using environment-specific public keys
+   - SBOM content and signatures
+
+   To view the full SBOM content:
+   ```bash
+   ./certs/verify-image.sh --env <dev|stage|prod> --version X.Y.Z --digest <image-digest> --show-sbom
+   ```
+
 ## Troubleshooting
 
 If the release workflow fails:
@@ -168,6 +201,8 @@ If the release workflow fails:
    - Docker registry authentication issues
    - Helm chart validation failures
    - Version format issues with melange/apko builds
+   - Missing or invalid credentials
+   - Insufficient GitHub token permissions
 
 ## Post-Release
 
@@ -182,7 +217,7 @@ After a successful release:
 
 If you encounter issues with the release process:
 1. Check the GitHub Actions logs
-2. Review the error messages
+2. Review the workflow error messages
 3. Contact the maintainers team
 
 ## Rolling Back
@@ -190,6 +225,5 @@ If you encounter issues with the release process:
 If issues are discovered after release:
 
 1. Tag and push a new patch release with fixes
-
 
 Note: Always prefer forward fixes over rollbacks when possible.
