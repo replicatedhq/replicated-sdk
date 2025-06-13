@@ -11,6 +11,7 @@ metadata:
   name: {{ include "replicated.roleName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 rules:
+{{ if not .Values.minimalRBAC }}
 - apiGroups:
   - '*'
   resources:
@@ -19,6 +20,7 @@ rules:
   - 'get'
   - 'list'
   - 'watch'
+{{ end }}
 - apiGroups:
   - ''
   resources:
@@ -36,4 +38,44 @@ rules:
   - replicated-instance-report
   - replicated-custom-app-metrics-report
   - replicated-meta-data
+{{ if .Values.minimalRBAC }}
+# Get, list, and watch deployments, statefulsets, and daemonsets for Service Monitors
+- apiGroups:
+  - "apps"
+  resources:
+  - "deployments"
+  - "statefulsets"
+  - "daemonsets"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+# List pods as part of statefulset and daemonset service monitors
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "list"
+# Get, list, and watch ingresses for Service Monitors
+- apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - "ingresses"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+# Get, list, and watch persistentvolumeclaims, services, and endpoints for Service Monitors
+- apiGroups:
+  - ""
+  resources:
+  - "persistentvolumeclaims"
+  - "services"
+  - "endpoints"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+{{ end }}
 {{ end }}
