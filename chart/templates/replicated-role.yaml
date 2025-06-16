@@ -71,14 +71,6 @@ rules:
   - "pods"
   verbs:
   - "get"
-- apiGroups:
-  - ""
-  resources:
-  - "secrets"
-  verbs:
-  - "get"
-  resourceNames:
-  - {{ include "replicated.secretName" . }}
 
 {{ if eq (include "replicated.statusInformers.hasDeployments" .) "true" }}
 - apiGroups:
