@@ -50,6 +50,15 @@ rules:
 {{ end }}
 
 {{ if .Values.minimalRBAC }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "deployments"
+  verbs:
+  - "get"
+  resourceNames:
+  - {{ include "replicated.deploymentName" . }}
+
 {{ if eq (include "replicated.statusInformers.hasDeployments" .) "true" }}
 - apiGroups:
   - "apps"

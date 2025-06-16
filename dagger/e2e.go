@@ -289,7 +289,7 @@ spec:
 			"--version", "0.1.0",
 			"--set", "replicated.tlsCertSecretName=test-tls",
 			"--set", "replicated.minimalRBAC=true",
-			"--set-json", "replicated.statusInformers=[\"deployment/replicated\",\"deployment/replicated-ssl-test\",\"service/replicated\"]",
+			"--set-json", "replicated.statusInformers=[\"deployment/replicated-ssl-test\",\"service/replicated\"]",
 		})
 
 	out, err = ctr.Stdout(ctx)
@@ -316,6 +316,12 @@ spec:
 
 	// Validate that the role contains the expected resources
 	roleOutput := out
+
+	// Check for replicated deployment in the role - note that this is not listed as a status informer, but internal code requires it
+	// deployments.apps             []                 [replicated]                   [get list watch]
+	if !regexp.MustCompile(`deployments\.apps +\[\] +\[replicated\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'replicated' deployment that is required by default")
+	}
 
 	// Check for replicated-ssl-test deployment in the role
 	// deployments.apps             []                 [replicated-ssl-test]                   [get list watch]
