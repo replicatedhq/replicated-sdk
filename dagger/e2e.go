@@ -275,6 +275,84 @@ spec:
 	}
 	fmt.Println(out)
 
+	// Test minimal RBAC functionality
+	fmt.Println("Testing minimal RBAC functionality...")
+
+	// Upgrade the chart to enable minimal RBAC
+	ctr = dag.Container().From("alpine/helm:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
+		WithExec([]string{"helm", "upgrade", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0", "--set", "replicated.minimalRBAC=true"})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart enabling minimal RBAC: %w", err)
+	}
+	fmt.Println(out)
+
+	// Check the role to verify minimal RBAC is applied
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "describe", "role", "replicated-role",
+			}))
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to describe role: %w", err)
+	}
+	fmt.Println("Role permissions after enabling minimal RBAC:")
+	fmt.Println(out)
+
+	// Wait for the pod to be ready after RBAC changes
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec(
+			[]string{
+				"kubectl", "wait",
+				"--for=condition=available",
+				"deployment/replicated",
+				"--timeout=2m",
+			})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for deployment to be ready after enabling minimal RBAC: %v\n", err)
+
+		// Get logs to help debug
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithExec([]string{"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50"})
+		out, err2 := ctr.Stdout(ctx)
+		if err2 != nil {
+			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+		}
+		fmt.Println("Replicated logs after minimal RBAC:")
+		fmt.Println(out)
+
+		return fmt.Errorf("failed to wait for replicated deployment to be ready after minimal RBAC: %w", err)
+	}
+	fmt.Println(out)
+
+	// Get final pod status
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods", "-o", "wide",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get final pod status: %w", err)
+	}
+	fmt.Println("Final pod status after minimal RBAC test:")
+	fmt.Println(out)
+
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
 	return nil
 }
