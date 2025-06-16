@@ -41,7 +41,7 @@ func listCMXDistributionsAndVersions(
 		"gke":       {},
 		"eks":       {},
 		"openshift": {},
-		"oke":       {},
+		// "oke":       {},
 	}
 
 	for includedDistribution := range versionsToInclude {
