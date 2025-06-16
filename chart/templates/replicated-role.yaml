@@ -50,6 +50,7 @@ rules:
 {{ end }}
 
 {{ if .Values.minimalRBAC }}
+# the SDK deployment, replicaset, and pod are required by default
 - apiGroups:
   - "apps"
   resources:
@@ -58,6 +59,18 @@ rules:
   - "get"
   resourceNames:
   - {{ include "replicated.deploymentName" . }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "replicasets"
+  verbs:
+  - "get"
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "get"
 
 {{ if eq (include "replicated.statusInformers.hasDeployments" .) "true" }}
 - apiGroups:
