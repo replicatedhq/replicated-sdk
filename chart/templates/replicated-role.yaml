@@ -38,6 +38,16 @@ rules:
   - replicated-instance-report
   - replicated-custom-app-metrics-report
   - replicated-meta-data
+{{ if .Values.tlsCertSecretName }}
+- apiGroups:
+  - ""
+  resources:
+  - "secrets"
+  verbs:
+  - "get"
+  resourceNames:
+  - {{ .Values.tlsCertSecretName }}
+{{ end }}
 {{ if .Values.minimalRBAC }}
 # Get, list, and watch deployments, statefulsets, and daemonsets for Service Monitors
 - apiGroups:
