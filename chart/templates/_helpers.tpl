@@ -247,13 +247,17 @@ Get deployment names from status informers
 */}}
 {{- define "replicated.statusInformers.deployments" -}}
 {{- $deployments := list -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "deployment" -}}
-    {{- $deployments = append $deployments (index $parts 1) -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "deployment/" . -}}
+    {{- $name := trimPrefix "deployment/" . -}}
+    {{- $deployments = append $deployments $name -}}
   {{- end -}}
 {{- end -}}
-{{- $deployments | toYaml -}}
+{{- end -}}
+{{- range $deployments }}
+- {{ . }}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -261,11 +265,12 @@ Check if there are any deployment status informers
 */}}
 {{- define "replicated.statusInformers.hasDeployments" -}}
 {{- $hasDeployments := false -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "deployment" -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "deployment/" . -}}
     {{- $hasDeployments = true -}}
   {{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $hasDeployments -}}
 {{- end -}}
@@ -275,13 +280,17 @@ Get statefulset names from status informers
 */}}
 {{- define "replicated.statusInformers.statefulsets" -}}
 {{- $statefulsets := list -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "statefulset" -}}
-    {{- $statefulsets = append $statefulsets (index $parts 1) -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "statefulset/" . -}}
+    {{- $name := trimPrefix "statefulset/" . -}}
+    {{- $statefulsets = append $statefulsets $name -}}
   {{- end -}}
 {{- end -}}
-{{- $statefulsets | toYaml -}}
+{{- end -}}
+{{- range $statefulsets }}
+- {{ . }}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -289,11 +298,12 @@ Check if there are any statefulset status informers
 */}}
 {{- define "replicated.statusInformers.hasStatefulsets" -}}
 {{- $hasStatefulsets := false -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "statefulset" -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "statefulset/" . -}}
     {{- $hasStatefulsets = true -}}
   {{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $hasStatefulsets -}}
 {{- end -}}
@@ -303,13 +313,17 @@ Get service names from status informers
 */}}
 {{- define "replicated.statusInformers.services" -}}
 {{- $services := list -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "service" -}}
-    {{- $services = append $services (index $parts 1) -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "service/" . -}}
+    {{- $name := trimPrefix "service/" . -}}
+    {{- $services = append $services $name -}}
   {{- end -}}
 {{- end -}}
-{{- $services | toYaml -}}
+{{- end -}}
+{{- range $services }}
+- {{ . }}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -317,11 +331,12 @@ Check if there are any service status informers
 */}}
 {{- define "replicated.statusInformers.hasServices" -}}
 {{- $hasServices := false -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "service" -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "service/" . -}}
     {{- $hasServices = true -}}
   {{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $hasServices -}}
 {{- end -}}
@@ -331,13 +346,17 @@ Get ingress names from status informers
 */}}
 {{- define "replicated.statusInformers.ingresses" -}}
 {{- $ingresses := list -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "ingress" -}}
-    {{- $ingresses = append $ingresses (index $parts 1) -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "ingress/" . -}}
+    {{- $name := trimPrefix "ingress/" . -}}
+    {{- $ingresses = append $ingresses $name -}}
   {{- end -}}
 {{- end -}}
-{{- $ingresses | toYaml -}}
+{{- end -}}
+{{- range $ingresses }}
+- {{ . }}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -345,11 +364,12 @@ Check if there are any ingress status informers
 */}}
 {{- define "replicated.statusInformers.hasIngresses" -}}
 {{- $hasIngresses := false -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "ingress" -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "ingress/" . -}}
     {{- $hasIngresses = true -}}
   {{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $hasIngresses -}}
 {{- end -}}
@@ -359,13 +379,17 @@ Get PVC names from status informers
 */}}
 {{- define "replicated.statusInformers.pvcs" -}}
 {{- $pvcs := list -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "pvc" -}}
-    {{- $pvcs = append $pvcs (index $parts 1) -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "pvc/" . -}}
+    {{- $name := trimPrefix "pvc/" . -}}
+    {{- $pvcs = append $pvcs $name -}}
   {{- end -}}
 {{- end -}}
-{{- $pvcs | toYaml -}}
+{{- end -}}
+{{- range $pvcs }}
+- {{ . }}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -373,11 +397,12 @@ Check if there are any PVC status informers
 */}}
 {{- define "replicated.statusInformers.hasPvcs" -}}
 {{- $hasPvcs := false -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "pvc" -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "pvc/" . -}}
     {{- $hasPvcs = true -}}
   {{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $hasPvcs -}}
 {{- end -}}
@@ -387,13 +412,17 @@ Get daemonset names from status informers
 */}}
 {{- define "replicated.statusInformers.daemonsets" -}}
 {{- $daemonsets := list -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "daemonset" -}}
-    {{- $daemonsets = append $daemonsets (index $parts 1) -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "daemonset/" . -}}
+    {{- $name := trimPrefix "daemonset/" . -}}
+    {{- $daemonsets = append $daemonsets $name -}}
   {{- end -}}
 {{- end -}}
-{{- $daemonsets | toYaml -}}
+{{- end -}}
+{{- range $daemonsets }}
+- {{ . }}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -401,11 +430,12 @@ Check if there are any daemonset status informers
 */}}
 {{- define "replicated.statusInformers.hasDaemonsets" -}}
 {{- $hasDaemonsets := false -}}
-{{- range (include "replicated.statusInformers" . | fromYaml) -}}
-  {{- $parts := split "/" . -}}
-  {{- if eq (index $parts 0) "daemonset" -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "daemonset/" . -}}
     {{- $hasDaemonsets = true -}}
   {{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $hasDaemonsets -}}
 {{- end -}}

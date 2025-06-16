@@ -60,7 +60,7 @@ rules:
   - "list"
   - "watch"
   resourceNames:
-  {{ include "replicated.statusInformers.deployments" . | toYaml | nindent 4 }}
+  {{ include "replicated.statusInformers.deployments" . | nindent 4 }}
 {{ end }}
 
 {{ if include "replicated.statusInformers.hasStatefulsets" . }}
@@ -73,7 +73,7 @@ rules:
   - "list"
   - "watch"
   resourceNames:
-  {{ include "replicated.statusInformers.statefulsets" . | toYaml | nindent 4 }}
+  {{ include "replicated.statusInformers.statefulsets" . | nindent 4 }}
 - apiGroups:
   - ""
   resources:
@@ -92,7 +92,7 @@ rules:
   - "list"
   - "watch"
   resourceNames:
-  {{ include "replicated.statusInformers.services" . | toYaml | nindent 4 }}
+  {{ include "replicated.statusInformers.services" . | nindent 4 }}
 - apiGroups:
   - ""
   resources:
@@ -101,7 +101,7 @@ rules:
   - "get"
   - "list"
   resourceNames:
-  {{ include "replicated.statusInformers.services" . | toYaml | nindent 4 }}
+  {{ include "replicated.statusInformers.services" . | nindent 4 }}
 {{ end }}
 
 {{ if include "replicated.statusInformers.hasIngresses" . }}
@@ -114,7 +114,7 @@ rules:
   - "list"
   - "watch"
   resourceNames:
-  {{ include "replicated.statusInformers.ingresses" . | toYaml | nindent 4 }}
+  {{ include "replicated.statusInformers.ingresses" . | nindent 4 }}
 - apiGroups:
   - ""
   resources:
@@ -133,7 +133,7 @@ rules:
   - "list"
   - "watch"
   resourceNames:
-  {{ include "replicated.statusInformers.pvcs" . | toYaml | nindent 4 }}
+  {{ include "replicated.statusInformers.pvcs" . | nindent 4 }}
 {{ end }}
 
 {{ if include "replicated.statusInformers.hasDaemonsets" . }}
@@ -146,7 +146,7 @@ rules:
   - "list"
   - "watch"
   resourceNames:
-  {{ include "replicated.statusInformers.daemonsets" . | toYaml | nindent 4 }}
+  {{ include "replicated.statusInformers.daemonsets" . | nindent 4 }}
 - apiGroups:
   - ""
   resources:
