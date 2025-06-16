@@ -5,6 +5,7 @@ import (
 	"dagger/replicated-sdk/internal/dagger"
 	"encoding/json"
 	"fmt"
+	"regexp"
 )
 
 func e2e(
@@ -282,7 +283,13 @@ spec:
 	ctr = dag.Container().From("alpine/helm:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{"helm", "upgrade", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0", "--set", "replicated.tlsCertSecretName=test-tls", "--set", "replicated.minimalRBAC=true"})
+		WithExec([]string{"helm", "upgrade", "test-chart",
+			fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug),
+			"--version", "0.1.0",
+			"--set", "replicated.tlsCertSecretName=test-tls",
+			"--set", "replicated.minimalRBAC=true",
+			"--set-json", "replicated.statusInformers=[\"deployment/replicated\",\"deployment/replicated-ssl-test\",\"service/replicated\"]",
+		})
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
@@ -305,6 +312,21 @@ spec:
 	}
 	fmt.Println("Role permissions after enabling minimal RBAC:")
 	fmt.Println(out)
+
+	// Validate that the role contains the expected resources
+	roleOutput := out
+
+	// Check for replicated-ssl-test deployment in the role
+	// deployments.apps             []                 [replicated-ssl-test]                   [get list watch]
+	if !regexp.MustCompile(`deployments\.apps +\[\] +\[replicated-ssl-test\] +\[get list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'replicated-ssl-test' deployment permission as expected")
+	}
+
+	// Check for test-tls secret in the role
+	// secrets                      []                 [test-tls]                              [get]
+	if !regexp.MustCompile(`secrets +\[\] +\[test-tls\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-tls' secret permission as expected")
+	}
 
 	// Wait for the pod to be ready after RBAC changes
 	ctr = dag.Container().From("bitnami/kubectl:latest").
