@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 func e2e(
@@ -328,21 +329,25 @@ spec:
 		return fmt.Errorf("role does not contain 'test-tls' secret permission as expected")
 	}
 
+	// check that there are not ingress permissions in the role
+	if strings.Contains(roleOutput, "ingress") {
+		return fmt.Errorf("role contains ingress permissions, which should not be present")
+	}
+
 	// Wait for the pod to be ready after RBAC changes
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
 			[]string{
-				"kubectl", "wait",
-				"--for=condition=available",
-				"deployment/replicated",
-				"--timeout=2m",
+				"kubectl", "rollout", "status",
+				"deploy/replicated",
+				"--timeout=1m",
 			})
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		fmt.Printf("failed to wait for deployment to be ready after enabling minimal RBAC: %v\n", err)
+		fmt.Printf("failed to wait for deployment to rollout after enabling minimal RBAC: %v\n", err)
 
 		// Get logs to help debug
 		ctr = dag.Container().From("bitnami/kubectl:latest").
@@ -356,7 +361,7 @@ spec:
 		fmt.Println("Replicated logs after minimal RBAC:")
 		fmt.Println(out)
 
-		return fmt.Errorf("failed to wait for replicated deployment to be ready after minimal RBAC: %w", err)
+		return fmt.Errorf("failed to wait for replicated deployment to rollout after minimal RBAC: %w", err)
 	}
 	fmt.Println(out)
 
