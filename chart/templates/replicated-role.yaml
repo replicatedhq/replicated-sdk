@@ -50,7 +50,7 @@ rules:
 {{ end }}
 
 {{ if .Values.minimalRBAC }}
-{{ if include "replicated.statusInformers.hasDeployments" . }}
+{{ if eq (include "replicated.statusInformers.hasDeployments" .) "true" }}
 - apiGroups:
   - "apps"
   resources:
@@ -63,7 +63,7 @@ rules:
   {{ include "replicated.statusInformers.deployments" . | nindent 4 }}
 {{ end }}
 
-{{ if include "replicated.statusInformers.hasStatefulsets" . }}
+{{ if eq (include "replicated.statusInformers.hasStatefulsets" .) "true" }}
 - apiGroups:
   - "apps"
   resources:
@@ -82,7 +82,7 @@ rules:
   - "list"
 {{ end }}
 
-{{ if include "replicated.statusInformers.hasServices" . }}
+{{ if eq (include "replicated.statusInformers.hasServices" .) "true" }}
 - apiGroups:
   - ""
   resources:
@@ -104,7 +104,7 @@ rules:
   {{ include "replicated.statusInformers.services" . | nindent 4 }}
 {{ end }}
 
-{{ if include "replicated.statusInformers.hasIngresses" . }}
+{{ if eq (include "replicated.statusInformers.hasIngresses" .) "true" }}
 - apiGroups:
   - "networking.k8s.io"
   resources:
@@ -123,7 +123,7 @@ rules:
   - "get"
 {{ end }}
 
-{{ if include "replicated.statusInformers.hasPvcs" . }}
+{{ if eq (include "replicated.statusInformers.hasPvcs" .) "true" }}
 - apiGroups:
   - ""
   resources:
@@ -136,7 +136,7 @@ rules:
   {{ include "replicated.statusInformers.pvcs" . | nindent 4 }}
 {{ end }}
 
-{{ if include "replicated.statusInformers.hasDaemonsets" . }}
+{{ if eq (include "replicated.statusInformers.hasDaemonsets" .) "true" }}
 - apiGroups:
   - "apps"
   resources:
