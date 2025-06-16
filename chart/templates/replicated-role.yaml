@@ -48,26 +48,63 @@ rules:
   resourceNames:
   - {{ .Values.tlsCertSecretName }}
 {{ end }}
+
 {{ if .Values.minimalRBAC }}
-# Get, list, and watch deployments, statefulsets, and daemonsets for Service Monitors
+{{ if include "replicated.statusInformers.hasDeployments" . }}
 - apiGroups:
   - "apps"
   resources:
   - "deployments"
-  - "statefulsets"
-  - "daemonsets"
   verbs:
   - "get"
   - "list"
   - "watch"
-# List pods as part of statefulset and daemonset service monitors
+  resourceNames:
+  {{ include "replicated.statusInformers.deployments" . | toYaml | nindent 4 }}
+{{ end }}
+
+{{ if include "replicated.statusInformers.hasStatefulsets" . }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "statefulsets"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  resourceNames:
+  {{ include "replicated.statusInformers.statefulsets" . | toYaml | nindent 4 }}
 - apiGroups:
   - ""
   resources:
   - "pods"
   verbs:
   - "list"
-# Get, list, and watch ingresses for Service Monitors
+{{ end }}
+
+{{ if include "replicated.statusInformers.hasServices" . }}
+- apiGroups:
+  - ""
+  resources:
+  - "services"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  resourceNames:
+  {{ include "replicated.statusInformers.services" . | toYaml | nindent 4 }}
+- apiGroups:
+  - ""
+  resources:
+  - "endpoints"
+  verbs:
+  - "get"
+  - "list"
+  resourceNames:
+  {{ include "replicated.statusInformers.services" . | toYaml | nindent 4 }}
+{{ end }}
+
+{{ if include "replicated.statusInformers.hasIngresses" . }}
 - apiGroups:
   - "networking.k8s.io"
   resources:
@@ -76,16 +113,47 @@ rules:
   - "get"
   - "list"
   - "watch"
-# Get, list, and watch persistentvolumeclaims, services, and endpoints for Service Monitors
+  resourceNames:
+  {{ include "replicated.statusInformers.ingresses" . | toYaml | nindent 4 }}
+- apiGroups:
+  - ""
+  resources:
+  - "services"
+  verbs:
+  - "get"
+{{ end }}
+
+{{ if include "replicated.statusInformers.hasPvcs" . }}
 - apiGroups:
   - ""
   resources:
   - "persistentvolumeclaims"
-  - "services"
-  - "endpoints"
   verbs:
   - "get"
   - "list"
   - "watch"
+  resourceNames:
+  {{ include "replicated.statusInformers.pvcs" . | toYaml | nindent 4 }}
+{{ end }}
+
+{{ if include "replicated.statusInformers.hasDaemonsets" . }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "daemonsets"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  resourceNames:
+  {{ include "replicated.statusInformers.daemonsets" . | toYaml | nindent 4 }}
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "list"
+{{ end }}
+
 {{ end }}
 {{ end }}

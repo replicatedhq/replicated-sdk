@@ -230,3 +230,182 @@ Get the secret name to use - either the user-specified existing secret or the de
   {{ include "replicated.name" . }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Parse status informers from the license fields
+*/}}
+
+{{/*
+Get all status informers as a list of resource/name pairs
+*/}}
+{{- define "replicated.statusInformers" -}}
+{{- .Values.statusInformers | default list -}}
+{{- end -}}
+
+{{/*
+Get deployment names from status informers
+*/}}
+{{- define "replicated.statusInformers.deployments" -}}
+{{- $deployments := list -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "deployment" -}}
+    {{- $deployments = append $deployments (index $parts 1) -}}
+  {{- end -}}
+{{- end -}}
+{{- $deployments | toYaml -}}
+{{- end -}}
+
+{{/*
+Check if there are any deployment status informers
+*/}}
+{{- define "replicated.statusInformers.hasDeployments" -}}
+{{- $hasDeployments := false -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "deployment" -}}
+    {{- $hasDeployments = true -}}
+  {{- end -}}
+{{- end -}}
+{{- $hasDeployments -}}
+{{- end -}}
+
+{{/*
+Get statefulset names from status informers
+*/}}
+{{- define "replicated.statusInformers.statefulsets" -}}
+{{- $statefulsets := list -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "statefulset" -}}
+    {{- $statefulsets = append $statefulsets (index $parts 1) -}}
+  {{- end -}}
+{{- end -}}
+{{- $statefulsets | toYaml -}}
+{{- end -}}
+
+{{/*
+Check if there are any statefulset status informers
+*/}}
+{{- define "replicated.statusInformers.hasStatefulsets" -}}
+{{- $hasStatefulsets := false -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "statefulset" -}}
+    {{- $hasStatefulsets = true -}}
+  {{- end -}}
+{{- end -}}
+{{- $hasStatefulsets -}}
+{{- end -}}
+
+{{/*
+Get service names from status informers
+*/}}
+{{- define "replicated.statusInformers.services" -}}
+{{- $services := list -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "service" -}}
+    {{- $services = append $services (index $parts 1) -}}
+  {{- end -}}
+{{- end -}}
+{{- $services | toYaml -}}
+{{- end -}}
+
+{{/*
+Check if there are any service status informers
+*/}}
+{{- define "replicated.statusInformers.hasServices" -}}
+{{- $hasServices := false -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "service" -}}
+    {{- $hasServices = true -}}
+  {{- end -}}
+{{- end -}}
+{{- $hasServices -}}
+{{- end -}}
+
+{{/*
+Get ingress names from status informers
+*/}}
+{{- define "replicated.statusInformers.ingresses" -}}
+{{- $ingresses := list -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "ingress" -}}
+    {{- $ingresses = append $ingresses (index $parts 1) -}}
+  {{- end -}}
+{{- end -}}
+{{- $ingresses | toYaml -}}
+{{- end -}}
+
+{{/*
+Check if there are any ingress status informers
+*/}}
+{{- define "replicated.statusInformers.hasIngresses" -}}
+{{- $hasIngresses := false -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "ingress" -}}
+    {{- $hasIngresses = true -}}
+  {{- end -}}
+{{- end -}}
+{{- $hasIngresses -}}
+{{- end -}}
+
+{{/*
+Get PVC names from status informers
+*/}}
+{{- define "replicated.statusInformers.pvcs" -}}
+{{- $pvcs := list -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "pvc" -}}
+    {{- $pvcs = append $pvcs (index $parts 1) -}}
+  {{- end -}}
+{{- end -}}
+{{- $pvcs | toYaml -}}
+{{- end -}}
+
+{{/*
+Check if there are any PVC status informers
+*/}}
+{{- define "replicated.statusInformers.hasPvcs" -}}
+{{- $hasPvcs := false -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "pvc" -}}
+    {{- $hasPvcs = true -}}
+  {{- end -}}
+{{- end -}}
+{{- $hasPvcs -}}
+{{- end -}}
+
+{{/*
+Get daemonset names from status informers
+*/}}
+{{- define "replicated.statusInformers.daemonsets" -}}
+{{- $daemonsets := list -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "daemonset" -}}
+    {{- $daemonsets = append $daemonsets (index $parts 1) -}}
+  {{- end -}}
+{{- end -}}
+{{- $daemonsets | toYaml -}}
+{{- end -}}
+
+{{/*
+Check if there are any daemonset status informers
+*/}}
+{{- define "replicated.statusInformers.hasDaemonsets" -}}
+{{- $hasDaemonsets := false -}}
+{{- range (include "replicated.statusInformers" . | fromYaml) -}}
+  {{- $parts := split "/" . -}}
+  {{- if eq (index $parts 0) "daemonset" -}}
+    {{- $hasDaemonsets = true -}}
+  {{- end -}}
+{{- end -}}
+{{- $hasDaemonsets -}}
+{{- end -}}
