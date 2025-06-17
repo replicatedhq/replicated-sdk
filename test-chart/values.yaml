@@ -13,5 +13,6 @@ service:
   port: 80
 
 # this is narrower than the default so that we only have reported events for PVCs etc after enabling minimal RBAC
-statusInformers:
-- deployment/replicated
+replicated:
+  statusInformers:
+  - deployment/replicated
