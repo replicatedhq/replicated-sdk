@@ -292,6 +292,8 @@ spec:
 			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
 		out, err = ctr.Stdout(ctx)
 		if err != nil {
+			stderr, _ := ctr.Stderr(ctx)
+			fmt.Printf("failed to patch storage class: %v\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
 			return fmt.Errorf("failed to patch storage class: %w", err)
 		}
 		fmt.Println(out)
@@ -306,7 +308,7 @@ spec:
 			"--version", "0.1.0",
 			"--set", "replicated.tlsCertSecretName=test-tls",
 			"--set", "replicated.minimalRBAC=true",
-			"--set-json", "replicated.statusInformers=[\"deployment/test-chart\",\"service/test-chart\",\"daemonset/test-daemonset\",\"statefulset/test-statefulset\",\"pvc/test-storage-test-statefulset-0\"]",
+			"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-storage-test-statefulset-0"]`,
 		})
 
 	out, err = ctr.Stdout(ctx)
