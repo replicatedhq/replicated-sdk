@@ -488,11 +488,6 @@ spec:
 		return fmt.Errorf("failed to get service account token: %w", err)
 	}
 
-	events, err := getEvents(ctx, tokenPlaintext, appID)
-	if err != nil {
-		return fmt.Errorf("failed to get events: %w", err)
-	}
-
 	resourceNames := []struct {
 		Kind string
 		Name string
@@ -503,15 +498,48 @@ spec:
 		{Kind: "statefulset", Name: "test-statefulset"},
 		{Kind: "persistentvolumeclaim", Name: "test-storage-test-statefulset-0"},
 	}
-	for _, resourceName := range resourceNames {
-		if !checkResourceState(events, resourceName.Kind, resourceName.Name) {
+
+	// Retry up to 3 times with 30 seconds between attempts
+	maxRetries := 3
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("Attempt %d/%d: Checking resource states...\n", attempt, maxRetries)
+
+		events, err := getEvents(ctx, tokenPlaintext, appID)
+		if err != nil {
+			if attempt == maxRetries {
+				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)
+			}
+			fmt.Printf("Failed to get events on attempt %d: %v\n", attempt, err)
+			time.Sleep(30 * time.Second)
+			continue
+		}
+
+		allResourcesReady := true
+		for _, resourceName := range resourceNames {
+			if !checkResourceReady(events, resourceName.Kind, resourceName.Name) {
+				fmt.Printf("Resource %s %s is not ready on attempt %d\n", resourceName.Kind, resourceName.Name, attempt)
+				allResourcesReady = false
+			} else {
+				fmt.Printf("Resource %s %s is ready\n", resourceName.Kind, resourceName.Name)
+			}
+		}
+
+		if allResourcesReady {
+			fmt.Printf("All resources are ready after %d attempt(s)\n", attempt)
+			break
+		}
+
+		if attempt == maxRetries {
 			eventJson, err := json.Marshal(events)
 			if err != nil {
 				return fmt.Errorf("failed to marshal events: %w", err)
 			}
 			fmt.Printf("events: %s\n", string(eventJson))
-			return fmt.Errorf("resource %s %s is not ready", resourceName.Kind, resourceName.Name)
+			return fmt.Errorf("not all resources are ready after %d attempts", maxRetries)
 		}
+
+		fmt.Printf("Waiting 30 seconds before next attempt...\n")
+		time.Sleep(30 * time.Second)
 	}
 
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
@@ -574,16 +602,26 @@ func getEvents(ctx context.Context, authToken string, appID string) ([]Event, er
 	return respObj.Events, nil
 }
 
-func checkResourceState(events []Event, kind string, name string) bool {
+func checkResourceReady(events []Event, kind string, name string) bool {
+	var appStatusEvent Event
+
 	for _, event := range events {
 		if event.FieldName == "appStatus" {
-			for _, resourceState := range event.Meta.ResourceStates {
-				if resourceState.Kind == kind && resourceState.Name == name {
-					log.Printf("resourceState for %s %s: %s", kind, name, resourceState.State)
-					return resourceState.State == "ready"
-				}
-			}
+			appStatusEvent = event
 		}
 	}
+
+	if appStatusEvent.ReportedAt == "" {
+		return false
+	}
+
+	for _, resourceState := range appStatusEvent.Meta.ResourceStates {
+		if resourceState.Kind == kind && resourceState.Name == name {
+			log.Printf("resourceState for %s %s: %s", kind, name, resourceState.State)
+			return resourceState.State == "ready"
+		}
+	}
+
+	log.Printf("no resourceState found for %s %s", kind, name)
 	return false
 }
