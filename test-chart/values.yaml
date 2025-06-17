@@ -11,3 +11,13 @@ serviceAccount:
 service:
   type: ClusterIP
   port: 80
+
+replicated:
+  statusInformers:
+    - deployment/test-chart
+    - deployment/replicated
+    - service/test-chart
+    - service/replicated
+    - daemonset/test-daemonset
+    - statefulset/test-statefulset
+    - pvc/test-storage-test-statefulset-0
