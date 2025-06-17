@@ -55,6 +55,23 @@ func e2e(
 
 	kubeconfigSource := source.WithNewFile("/kubeconfig", kubeconfig)
 
+	// if the cluster type is eks, we need to patch the storage class to be default - otherwise the statefulset will fail to create
+	// kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+	if distribution == "eks" {
+		fmt.Println("Patching eks gp2 storage class to be default...")
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
+		out, err = ctr.Stdout(ctx)
+		if err != nil {
+			stderr, _ := ctr.Stderr(ctx)
+			fmt.Printf("failed to patch storage class: %v\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+			return fmt.Errorf("failed to patch storage class: %w", err)
+		}
+		fmt.Println(out)
+	}
+
 	ctr = dag.Container().From("alpine/helm:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
@@ -282,23 +299,6 @@ spec:
 
 	// Test minimal RBAC functionality
 	fmt.Println("Testing minimal RBAC functionality...")
-
-	// if the cluster type is eks, we need to patch the storage class to be default - otherwise the statefulset will fail to create
-	// kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-	if distribution == "eks" {
-		fmt.Println("Patching eks gp2 storage class to be default...")
-		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
-		out, err = ctr.Stdout(ctx)
-		if err != nil {
-			stderr, _ := ctr.Stderr(ctx)
-			fmt.Printf("failed to patch storage class: %v\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
-			return fmt.Errorf("failed to patch storage class: %w", err)
-		}
-		fmt.Println(out)
-	}
 
 	// Upgrade the chart to enable minimal RBAC
 	ctr = dag.Container().From("alpine/helm:latest").
