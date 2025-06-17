@@ -280,6 +280,112 @@ spec:
 	// Test minimal RBAC functionality
 	fmt.Println("Testing minimal RBAC functionality...")
 
+	// Add a daemonset, statefulset, and PVC (from the statefulset) to the namespace
+	// We do not test ingress statusinformers here yet
+
+	// Create a test daemonset
+	daemonsetYaml := `apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: test-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: test-daemonset
+  template:
+    metadata:
+      labels:
+        app: test-daemonset
+    spec:
+      containers:
+      - name: test-container
+        image: alpine/curl:latest
+        command: ["sleep", "500d"]
+      tolerations:
+      - operator: Exists`
+	daemonsetSource := source.WithNewFile("/test-daemonset.yaml", daemonsetYaml)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile("/root/test-daemonset.yaml", daemonsetSource.File("/test-daemonset.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/root/test-daemonset.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply test daemonset: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println("Created test daemonset:", out)
+
+	// Create a test statefulset with PVC
+	statefulsetYaml := `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-statefulset
+spec:
+  serviceName: test-statefulset
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-statefulset
+  template:
+    metadata:
+      labels:
+        app: test-statefulset
+    spec:
+      containers:
+      - name: test-container
+        image: alpine/curl:latest
+        command: ["sleep", "500d"]
+        volumeMounts:
+        - name: test-storage
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: test-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi`
+	statefulsetSource := source.WithNewFile("/test-statefulset.yaml", statefulsetYaml)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile("/root/test-statefulset.yaml", statefulsetSource.File("/test-statefulset.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/root/test-statefulset.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply test statefulset: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println("Created test statefulset:", out)
+
+	// Wait for the daemonset to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "rollout", "status", "daemonset/test-daemonset", "--timeout=1m"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for daemonset to be ready: %v\n", err)
+	} else {
+		fmt.Println("Daemonset ready:", out)
+	}
+
+	// Wait for the statefulset to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "rollout", "status", "statefulset/test-statefulset", "--timeout=1m"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for statefulset to be ready: %v\n", err)
+	} else {
+		fmt.Println("Statefulset ready:", out)
+	}
+
 	// Upgrade the chart to enable minimal RBAC
 	ctr = dag.Container().From("alpine/helm:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -289,7 +395,7 @@ spec:
 			"--version", "0.1.0",
 			"--set", "replicated.tlsCertSecretName=test-tls",
 			"--set", "replicated.minimalRBAC=true",
-			"--set-json", "replicated.statusInformers=[\"deployment/replicated-ssl-test\",\"service/replicated\"]",
+			"--set-json", "replicated.statusInformers=[\"deployment/replicated-ssl-test\",\"service/replicated\",\"daemonset/test-daemonset\",\"statefulset/test-statefulset\",\"pvc/test-statefulset-0\"]",
 		})
 
 	out, err = ctr.Stdout(ctx)
@@ -333,6 +439,24 @@ spec:
 	// secrets                      []                 [test-tls]                              [get]
 	if !regexp.MustCompile(`secrets +\[\] +\[test-tls\] +\[get\]`).MatchString(roleOutput) {
 		return fmt.Errorf("role does not contain 'test-tls' secret permission as expected")
+	}
+
+	// Check for test-daemonset daemonset in the role
+	// daemonsets.apps              []                 [test-daemonset]                        [get list watch]
+	if !regexp.MustCompile(`daemonsets\.apps +\[\] +\[test-daemonset\] +\[get list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-daemonset' daemonset permission as expected")
+	}
+
+	// Check for test-statefulset statefulset in the role
+	// statefulsets.apps            []                 [test-statefulset]                      [get list watch]
+	if !regexp.MustCompile(`statefulsets\.apps +\[\] +\[test-statefulset\] +\[get list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-statefulset' statefulset permission as expected")
+	}
+
+	// Check for test-statefulset-0 PVC in the role
+	// persistentvolumeclaims      []                 [test-statefulset-0]                     [get list watch]
+	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-statefulset-0\] +\[get list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-statefulset-0' PVC permission as expected")
 	}
 
 	// check that there are not ingress permissions in the role
