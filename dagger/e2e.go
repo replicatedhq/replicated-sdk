@@ -537,7 +537,20 @@ spec:
 	if err != nil {
 		return fmt.Errorf("failed to get final pod status: %w", err)
 	}
-	fmt.Println("Final pod status after minimal RBAC test:")
+	fmt.Println("final PVCs:")
+	fmt.Println(out)
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pvc",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get final pvcs: %w", err)
+	}
+	fmt.Println("final pvcs:")
 	fmt.Println(out)
 
 	// get SDK logs for final debugging
