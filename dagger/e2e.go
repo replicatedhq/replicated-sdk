@@ -515,8 +515,8 @@ spec:
 		{Kind: "persistentvolumeclaim", Name: "test-storage-test-statefulset-0"},
 	}
 
-	// Retry up to 3 times with 30 seconds between attempts
-	maxRetries := 3
+	// Retry up to 5 times with 30 seconds between attempts
+	maxRetries := 5
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		fmt.Printf("Attempt %d/%d: Checking resource states...\n", attempt, maxRetries)
 
@@ -533,15 +533,15 @@ spec:
 		allResourcesReady := true
 		for _, resourceName := range resourceNames {
 			if !checkResourceReady(events, resourceName.Kind, resourceName.Name) {
-				fmt.Printf("Resource %s %s is not ready on attempt %d\n", resourceName.Kind, resourceName.Name, attempt)
+				fmt.Printf("%s Resource %s %s is not ready on attempt %d\n", distribution, resourceName.Kind, resourceName.Name, attempt)
 				allResourcesReady = false
 			} else {
-				fmt.Printf("Resource %s %s is ready\n", resourceName.Kind, resourceName.Name)
+				fmt.Printf("%s Resource %s %s is ready\n", distribution, resourceName.Kind, resourceName.Name)
 			}
 		}
 
 		if allResourcesReady {
-			fmt.Printf("All resources are ready after %d attempt(s)\n", attempt)
+			fmt.Printf("%s All resources are ready after %d attempt(s)\n", distribution, attempt)
 			break
 		}
 
@@ -550,7 +550,7 @@ spec:
 			if err != nil {
 				return fmt.Errorf("failed to marshal events: %w", err)
 			}
-			fmt.Printf("events: %s\n", string(eventJson))
+			fmt.Printf("%s events: %s\n", distribution, string(eventJson))
 			return fmt.Errorf("not all resources are ready after %d attempts", maxRetries)
 		}
 
@@ -633,11 +633,11 @@ func checkResourceReady(events []Event, kind string, name string) bool {
 
 	for _, resourceState := range appStatusEvent.Meta.ResourceStates {
 		if resourceState.Kind == kind && resourceState.Name == name {
-			fmt.Printf("resourceState for %s %s: %s", kind, name, resourceState.State)
+			fmt.Printf("resourceState for %s %s: %s\n", kind, name, resourceState.State)
 			return resourceState.State == "ready"
 		}
 	}
 
-	fmt.Printf("no resourceState found for %s %s", kind, name)
+	fmt.Printf("no resourceState found for %s %s\n", kind, name)
 	return false
 }
