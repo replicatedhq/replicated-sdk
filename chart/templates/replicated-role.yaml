@@ -87,8 +87,13 @@ rules:
   resources:
   - "deployments"
   verbs:
-  - "get"
   - "list"
+- apiGroups:
+  - "apps"
+  resources:
+  - "deployments"
+  verbs:
+  - "get"
   - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.deployments" . | nindent 4 }}
@@ -100,8 +105,13 @@ rules:
   resources:
   - "statefulsets"
   verbs:
-  - "get"
   - "list"
+- apiGroups:
+  - "apps"
+  resources:
+  - "statefulsets"
+  verbs:
+  - "get"
   - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.statefulsets" . | nindent 4 }}
@@ -118,19 +128,17 @@ rules:
   - ""
   resources:
   - "services"
+  - "endpoints"
   verbs:
-  - "get"
   - "list"
-  - "watch"
-  resourceNames:
-  {{ include "replicated.statusInformers.services" . | nindent 4 }}
 - apiGroups:
   - ""
   resources:
+  - "services"
   - "endpoints"
   verbs:
   - "get"
-  - "list"
+  - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.services" . | nindent 4 }}
 {{ end }}
@@ -141,8 +149,13 @@ rules:
   resources:
   - "ingresses"
   verbs:
-  - "get"
   - "list"
+- apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - "ingresses"
+  verbs:
+  - "get"
   - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.ingresses" . | nindent 4 }}
@@ -153,6 +166,7 @@ rules:
   - "endpoints"
   verbs:
   - "get"
+  - "watch"
 {{ end }}
 
 {{ if eq (include "replicated.statusInformers.hasPvcs" .) "true" }}
@@ -161,8 +175,13 @@ rules:
   resources:
   - "persistentvolumeclaims"
   verbs:
-  - "get"
   - "list"
+- apiGroups:
+  - ""
+  resources:
+  - "persistentvolumeclaims"
+  verbs:
+  - "get"
   - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.pvcs" . | nindent 4 }}
@@ -174,8 +193,13 @@ rules:
   resources:
   - "daemonsets"
   verbs:
-  - "get"
   - "list"
+- apiGroups:
+  - "apps"
+  resources:
+  - "daemonsets"
+  verbs:
+  - "get"
   - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.daemonsets" . | nindent 4 }}
