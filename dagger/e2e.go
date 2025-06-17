@@ -619,25 +619,27 @@ func getEvents(ctx context.Context, authToken string, appID string) ([]Event, er
 }
 
 func checkResourceReady(events []Event, kind string, name string) bool {
-	var appStatusEvent Event
-
+	foundFalse := false
 	for _, event := range events {
 		if event.FieldName == "appStatus" {
-			appStatusEvent = event
+			for _, resourceState := range event.Meta.ResourceStates {
+				if resourceState.Kind == kind && resourceState.Name == name {
+					fmt.Printf("%s resourceState for %s %s: %s\n", event.ReportedAt, kind, name, resourceState.State)
+					if resourceState.State == "ready" {
+						return true
+					} else {
+						foundFalse = true
+					}
+				}
+			}
 		}
 	}
 
-	if appStatusEvent.ReportedAt == "" {
-		return false
+	if foundFalse {
+		fmt.Printf("only found not ready states for %s %s\n", kind, name)
+	} else {
+		fmt.Printf("did not find %s %s in any events\n", kind, name)
 	}
 
-	for _, resourceState := range appStatusEvent.Meta.ResourceStates {
-		if resourceState.Kind == kind && resourceState.Name == name {
-			fmt.Printf("resourceState for %s %s: %s\n", kind, name, resourceState.State)
-			return resourceState.State == "ready"
-		}
-	}
-
-	fmt.Printf("no resourceState found for %s %s\n", kind, name)
 	return false
 }
