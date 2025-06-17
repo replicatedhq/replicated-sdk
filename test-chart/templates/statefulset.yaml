@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-statefulset
+  labels:
+    test-chart: "statefulset"
+    {{- include "test-chart.labels" . | nindent 4 }}
+spec:
+  serviceName: test-statefulset
+  replicas: 1
+  selector:
+    matchLabels:
+      test-chart: "statefulset"
+      {{- include "test-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        test-chart: "statefulset"
+        {{- include "test-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: test-container
+        image: nginx:latest
+        command: ["sleep", "500d"]
+        volumeMounts:
+        - name: test-storage
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: test-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
