@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func e2e(
@@ -505,6 +506,9 @@ spec:
 	}
 	fmt.Println(out)
 
+	// wait 30 seconds to let the SDK pod send updates
+	time.Sleep(time.Second * 30)
+
 	// Get final pod status
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -524,7 +528,7 @@ spec:
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec([]string{"kubectl", "logs", "-p", "-l", "app.kubernetes.io/name=replicated"})
+		WithExec([]string{"kubectl", "logs", "deployment/replicated", "--tail=100"})
 	out, err2 := ctr.Stdout(ctx)
 	if err2 != nil {
 		return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
