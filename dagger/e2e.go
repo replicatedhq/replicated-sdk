@@ -453,6 +453,15 @@ spec:
 	}
 	fmt.Println(out)
 
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "rollout", "restart", "deploy/test-chart"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
+	}
+
 	// wait 30 seconds to let the SDK pod send updates
 	time.Sleep(time.Second * 30)
 
