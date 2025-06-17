@@ -556,13 +556,17 @@ func getEvents(ctx context.Context, authToken string, appID string) ([]Event, er
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	var events []Event
-	err = json.Unmarshal(body, &events)
+	type Resp struct {
+		Events []Event `json:"events"`
+	}
+
+	var respObj Resp
+	err = json.Unmarshal(body, &respObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return events, nil
+	return respObj.Events, nil
 }
 
 func checkResourceState(events []Event, kind string, name string) bool {
