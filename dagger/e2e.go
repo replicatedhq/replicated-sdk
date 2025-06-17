@@ -505,6 +505,11 @@ spec:
 	}
 	for _, resourceName := range resourceNames {
 		if !checkResourceState(events, resourceName.Kind, resourceName.Name) {
+			eventJson, err := json.Marshal(events)
+			if err != nil {
+				return fmt.Errorf("failed to marshal events: %w", err)
+			}
+			fmt.Printf("events: %s\n", string(eventJson))
 			return fmt.Errorf("resource %s %s is not ready", resourceName.Kind, resourceName.Name)
 		}
 	}
