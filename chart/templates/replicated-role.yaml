@@ -50,7 +50,7 @@ rules:
 {{ end }}
 
 {{ if .Values.minimalRBAC }}
-# the SDK deployment, replicaset, and pod are required by default
+# the SDK deployment, replicaset, and pod are required by default (to determine if there is a newer version running)
 - apiGroups:
   - "apps"
   resources:
@@ -71,6 +71,7 @@ rules:
   - "pods"
   verbs:
   - "get"
+# the SDK secret is required by default (to determine if integration test mode is enabled)
 - apiGroups:
   - ""
   resources:
