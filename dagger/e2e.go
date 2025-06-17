@@ -396,7 +396,7 @@ spec:
 			"--version", "0.1.0",
 			"--set", "replicated.tlsCertSecretName=test-tls",
 			"--set", "replicated.minimalRBAC=true",
-			"--set-json", "replicated.statusInformers=[\"deployment/replicated-ssl-test\",\"service/replicated\",\"daemonset/test-daemonset\",\"statefulset/test-statefulset\",\"pvc/test-statefulset-0\"]",
+			"--set-json", "replicated.statusInformers=[\"deployment/replicated-ssl-test\",\"service/replicated\",\"daemonset/test-daemonset\",\"statefulset/test-statefulset\",\"pvc/test-storage-test-statefulset-0\"]",
 		})
 
 	out, err = ctr.Stdout(ctx)
@@ -467,10 +467,10 @@ spec:
 	}
 
 	// Check for test-statefulset-0 PVC in the role
-	// persistentvolumeclaims      []                 [test-statefulset-0]                     [get]
+	// persistentvolumeclaims      []                 [test-storage-test-statefulset-0]        [get]
 	// persistentvolumeclaims      []                 []                                       [list watch]
-	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-statefulset-0\] +\[get\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain 'test-statefulset-0' PVC get permission as expected")
+	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-storage-test-statefulset-0\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-storage-test-statefulset-0' PVC get permission as expected")
 	}
 	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
 		return fmt.Errorf("role does not contain PVC list watch permission as expected")
@@ -537,20 +537,7 @@ spec:
 	if err != nil {
 		return fmt.Errorf("failed to get final pod status: %w", err)
 	}
-	fmt.Println("final PVCs:")
-	fmt.Println(out)
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		With(CacheBustingExec(
-			[]string{
-				"kubectl", "get", "pvc",
-			}))
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get final pvcs: %w", err)
-	}
-	fmt.Println("final pvcs:")
+	fmt.Println("final pods:")
 	fmt.Println(out)
 
 	// get SDK logs for final debugging
