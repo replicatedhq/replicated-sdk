@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -283,6 +282,20 @@ spec:
 
 	// Test minimal RBAC functionality
 	fmt.Println("Testing minimal RBAC functionality...")
+
+	// if the cluster type is eks, we need to patch the storage class to be default - otherwise the statefulset will fail to create
+	// kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+	if distribution == "eks" {
+		fmt.Println("Patching eks gp2 storage class to be default...")
+		ctr = dag.Container().From("alpine/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
+		out, err = ctr.Stdout(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to patch storage class: %w", err)
+		}
+		fmt.Println(out)
+	}
 
 	// Upgrade the chart to enable minimal RBAC
 	ctr = dag.Container().From("alpine/helm:latest").
@@ -617,11 +630,11 @@ func checkResourceReady(events []Event, kind string, name string) bool {
 
 	for _, resourceState := range appStatusEvent.Meta.ResourceStates {
 		if resourceState.Kind == kind && resourceState.Name == name {
-			log.Printf("resourceState for %s %s: %s", kind, name, resourceState.State)
+			fmt.Printf("resourceState for %s %s: %s", kind, name, resourceState.State)
 			return resourceState.State == "ready"
 		}
 	}
 
-	log.Printf("no resourceState found for %s %s", kind, name)
+	fmt.Printf("no resourceState found for %s %s", kind, name)
 	return false
 }
