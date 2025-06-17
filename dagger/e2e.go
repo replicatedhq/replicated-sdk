@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -487,35 +488,93 @@ spec:
 		return fmt.Errorf("failed to get service account token: %w", err)
 	}
 
+	events, err := getEvents(ctx, tokenPlaintext, appID)
+	if err != nil {
+		return fmt.Errorf("failed to get events: %w", err)
+	}
+
+	resourceNames := []struct {
+		Kind string
+		Name string
+	}{
+		{Kind: "deployment", Name: "test-chart"},
+		{Kind: "service", Name: "test-chart"},
+		{Kind: "daemonset", Name: "test-daemonset"},
+		{Kind: "statefulset", Name: "test-statefulset"},
+		{Kind: "persistentvolumeclaim", Name: "test-storage-test-statefulset-0"},
+	}
+	for _, resourceName := range resourceNames {
+		if !checkResourceState(events, resourceName.Kind, resourceName.Name) {
+			return fmt.Errorf("resource %s %s is not ready", resourceName.Kind, resourceName.Name)
+		}
+	}
+
+	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
+	return nil
+}
+
+type Event struct {
+	ReportedAt    string `json:"reportedAt"`
+	FieldName     string `json:"fieldName"`
+	IsCustom      bool   `json:"isCustom"`
+	PreviousValue string `json:"previousValue"`
+	NewValue      string `json:"newValue"`
+	Meta          struct {
+		ResourceStates []struct {
+			Kind      string `json:"kind"`
+			Name      string `json:"name"`
+			State     string `json:"state"`
+			Namespace string `json:"namespace"`
+		} `json:"resourceStates"`
+	} `json:"meta"`
+}
+
+func getEvents(ctx context.Context, authToken string, appID string) ([]Event, error) {
 	url := fmt.Sprintf("https://api.replicated.com/v1/instance/%s/events?pageSize=500", appID)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", tokenPlaintext)
+	req.Header.Set("Authorization", authToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to make request: %w", err)
+		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("API request failed with status %d", resp.StatusCode)
+		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
 	}
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response: %w", err)
+		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	fmt.Println("Events response:")
-	fmt.Println(string(body))
+	var events []Event
+	err = json.Unmarshal(body, &events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
 
-	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
-	return nil
+	return events, nil
+}
+
+func checkResourceState(events []Event, kind string, name string) bool {
+	for _, event := range events {
+		if event.FieldName == "appStatus" {
+			for _, resourceState := range event.Meta.ResourceStates {
+				if resourceState.Kind == kind && resourceState.Name == name {
+					log.Printf("resourceState for %s %s: %s", kind, name, resourceState.State)
+					return resourceState.State == "ready"
+				}
+			}
+		}
+	}
+	return false
 }
