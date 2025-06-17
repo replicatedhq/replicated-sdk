@@ -5,6 +5,8 @@ import (
 	"dagger/replicated-sdk/internal/dagger"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -463,6 +465,56 @@ spec:
 	}
 	fmt.Println("SDK logs after minimal RBAC test:")
 	fmt.Println(out)
+
+	// Extract appID from the SDK logs
+	var appID string
+	lines := strings.Split(out, "\n")
+	appIDRegex := regexp.MustCompile(`appID:\s+([a-f0-9-]+)`)
+	for _, line := range lines {
+		if match := appIDRegex.FindStringSubmatch(line); match != nil {
+			appID = match[1]
+			fmt.Printf("Extracted appID: %s\n", appID)
+			break
+		}
+	}
+	if appID == "" {
+		return fmt.Errorf("appID not found in SDK logs")
+	}
+
+	// make a request to https://api.replicated.com/v1/instance/{appid}/events?pageSize=500
+	tokenPlaintext, err := replicatedServiceAccount.Plaintext(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get service account token: %w", err)
+	}
+
+	url := fmt.Sprintf("https://api.replicated.com/v1/instance/%s/events?pageSize=500", appID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", tokenPlaintext)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	fmt.Println("Events response:")
+	fmt.Println(string(body))
 
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
 	return nil
