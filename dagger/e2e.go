@@ -437,43 +437,43 @@ spec:
 	}
 
 	// Check for replicated-ssl-test deployment in the role
-	// deployments.apps             []                 [replicated-ssl-test]                   [get watch]
-	// deployments.apps             []                 []                                      [list]
-	if !regexp.MustCompile(`deployments\.apps +\[\] +\[replicated-ssl-test\] +\[get watch\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain 'replicated-ssl-test' deployment get watchpermission as expected")
+	// deployments.apps             []                 [replicated-ssl-test]                   [get]
+	// deployments.apps             []                 []                                      [list watch]
+	if !regexp.MustCompile(`deployments\.apps +\[\] +\[replicated-ssl-test\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'replicated-ssl-test' deployment get permission as expected")
 	}
-	if !regexp.MustCompile(`deployments\.apps +\[\] +\[\] +\[list\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain deployment list permission as expected")
+	if !regexp.MustCompile(`deployments\.apps +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain deployment list watch permission as expected")
 	}
 
 	// Check for test-daemonset daemonset in the role
-	// daemonsets.apps              []                 [test-daemonset]                        [get watch]
-	// daemonsets.apps              []                 []                                      [list]
-	if !regexp.MustCompile(`daemonsets\.apps +\[\] +\[test-daemonset\] +\[get watch\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain 'test-daemonset' daemonset get watch permission as expected")
+	// daemonsets.apps              []                 [test-daemonset]                        [get]
+	// daemonsets.apps              []                 []                                      [list watch]
+	if !regexp.MustCompile(`daemonsets\.apps +\[\] +\[test-daemonset\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-daemonset' daemonset get permission as expected")
 	}
-	if !regexp.MustCompile(`daemonsets\.apps +\[\] +\[\] +\[list\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain daemonset list permission as expected")
+	if !regexp.MustCompile(`daemonsets\.apps +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain daemonset list watch permission as expected")
 	}
 
 	// Check for test-statefulset statefulset in the role
-	// statefulsets.apps            []                 [test-statefulset]                      [get watch]
-	// statefulsets.apps            []                 []                                      [list]
-	if !regexp.MustCompile(`statefulsets\.apps +\[\] +\[test-statefulset\] +\[get watch\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain 'test-statefulset' statefulset get watch permission as expected")
+	// statefulsets.apps            []                 [test-statefulset]                      [get]
+	// statefulsets.apps            []                 []                                      [list watch]
+	if !regexp.MustCompile(`statefulsets\.apps +\[\] +\[test-statefulset\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-statefulset' statefulset get permission as expected")
 	}
-	if !regexp.MustCompile(`statefulsets\.apps +\[\] +\[\] +\[list\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain statefulset list permission as expected")
+	if !regexp.MustCompile(`statefulsets\.apps +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain statefulset list watch permission as expected")
 	}
 
 	// Check for test-statefulset-0 PVC in the role
-	// persistentvolumeclaims      []                 [test-statefulset-0]                     [get watch]
-	// persistentvolumeclaims      []                 []                                       [list]
-	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-statefulset-0\] +\[get watch\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain 'test-statefulset-0' PVC get watch permission as expected")
+	// persistentvolumeclaims      []                 [test-statefulset-0]                     [get]
+	// persistentvolumeclaims      []                 []                                       [list watch]
+	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-statefulset-0\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-statefulset-0' PVC get permission as expected")
 	}
-	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[\] +\[list\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain PVC list permission as expected")
+	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain PVC list watch permission as expected")
 	}
 
 	// check that there are not ingress permissions in the role

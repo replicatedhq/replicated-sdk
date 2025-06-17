@@ -88,13 +88,13 @@ rules:
   - "deployments"
   verbs:
   - "list"
+  - "watch"
 - apiGroups:
   - "apps"
   resources:
   - "deployments"
   verbs:
   - "get"
-  - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.deployments" . | nindent 4 }}
 {{ end }}
@@ -106,13 +106,13 @@ rules:
   - "statefulsets"
   verbs:
   - "list"
+  - "watch"
 - apiGroups:
   - "apps"
   resources:
   - "statefulsets"
   verbs:
   - "get"
-  - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.statefulsets" . | nindent 4 }}
 - apiGroups:
@@ -131,6 +131,7 @@ rules:
   - "endpoints"
   verbs:
   - "list"
+  - "watch"
 - apiGroups:
   - ""
   resources:
@@ -138,7 +139,6 @@ rules:
   - "endpoints"
   verbs:
   - "get"
-  - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.services" . | nindent 4 }}
 {{ end }}
@@ -150,13 +150,13 @@ rules:
   - "ingresses"
   verbs:
   - "list"
+  - "watch"
 - apiGroups:
   - "networking.k8s.io"
   resources:
   - "ingresses"
   verbs:
   - "get"
-  - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.ingresses" . | nindent 4 }}
 - apiGroups:
@@ -176,13 +176,13 @@ rules:
   - "persistentvolumeclaims"
   verbs:
   - "list"
+  - "watch"
 - apiGroups:
   - ""
   resources:
   - "persistentvolumeclaims"
   verbs:
   - "get"
-  - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.pvcs" . | nindent 4 }}
 {{ end }}
@@ -194,13 +194,13 @@ rules:
   - "daemonsets"
   verbs:
   - "list"
+  - "watch"
 - apiGroups:
   - "apps"
   resources:
   - "daemonsets"
   verbs:
   - "get"
-  - "watch"
   resourceNames:
   {{ include "replicated.statusInformers.daemonsets" . | nindent 4 }}
 - apiGroups:
