@@ -290,6 +290,7 @@ spec:
 			"--version", "0.1.0",
 			"--set", "replicated.tlsCertSecretName=test-tls",
 			"--set", "replicated.minimalRBAC=true",
+			"--set-json", "replicated.statusInformers=[\"deployment/test-chart\",\"service/test-chart\",\"daemonset/test-daemonset\",\"statefulset/test-statefulset\",\"pvc/test-storage-test-statefulset-0\"]",
 		})
 
 	out, err = ctr.Stdout(ctx)
