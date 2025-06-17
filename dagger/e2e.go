@@ -464,6 +464,16 @@ spec:
 		return fmt.Errorf("role contains ingress permissions, which should not be present")
 	}
 
+	// restart pods from the replicated deployment to clarify logs later (don't keep a failed pod around, and there will be one from the update)
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "rollout", "restart", "deploy/replicated"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart pods from replicated deployment: %w", err)
+	}
+
 	// Wait for the pod to be ready after RBAC changes
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -508,6 +518,18 @@ spec:
 		return fmt.Errorf("failed to get final pod status: %w", err)
 	}
 	fmt.Println("Final pod status after minimal RBAC test:")
+	fmt.Println(out)
+
+	// get SDK logs for final debugging
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "logs", "-p", "-l", "app.kubernetes.io/name=replicated"})
+	out, err2 := ctr.Stdout(ctx)
+	if err2 != nil {
+		return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+	}
+	fmt.Println("SDK logs after minimal RBAC test:")
 	fmt.Println(out)
 
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
