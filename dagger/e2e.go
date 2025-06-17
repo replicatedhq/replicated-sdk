@@ -289,6 +289,7 @@ spec:
 		fmt.Println("Patching eks gp2 storage class to be default...")
 		ctr = dag.Container().From("bitnami/kubectl:latest").
 			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
 		out, err = ctr.Stdout(ctx)
 		if err != nil {
