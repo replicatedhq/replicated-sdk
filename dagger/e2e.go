@@ -309,7 +309,7 @@ spec:
 			"--version", "0.1.0",
 			"--set", "replicated.tlsCertSecretName=test-tls",
 			"--set", "replicated.minimalRBAC=true",
-			"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-storage-test-statefulset-0"]`,
+			"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-pvc"]`,
 		})
 
 	out, err = ctr.Stdout(ctx)
@@ -380,10 +380,10 @@ spec:
 	}
 
 	// Check for test-statefulset-0 PVC in the role
-	// persistentvolumeclaims      []                 [test-storage-test-statefulset-0]        [get]
+	// persistentvolumeclaims      []                 [test-pvc]        [get]
 	// persistentvolumeclaims      []                 []                                       [list watch]
-	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-storage-test-statefulset-0\] +\[get\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain 'test-storage-test-statefulset-0' PVC get permission as expected")
+	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-pvc\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-pvc' PVC get permission as expected")
 	}
 	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
 		return fmt.Errorf("role does not contain PVC list watch permission as expected")
@@ -512,7 +512,7 @@ spec:
 		{Kind: "service", Name: "test-chart"},
 		{Kind: "daemonset", Name: "test-daemonset"},
 		{Kind: "statefulset", Name: "test-statefulset"},
-		{Kind: "persistentvolumeclaim", Name: "test-storage-test-statefulset-0"},
+		{Kind: "persistentvolumeclaim", Name: "test-pvc"},
 	}
 
 	// Retry up to 5 times with 30 seconds between attempts
