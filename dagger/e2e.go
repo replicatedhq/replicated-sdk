@@ -539,6 +539,7 @@ spec:
 			"--version", "0.1.0",
 			"--set", "replicated.tlsCertSecretName=test-tls",
 			"--set", "replicated.minimalRBAC=true",
+			"--set", "replicated.statusInformers=null",
 		})
 
 	newResourceNames := []Resource{
