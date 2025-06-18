@@ -439,7 +439,7 @@ spec:
 	}
 
 	// Retry up to 5 times with 30 seconds between attempts
-	err = waitForResourcesReady(ctx, resourceNames, 5, 30*time.Second, tokenPlaintext, appID, distribution)
+	err = waitForResourcesReady(ctx, resourceNames, 30, 5*time.Second, tokenPlaintext, appID, distribution)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
@@ -458,7 +458,7 @@ spec:
 		{Kind: "deployment", Name: "second-test-chart"},
 		{Kind: "service", Name: "replicated"},
 	}
-	err = waitForResourcesReady(ctx, newResourceNames, 5, 30*time.Second, tokenPlaintext, appID, distribution)
+	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, appID, distribution)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
