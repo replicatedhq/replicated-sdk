@@ -3,15 +3,18 @@ kind: Deployment
 metadata:
   name: {{ .Chart.Name }}
   labels:
+    test-chart: "deployment"
     {{- include "test-chart.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
+      test-chart: "deployment"
       {{- include "test-chart.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
+        test-chart: "deployment"
         {{- include "test-chart.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "test-chart.serviceAccountName" . }}

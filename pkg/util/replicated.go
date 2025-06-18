@@ -48,14 +48,14 @@ func GetReplicatedDeploymentUID(clientset kubernetes.Interface, namespace string
 
 func GetReplicatedAndAppIDs(clientset kubernetes.Interface, namespace string) (string, string, error) {
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), GetLegacyReplicatedConfigMapName(), metav1.GetOptions{})
-	if err != nil && !kuberneteserrors.IsNotFound(err) {
+	if err != nil && !kuberneteserrors.IsNotFound(err) && !kuberneteserrors.IsForbidden(err) {
 		return "", "", errors.Wrap(err, "failed to get replicated-sdk configmap")
 	}
 
 	replicatedID := ""
 	appID := ""
 
-	if kuberneteserrors.IsNotFound(err) {
+	if err != nil {
 		uid, err := GetReplicatedDeploymentUID(clientset, namespace)
 		if err != nil {
 			return "", "", errors.Wrap(err, "failed to get replicated deployment uid")

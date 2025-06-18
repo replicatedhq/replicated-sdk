@@ -295,3 +295,7 @@ replicatedAppDomain: ""
 # TLS Certificate Secret Name - the name of the secret containing a TLS certificate and key
 # If not specified, TLS will not be enabled
 tlsCertSecretName: ""
+
+# Use a more restrictive RBAC policy for the Replicated SDK. This requires setting statusInformers directly
+# in order to generate the correct RBAC rules.
+minimalRBAC: false

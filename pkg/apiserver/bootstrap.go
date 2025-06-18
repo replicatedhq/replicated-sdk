@@ -1,6 +1,8 @@
 package apiserver
 
 import (
+	"log"
+
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
@@ -38,6 +40,9 @@ func bootstrap(params APIServerParams) error {
 	if appID == "" {
 		return backoff.Permanent(errors.New("App ID not found"))
 	}
+
+	log.Println("replicatedID:", replicatedID)
+	log.Println("appID:", appID)
 
 	var unverifiedLicense *kotsv1beta1.License
 	if len(params.LicenseBytes) > 0 {

@@ -5,6 +5,11 @@ import (
 	"dagger/replicated-sdk/internal/dagger"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"regexp"
+	"strings"
+	"time"
 )
 
 func e2e(
@@ -49,6 +54,23 @@ func e2e(
 	}
 
 	kubeconfigSource := source.WithNewFile("/kubeconfig", kubeconfig)
+
+	// if the cluster type is eks, we need to patch the storage class to be default - otherwise the statefulset will fail to create
+	// kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+	if distribution == "eks" {
+		fmt.Println("Patching eks gp2 storage class to be default...")
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
+		out, err = ctr.Stdout(ctx)
+		if err != nil {
+			stderr, _ := ctr.Stderr(ctx)
+			fmt.Printf("failed to patch storage class: %v\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+			return fmt.Errorf("failed to patch storage class: %w", err)
+		}
+		fmt.Println(out)
+	}
 
 	ctr = dag.Container().From("alpine/helm:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -275,6 +297,358 @@ spec:
 	}
 	fmt.Println(out)
 
+	// Test minimal RBAC functionality
+	fmt.Println("Testing minimal RBAC functionality...")
+
+	// Upgrade the chart to enable minimal RBAC
+	ctr = dag.Container().From("alpine/helm:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
+		WithExec([]string{"helm", "upgrade", "test-chart",
+			fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug),
+			"--version", "0.1.0",
+			"--set", "replicated.tlsCertSecretName=test-tls",
+			"--set", "replicated.minimalRBAC=true",
+			"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-pvc"]`,
+		})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart enabling minimal RBAC: %w", err)
+	}
+	fmt.Println(out)
+
+	// Check the role to verify minimal RBAC is applied
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "describe", "role", "replicated-role",
+			}))
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to describe role: %w", err)
+	}
+	fmt.Println("Role permissions after enabling minimal RBAC:")
+	fmt.Println(out)
+
+	// Validate that the role contains the expected resources
+	roleOutput := out
+
+	// Check for replicated deployment in the role - note that this is not listed as a status informer, but internal code requires it
+	// deployments.apps             []                 [replicated]                   [get list watch]
+	if !regexp.MustCompile(`deployments\.apps +\[\] +\[replicated\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'replicated' deployment that is required by default")
+	}
+
+	// Check for test-tls secret in the role - internal code requires it
+	// secrets                      []                 [test-tls]                              [get]
+	if !regexp.MustCompile(`secrets +\[\] +\[test-tls\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-tls' secret permission as expected")
+	}
+
+	// Check for test-chart deployment in the role
+	// deployments.apps             []                 [test-chart]                            [get]
+	// deployments.apps             []                 []                                      [list watch]
+	if !regexp.MustCompile(`deployments\.apps +\[\] +\[test-chart\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-chart' deployment get permission as expected")
+	}
+	if !regexp.MustCompile(`deployments\.apps +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain deployment list watch permission as expected")
+	}
+
+	// Check for test-daemonset daemonset in the role
+	// daemonsets.apps              []                 [test-daemonset]                        [get]
+	// daemonsets.apps              []                 []                                      [list watch]
+	if !regexp.MustCompile(`daemonsets\.apps +\[\] +\[test-daemonset\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-daemonset' daemonset get permission as expected")
+	}
+	if !regexp.MustCompile(`daemonsets\.apps +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain daemonset list watch permission as expected")
+	}
+
+	// Check for test-statefulset statefulset in the role
+	// statefulsets.apps            []                 [test-statefulset]                      [get]
+	// statefulsets.apps            []                 []                                      [list watch]
+	if !regexp.MustCompile(`statefulsets\.apps +\[\] +\[test-statefulset\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-statefulset' statefulset get permission as expected")
+	}
+	if !regexp.MustCompile(`statefulsets\.apps +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain statefulset list watch permission as expected")
+	}
+
+	// Check for test-statefulset-0 PVC in the role
+	// persistentvolumeclaims      []                 [test-pvc]        [get]
+	// persistentvolumeclaims      []                 []                                       [list watch]
+	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[test-pvc\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-pvc' PVC get permission as expected")
+	}
+	if !regexp.MustCompile(`persistentvolumeclaims +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain PVC list watch permission as expected")
+	}
+
+	// Check for test-chart service in the role
+	// services                      []                 [test-chart]                            [get]
+	// services                      []                 []                                      [list watch]
+	// endpoints                     []                 [test-chart]                            [get]
+	// endpoints                     []                 []                                      [list watch]
+	if !regexp.MustCompile(`services +\[\] +\[test-chart\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-chart' service get permission as expected")
+	}
+	if !regexp.MustCompile(`services +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain service list watch permission as expected")
+	}
+	if !regexp.MustCompile(`endpoints +\[\] +\[test-chart\] +\[get\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain 'test-chart' endpoint get permission as expected")
+	}
+	if !regexp.MustCompile(`endpoints +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain endpoint list watch permission as expected")
+	}
+
+	// check that there are not ingress permissions in the role
+	if strings.Contains(roleOutput, "ingress") {
+		return fmt.Errorf("role contains ingress permissions, which should not be present")
+	}
+
+	// restart pods from the replicated deployment to clarify logs later (don't keep a failed pod around, and there will be one from the update)
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "rollout", "restart", "deploy/replicated"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart pods from replicated deployment: %w", err)
+	}
+
+	// Wait for the pod to be ready after RBAC changes
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec(
+			[]string{
+				"kubectl", "rollout", "status",
+				"deploy/replicated",
+				"--timeout=1m",
+			})
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for deployment to rollout after enabling minimal RBAC: %v\n", err)
+
+		// Get logs to help debug
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithExec([]string{"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50"})
+		out, err2 := ctr.Stdout(ctx)
+		if err2 != nil {
+			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+		}
+		fmt.Println("Replicated logs after minimal RBAC:")
+		fmt.Println(out)
+
+		return fmt.Errorf("failed to wait for replicated deployment to rollout after minimal RBAC: %w", err)
+	}
+	fmt.Println(out)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "rollout", "restart", "deploy/test-chart"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
+	}
+
+	// wait 30 seconds to let the SDK pod send updates
+	time.Sleep(time.Second * 30)
+
+	// Get final pod status
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods", "-o", "wide",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get final pod status: %w", err)
+	}
+	fmt.Println("final pods:")
+	fmt.Println(out)
+
+	// get SDK logs for final debugging
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "logs", "deployment/replicated", "--tail=100"})
+	out, err2 := ctr.Stdout(ctx)
+	if err2 != nil {
+		return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+	}
+	fmt.Println("SDK logs after minimal RBAC test:")
+	fmt.Println(out)
+
+	// Extract appID from the SDK logs
+	var appID string
+	lines := strings.Split(out, "\n")
+	appIDRegex := regexp.MustCompile(`appID:\s+([a-f0-9-]+)`)
+	for _, line := range lines {
+		if match := appIDRegex.FindStringSubmatch(line); match != nil {
+			appID = match[1]
+			fmt.Printf("Extracted appID: %s\n", appID)
+			break
+		}
+	}
+	if appID == "" {
+		return fmt.Errorf("appID not found in SDK logs")
+	}
+
+	// make a request to https://api.replicated.com/v1/instance/{appid}/events?pageSize=500
+	tokenPlaintext, err := replicatedServiceAccount.Plaintext(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get service account token: %w", err)
+	}
+
+	resourceNames := []struct {
+		Kind string
+		Name string
+	}{
+		{Kind: "deployment", Name: "test-chart"},
+		{Kind: "service", Name: "test-chart"},
+		{Kind: "daemonset", Name: "test-daemonset"},
+		{Kind: "statefulset", Name: "test-statefulset"},
+		{Kind: "persistentvolumeclaim", Name: "test-pvc"},
+	}
+
+	// Retry up to 5 times with 30 seconds between attempts
+	maxRetries := 5
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("Attempt %d/%d: Checking resource states...\n", attempt, maxRetries)
+
+		events, err := getEvents(ctx, tokenPlaintext, appID)
+		if err != nil {
+			if attempt == maxRetries {
+				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)
+			}
+			fmt.Printf("Failed to get events on attempt %d: %v\n", attempt, err)
+			time.Sleep(30 * time.Second)
+			continue
+		}
+
+		allResourcesReady := true
+		for _, resourceName := range resourceNames {
+			if !checkResourceUpdatingOrReady(events, resourceName.Kind, resourceName.Name) {
+				fmt.Printf("%s Resource %s %s is not ready on attempt %d\n", distribution, resourceName.Kind, resourceName.Name, attempt)
+				allResourcesReady = false
+			} else {
+				fmt.Printf("%s Resource %s %s is ready\n", distribution, resourceName.Kind, resourceName.Name)
+			}
+		}
+
+		if allResourcesReady {
+			fmt.Printf("%s All resources are ready after %d attempt(s)\n", distribution, attempt)
+			break
+		}
+
+		if attempt == maxRetries {
+			eventJson, err := json.Marshal(events)
+			if err != nil {
+				return fmt.Errorf("failed to marshal events: %w", err)
+			}
+			fmt.Printf("%s events: %s\n", distribution, string(eventJson))
+			return fmt.Errorf("not all resources are ready after %d attempts", maxRetries)
+		}
+
+		fmt.Printf("Waiting 30 seconds before next attempt...\n")
+		time.Sleep(30 * time.Second)
+	}
+
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
 	return nil
+}
+
+type Event struct {
+	ReportedAt    string `json:"reportedAt"`
+	FieldName     string `json:"fieldName"`
+	IsCustom      bool   `json:"isCustom"`
+	PreviousValue string `json:"previousValue"`
+	NewValue      string `json:"newValue"`
+	Meta          struct {
+		ResourceStates []struct {
+			Kind      string `json:"kind"`
+			Name      string `json:"name"`
+			State     string `json:"state"`
+			Namespace string `json:"namespace"`
+		} `json:"resourceStates"`
+	} `json:"meta"`
+}
+
+func getEvents(ctx context.Context, authToken string, appID string) ([]Event, error) {
+	url := fmt.Sprintf("https://api.replicated.com/v1/instance/%s/events?pageSize=500", appID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", authToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	type Resp struct {
+		Events []Event `json:"events"`
+	}
+
+	var respObj Resp
+	err = json.Unmarshal(body, &respObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return respObj.Events, nil
+}
+
+func checkResourceUpdatingOrReady(events []Event, kind string, name string) bool {
+	foundFalse := false
+	for _, event := range events {
+		if event.FieldName == "appStatus" {
+			for _, resourceState := range event.Meta.ResourceStates {
+				if resourceState.Kind == kind && resourceState.Name == name {
+					fmt.Printf("%s resourceState for %s %s: %s\n", event.ReportedAt, kind, name, resourceState.State)
+					if resourceState.State == "ready" || resourceState.State == "updating" {
+						return true
+					} else {
+						foundFalse = true
+					}
+				}
+			}
+		}
+	}
+
+	if foundFalse {
+		fmt.Printf("only found not ready states for %s %s\n", kind, name)
+	} else {
+		fmt.Printf("did not find %s %s in any events\n", kind, name)
+	}
+
+	return false
 }
