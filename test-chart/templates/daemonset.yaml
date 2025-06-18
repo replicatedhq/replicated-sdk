@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: test-daemonset
+  labels:
+    test-chart: "daemonset"
+    {{- include "test-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      test-chart: "daemonset"
+      {{- include "test-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        test-chart: "daemonset"
+        {{- include "test-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: test-container
+        image: nginx:latest
+        command: ["sleep", "500d"]
+      tolerations:
+      - operator: Exists

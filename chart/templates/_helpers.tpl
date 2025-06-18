@@ -230,3 +230,122 @@ Get the secret name to use - either the user-specified existing secret or the de
   {{ include "replicated.name" . }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Parse status informers from the license fields
+*/}}
+
+{{/*
+Get all status informers as a list of resource/name pairs
+*/}}
+{{- define "replicated.statusInformers" -}}
+{{- .Values.statusInformers | default list -}}
+{{- end -}}
+
+{{/*
+Get deployment names from status informers
+*/}}
+{{- define "replicated.statusInformers.deployments" -}}
+{{- $deployments := list -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "deployment/" . -}}
+    {{- $name := trimPrefix "deployment/" . -}}
+    {{- $deployments = append $deployments $name -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- range $deployments }}
+- {{ . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get statefulset names from status informers
+*/}}
+{{- define "replicated.statusInformers.statefulsets" -}}
+{{- $statefulsets := list -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "statefulset/" . -}}
+    {{- $name := trimPrefix "statefulset/" . -}}
+    {{- $statefulsets = append $statefulsets $name -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- range $statefulsets }}
+- {{ . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get service names from status informers
+*/}}
+{{- define "replicated.statusInformers.services" -}}
+{{- $services := list -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "service/" . -}}
+    {{- $name := trimPrefix "service/" . -}}
+    {{- $services = append $services $name -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- range $services }}
+- {{ . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get ingress names from status informers
+*/}}
+{{- define "replicated.statusInformers.ingresses" -}}
+{{- $ingresses := list -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "ingress/" . -}}
+    {{- $name := trimPrefix "ingress/" . -}}
+    {{- $ingresses = append $ingresses $name -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- range $ingresses }}
+- {{ . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get PVC names from status informers
+*/}}
+{{- define "replicated.statusInformers.pvcs" -}}
+{{- $pvcs := list -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "pvc/" . -}}
+    {{- $name := trimPrefix "pvc/" . -}}
+    {{- $pvcs = append $pvcs $name -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- range $pvcs }}
+- {{ . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get daemonset names from status informers
+*/}}
+{{- define "replicated.statusInformers.daemonsets" -}}
+{{- $daemonsets := list -}}
+{{- if .Values.statusInformers -}}
+{{- range .Values.statusInformers -}}
+  {{- if hasPrefix "daemonset/" . -}}
+    {{- $name := trimPrefix "daemonset/" . -}}
+    {{- $daemonsets = append $daemonsets $name -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- range $daemonsets }}
+- {{ . }}
+{{- end -}}
+{{- end -}}
