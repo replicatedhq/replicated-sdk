@@ -178,6 +178,14 @@ spec:
           {{- end }}
           {{- toYaml $readinessProbe | nindent 10 }}
         {{- end }}
+        {{- if .Values.livenessProbe }}
+        livenessProbe:
+          {{- $livenessProbe := .Values.livenessProbe | deepCopy }}
+          {{- if and .Values.tlsCertSecretName $livenessProbe.httpGet }}
+            {{- $_ := set $livenessProbe.httpGet "scheme" "HTTPS" }}
+          {{- end }}
+          {{- toYaml $livenessProbe | nindent 10 }}
+        {{- end }}
       {{- if .Values.restartPolicy }}
       restartPolicy: {{ .Values.restartPolicy }}
       {{- end }}
