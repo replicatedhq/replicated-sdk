@@ -542,6 +542,20 @@ spec:
 			"--set", "replicated.statusInformers=null",
 		})
 
+	time.Sleep(10 * time.Second)
+	// restart the replicated deployment to prompt a new set of reports
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "restart", "deploy/replicated",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart pods from replicated deployment: %w", err)
+	}
+
 	newResourceNames := []Resource{
 		{Kind: "deployment", Name: "second-test-chart"},
 		{Kind: "service", Name: "replicated"},
