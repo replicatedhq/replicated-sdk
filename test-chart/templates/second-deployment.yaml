@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: second-{{ .Chart.Name }}
+  labels:
+    test-chart: "second-deployment"
+    {{- include "test-chart.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      test-chart: "second-deployment"
+      {{- include "test-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        test-chart: "second-deployment"
+        {{- include "test-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "test-chart.serviceAccountName" . }}
+      containers:
+        - name: second-{{ .Chart.Name }}
+          image: "nginx:latest"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http

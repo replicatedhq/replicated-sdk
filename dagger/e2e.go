@@ -160,16 +160,10 @@ func e2e(
 	fmt.Println(out)
 
 	// update the chart to set TLS to true
-	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{"helm", "upgrade", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0", "--set", "replicated.tlsCertSecretName=test-tls"})
-
-	out, err = ctr.Stdout(ctx)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{"--set", "replicated.tlsCertSecretName=test-tls"})
 	if err != nil {
 		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
 	}
-	fmt.Println(out)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -199,25 +193,6 @@ func e2e(
 		return fmt.Errorf("failed to get pods: %w", err)
 	}
 
-	fmt.Println(out)
-
-	// wait for the pod to be ready
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
-			[]string{
-				"kubectl", "wait",
-				"--for=condition=available",
-				"deployment/replicated",
-				"--timeout=1m",
-			})
-
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		fmt.Printf("failed to wait for deployment to be ready after enabling TLS: %v\n", err)
-		// return err
-	}
 	fmt.Println(out)
 
 	// create a kubernetes deployment that runs a pod - the pod has a readiness probe that runs 'curl -k https://replicated.svc:3000/health'
@@ -301,22 +276,14 @@ spec:
 	fmt.Println("Testing minimal RBAC functionality...")
 
 	// Upgrade the chart to enable minimal RBAC
-	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{"helm", "upgrade", "test-chart",
-			fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug),
-			"--version", "0.1.0",
-			"--set", "replicated.tlsCertSecretName=test-tls",
-			"--set", "replicated.minimalRBAC=true",
-			"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-pvc"]`,
-		})
-
-	out, err = ctr.Stdout(ctx)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.minimalRBAC=true",
+		"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-pvc"]`,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to upgrade chart enabling minimal RBAC: %w", err)
 	}
-	fmt.Println(out)
 
 	// Check the role to verify minimal RBAC is applied
 	ctr = dag.Container().From("bitnami/kubectl:latest").
@@ -412,59 +379,6 @@ spec:
 		return fmt.Errorf("role contains ingress permissions, which should not be present")
 	}
 
-	// restart pods from the replicated deployment to clarify logs later (don't keep a failed pod around, and there will be one from the update)
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec([]string{"kubectl", "rollout", "restart", "deploy/replicated"})
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to restart pods from replicated deployment: %w", err)
-	}
-
-	// Wait for the pod to be ready after RBAC changes
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
-			[]string{
-				"kubectl", "rollout", "status",
-				"deploy/replicated",
-				"--timeout=1m",
-			})
-
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		fmt.Printf("failed to wait for deployment to rollout after enabling minimal RBAC: %v\n", err)
-
-		// Get logs to help debug
-		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-			WithExec([]string{"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50"})
-		out, err2 := ctr.Stdout(ctx)
-		if err2 != nil {
-			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
-		}
-		fmt.Println("Replicated logs after minimal RBAC:")
-		fmt.Println(out)
-
-		return fmt.Errorf("failed to wait for replicated deployment to rollout after minimal RBAC: %w", err)
-	}
-	fmt.Println(out)
-
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec([]string{"kubectl", "rollout", "restart", "deploy/test-chart"})
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
-	}
-
-	// wait 30 seconds to let the SDK pod send updates
-	time.Sleep(time.Second * 30)
-
 	// Get final pod status
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -484,7 +398,10 @@ spec:
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec([]string{"kubectl", "logs", "deployment/replicated", "--tail=100"})
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "logs", "deployment/replicated", "--tail=100",
+			}))
 	out, err2 := ctr.Stdout(ctx)
 	if err2 != nil {
 		return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
@@ -513,10 +430,7 @@ spec:
 		return fmt.Errorf("failed to get service account token: %w", err)
 	}
 
-	resourceNames := []struct {
-		Kind string
-		Name string
-	}{
+	resourceNames := []Resource{
 		{Kind: "deployment", Name: "test-chart"},
 		{Kind: "service", Name: "test-chart"},
 		{Kind: "daemonset", Name: "test-daemonset"},
@@ -525,46 +439,28 @@ spec:
 	}
 
 	// Retry up to 5 times with 30 seconds between attempts
-	maxRetries := 5
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		fmt.Printf("Attempt %d/%d: Checking resource states...\n", attempt, maxRetries)
+	err = waitForResourcesReady(ctx, resourceNames, 5, 30*time.Second, tokenPlaintext, appID, distribution)
+	if err != nil {
+		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
+	}
 
-		events, err := getEvents(ctx, tokenPlaintext, appID)
-		if err != nil {
-			if attempt == maxRetries {
-				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)
-			}
-			fmt.Printf("Failed to get events on attempt %d: %v\n", attempt, err)
-			time.Sleep(30 * time.Second)
-			continue
-		}
+	// Upgrade the chart to enable minimal RBAC without status informers - this looks for a resource that has not been previously reported
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.minimalRBAC=true",
+		"--set", "replicated.statusInformers=null",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart enabling minimal RBAC without status informers: %w", err)
+	}
 
-		allResourcesReady := true
-		for _, resourceName := range resourceNames {
-			if !checkResourceUpdatingOrReady(events, resourceName.Kind, resourceName.Name) {
-				fmt.Printf("%s Resource %s %s is not ready on attempt %d\n", distribution, resourceName.Kind, resourceName.Name, attempt)
-				allResourcesReady = false
-			} else {
-				fmt.Printf("%s Resource %s %s is ready\n", distribution, resourceName.Kind, resourceName.Name)
-			}
-		}
-
-		if allResourcesReady {
-			fmt.Printf("%s All resources are ready after %d attempt(s)\n", distribution, attempt)
-			break
-		}
-
-		if attempt == maxRetries {
-			eventJson, err := json.Marshal(events)
-			if err != nil {
-				return fmt.Errorf("failed to marshal events: %w", err)
-			}
-			fmt.Printf("%s events: %s\n", distribution, string(eventJson))
-			return fmt.Errorf("not all resources are ready after %d attempts", maxRetries)
-		}
-
-		fmt.Printf("Waiting 30 seconds before next attempt...\n")
-		time.Sleep(30 * time.Second)
+	newResourceNames := []Resource{
+		{Kind: "deployment", Name: "second-test-chart"},
+		{Kind: "service", Name: "replicated"},
+	}
+	err = waitForResourcesReady(ctx, newResourceNames, 5, 30*time.Second, tokenPlaintext, appID, distribution)
+	if err != nil {
+		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
 
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
@@ -651,4 +547,140 @@ func checkResourceUpdatingOrReady(events []Event, kind string, name string) bool
 	}
 
 	return false
+}
+
+type Resource struct {
+	Kind string
+	Name string
+}
+
+func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries int, retryInterval time.Duration, authToken string, appID string, distribution string) error {
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("Attempt %d/%d: Checking resource states...\n", attempt, maxRetries)
+
+		events, err := getEvents(ctx, authToken, appID)
+		if err != nil {
+			if attempt == maxRetries {
+				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)
+			}
+			fmt.Printf("Failed to get events on attempt %d: %v\n", attempt, err)
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		allResourcesReady := true
+		for _, resourceName := range resources {
+			if !checkResourceUpdatingOrReady(events, resourceName.Kind, resourceName.Name) {
+				fmt.Printf("%s Resource %s %s is not ready on attempt %d\n", distribution, resourceName.Kind, resourceName.Name, attempt)
+				allResourcesReady = false
+			} else {
+				fmt.Printf("%s Resource %s %s is ready\n", distribution, resourceName.Kind, resourceName.Name)
+			}
+		}
+
+		if allResourcesReady {
+			fmt.Printf("%s All resources are ready after %d attempt(s)\n", distribution, attempt)
+			return nil
+		}
+
+		if attempt == maxRetries {
+			eventJson, err := json.Marshal(events)
+			if err != nil {
+				return fmt.Errorf("failed to marshal events: %w", err)
+			}
+			fmt.Printf("%s events: %s\n", distribution, string(eventJson))
+			return fmt.Errorf("not all resources are ready after %d attempts", maxRetries)
+		}
+
+		fmt.Printf("Waiting %s before next attempt...\n", retryInterval)
+		time.Sleep(retryInterval)
+	}
+	return fmt.Errorf("unreachable code")
+}
+
+// upgradeChartAndRestart upgrades the helm chart with the provided arguments and restarts deployments
+func upgradeChartAndRestart(
+	ctx context.Context,
+	kubeconfigSource *dagger.Directory,
+	licenseID string,
+	channelSlug string,
+	helmArgs []string,
+) error {
+	// Helm upgrade
+	upgradeCmd := []string{"helm", "upgrade", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0"}
+	upgradeCmd = append(upgradeCmd, helmArgs...)
+
+	ctr := dag.Container().From("alpine/helm:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
+		With(CacheBustingExec(upgradeCmd))
+
+	out, err := ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart: %w", err)
+	}
+	fmt.Println(out)
+
+	// Restart replicated deployment
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "restart", "deploy/replicated",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart replicated deployment: %w", err)
+	}
+
+	// Wait for replicated deployment to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "status",
+				"deploy/replicated",
+				"--timeout=1m",
+			}))
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for replicated deployment to rollout: %v\n", err)
+
+		// Get logs to help debug if replicated didn't start properly
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			With(CacheBustingExec(
+				[]string{
+					"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50",
+				}))
+		out, err2 := ctr.Stdout(ctx)
+		if err2 != nil {
+			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+		}
+		fmt.Println("Replicated logs:")
+		fmt.Println(out)
+
+		return fmt.Errorf("failed to wait for replicated deployment to rollout: %w", err)
+	}
+	fmt.Println(out)
+
+	// Restart test-chart deployment
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "restart", "deploy/test-chart",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
+	}
+
+	return nil
 }

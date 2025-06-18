@@ -81,6 +81,53 @@ rules:
   resourceNames:
   - {{ include "replicated.secretName" . }}
 
+{{ if not .Values.statusInformers }}
+# the SDK needs to get the helm chart secret to determine what resources to report
+- apiGroups:
+  - ""
+  resources:
+  - "secrets"
+  verbs:
+  - "get"
+  - "list"
+# without specified status informers, we need to allow the SDK to view all resources that may be needed to report statuses
+- apiGroups:
+  - "apps"
+  resources:
+  - "deployments"
+  - "replicasets"
+  - "statefulsets"
+  - "daemonsets"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - ""
+  resources:
+  - "services"
+  - "endpoints"
+  - "persistentvolumeclaims"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - "ingresses"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "list"
+{{ end }}
+
 {{ if include "replicated.statusInformers.deployments" . | trim }}
 - apiGroups:
   - "apps"
