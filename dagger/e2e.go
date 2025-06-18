@@ -160,16 +160,10 @@ func e2e(
 	fmt.Println(out)
 
 	// update the chart to set TLS to true
-	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{"helm", "upgrade", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0", "--set", "replicated.tlsCertSecretName=test-tls"})
-
-	out, err = ctr.Stdout(ctx)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{"--set", "replicated.tlsCertSecretName=test-tls"})
 	if err != nil {
 		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
 	}
-	fmt.Println(out)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -199,25 +193,6 @@ func e2e(
 		return fmt.Errorf("failed to get pods: %w", err)
 	}
 
-	fmt.Println(out)
-
-	// wait for the pod to be ready
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec(
-			[]string{
-				"kubectl", "wait",
-				"--for=condition=available",
-				"deployment/replicated",
-				"--timeout=1m",
-			})
-
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		fmt.Printf("failed to wait for deployment to be ready after enabling TLS: %v\n", err)
-		// return err
-	}
 	fmt.Println(out)
 
 	// create a kubernetes deployment that runs a pod - the pod has a readiness probe that runs 'curl -k https://replicated.svc:3000/health'
@@ -301,22 +276,14 @@ spec:
 	fmt.Println("Testing minimal RBAC functionality...")
 
 	// Upgrade the chart to enable minimal RBAC
-	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{"helm", "upgrade", "test-chart",
-			fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug),
-			"--version", "0.1.0",
-			"--set", "replicated.tlsCertSecretName=test-tls",
-			"--set", "replicated.minimalRBAC=true",
-			"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-pvc"]`,
-		})
-
-	out, err = ctr.Stdout(ctx)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.minimalRBAC=true",
+		"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-pvc"]`,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to upgrade chart enabling minimal RBAC: %w", err)
 	}
-	fmt.Println(out)
 
 	// Check the role to verify minimal RBAC is applied
 	ctr = dag.Container().From("bitnami/kubectl:latest").
@@ -412,59 +379,6 @@ spec:
 		return fmt.Errorf("role contains ingress permissions, which should not be present")
 	}
 
-	// restart pods from the replicated deployment to clarify logs later (don't keep a failed pod around, and there will be one from the update)
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		With(CacheBustingExec(
-			[]string{
-				"kubectl", "rollout", "restart", "deploy/replicated",
-			}))
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to restart pods from replicated deployment: %w", err)
-	}
-
-	// Wait for the pod to be ready after RBAC changes
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		With(CacheBustingExec(
-			[]string{
-				"kubectl", "rollout", "status",
-				"deploy/replicated",
-				"--timeout=1m",
-			}))
-
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		fmt.Printf("failed to wait for deployment to rollout after enabling minimal RBAC: %v\n", err)
-
-		// Get logs to help debug
-		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-			WithExec([]string{"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50"})
-		out, err2 := ctr.Stdout(ctx)
-		if err2 != nil {
-			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
-		}
-		fmt.Println("Replicated logs after minimal RBAC:")
-		fmt.Println(out)
-
-		return fmt.Errorf("failed to wait for replicated deployment to rollout after minimal RBAC: %w", err)
-	}
-	fmt.Println(out)
-
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec([]string{"kubectl", "rollout", "restart", "deploy/test-chart"})
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
-	}
-
 	// Get final pod status
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
@@ -531,29 +445,13 @@ spec:
 	}
 
 	// Upgrade the chart to enable minimal RBAC without status informers - this looks for a resource that has not been previously reported
-	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{"helm", "upgrade", "test-chart",
-			fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug),
-			"--version", "0.1.0",
-			"--set", "replicated.tlsCertSecretName=test-tls",
-			"--set", "replicated.minimalRBAC=true",
-			"--set", "replicated.statusInformers=null",
-		})
-
-	time.Sleep(10 * time.Second)
-	// restart the replicated deployment to prompt a new set of reports
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		With(CacheBustingExec(
-			[]string{
-				"kubectl", "rollout", "restart", "deploy/replicated",
-			}))
-	out, err = ctr.Stdout(ctx)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.minimalRBAC=true",
+		"--set", "replicated.statusInformers=null",
+	})
 	if err != nil {
-		return fmt.Errorf("failed to restart pods from replicated deployment: %w", err)
+		return fmt.Errorf("failed to upgrade chart enabling minimal RBAC without status informers: %w", err)
 	}
 
 	newResourceNames := []Resource{
@@ -699,4 +597,84 @@ func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries
 		time.Sleep(retryInterval)
 	}
 	return fmt.Errorf("unreachable code")
+}
+
+// upgradeChartAndRestart upgrades the helm chart with the provided arguments and restarts deployments
+func upgradeChartAndRestart(
+	ctx context.Context,
+	kubeconfigSource *dagger.Directory,
+	licenseID string,
+	channelSlug string,
+	helmArgs []string,
+) error {
+	// Helm upgrade
+	upgradeCmd := []string{"helm", "upgrade", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0"}
+	upgradeCmd = append(upgradeCmd, helmArgs...)
+
+	ctr := dag.Container().From("alpine/helm:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
+		WithExec(upgradeCmd)
+
+	out, err := ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart: %w", err)
+	}
+	fmt.Println(out)
+
+	// Restart replicated deployment
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "restart", "deploy/replicated",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart replicated deployment: %w", err)
+	}
+
+	// Wait for replicated deployment to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "status",
+				"deploy/replicated",
+				"--timeout=1m",
+			}))
+
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		fmt.Printf("failed to wait for replicated deployment to rollout: %v\n", err)
+
+		// Get logs to help debug if replicated didn't start properly
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithExec([]string{"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50"})
+		out, err2 := ctr.Stdout(ctx)
+		if err2 != nil {
+			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+		}
+		fmt.Println("Replicated logs:")
+		fmt.Println(out)
+
+		return fmt.Errorf("failed to wait for replicated deployment to rollout: %w", err)
+	}
+	fmt.Println(out)
+
+	// Restart test-chart deployment
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"kubectl", "rollout", "restart", "deploy/test-chart"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
+	}
+
+	return nil
 }
