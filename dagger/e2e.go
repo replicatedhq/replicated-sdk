@@ -667,7 +667,7 @@ func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries
 
 		if allResourcesReady {
 			fmt.Printf("%s All resources are ready after %d attempt(s)\n", distribution, attempt)
-			break
+			return nil
 		}
 
 		if attempt == maxRetries {
