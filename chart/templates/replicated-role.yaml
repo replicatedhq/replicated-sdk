@@ -11,6 +11,7 @@ metadata:
   name: {{ include "replicated.roleName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 rules:
+{{ if not .Values.minimalRBAC }}
 - apiGroups:
   - '*'
   resources:
@@ -19,6 +20,7 @@ rules:
   - 'get'
   - 'list'
   - 'watch'
+{{ end }}
 - apiGroups:
   - ''
   resources:
@@ -36,4 +38,178 @@ rules:
   - replicated-instance-report
   - replicated-custom-app-metrics-report
   - replicated-meta-data
+{{ if .Values.tlsCertSecretName }}
+- apiGroups:
+  - ""
+  resources:
+  - "secrets"
+  verbs:
+  - "get"
+  resourceNames:
+  - {{ .Values.tlsCertSecretName }}
+{{ end }}
+
+{{ if .Values.minimalRBAC }}
+# the SDK deployment, replicaset, and pod are required by default (to determine if there is a newer version running)
+- apiGroups:
+  - "apps"
+  resources:
+  - "deployments"
+  verbs:
+  - "get"
+  resourceNames:
+  - {{ include "replicated.deploymentName" . }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "replicasets"
+  verbs:
+  - "get"
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "get"
+# the SDK secret is required by default (to determine if integration test mode is enabled)
+- apiGroups:
+  - ""
+  resources:
+  - "secrets"
+  verbs:
+  - "get"
+  resourceNames:
+  - {{ include "replicated.secretName" . }}
+
+{{ if include "replicated.statusInformers.deployments" . | trim }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "deployments"
+  verbs:
+  - "list"
+  - "watch"
+- apiGroups:
+  - "apps"
+  resources:
+  - "deployments"
+  verbs:
+  - "get"
+  resourceNames:
+  {{ include "replicated.statusInformers.deployments" . | nindent 4 }}
+{{ end }}
+
+{{ if include "replicated.statusInformers.statefulsets" . | trim }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "statefulsets"
+  verbs:
+  - "list"
+  - "watch"
+- apiGroups:
+  - "apps"
+  resources:
+  - "statefulsets"
+  verbs:
+  - "get"
+  resourceNames:
+  {{ include "replicated.statusInformers.statefulsets" . | nindent 4 }}
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "list"
+{{ end }}
+
+{{ if include "replicated.statusInformers.services" . | trim }}
+- apiGroups:
+  - ""
+  resources:
+  - "services"
+  - "endpoints"
+  verbs:
+  - "list"
+  - "watch"
+- apiGroups:
+  - ""
+  resources:
+  - "services"
+  - "endpoints"
+  verbs:
+  - "get"
+  resourceNames:
+  {{ include "replicated.statusInformers.services" . | nindent 4 }}
+{{ end }}
+
+{{ if include "replicated.statusInformers.ingresses" . | trim }}
+- apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - "ingresses"
+  verbs:
+  - "list"
+  - "watch"
+- apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - "ingresses"
+  verbs:
+  - "get"
+  resourceNames:
+  {{ include "replicated.statusInformers.ingresses" . | nindent 4 }}
+- apiGroups:
+  - ""
+  resources:
+  - "services"
+  - "endpoints"
+  verbs:
+  - "get"
+  - "watch"
+{{ end }}
+
+{{ if include "replicated.statusInformers.pvcs" . | trim }}
+- apiGroups:
+  - ""
+  resources:
+  - "persistentvolumeclaims"
+  verbs:
+  - "list"
+  - "watch"
+- apiGroups:
+  - ""
+  resources:
+  - "persistentvolumeclaims"
+  verbs:
+  - "get"
+  resourceNames:
+  {{ include "replicated.statusInformers.pvcs" . | nindent 4 }}
+{{ end }}
+
+{{ if include "replicated.statusInformers.daemonsets" . | trim }}
+- apiGroups:
+  - "apps"
+  resources:
+  - "daemonsets"
+  verbs:
+  - "list"
+  - "watch"
+- apiGroups:
+  - "apps"
+  resources:
+  - "daemonsets"
+  verbs:
+  - "get"
+  resourceNames:
+  {{ include "replicated.statusInformers.daemonsets" . | nindent 4 }}
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "list"
+{{ end }}
+
+{{ end }}
 {{ end }}
