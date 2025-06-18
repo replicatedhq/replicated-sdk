@@ -614,7 +614,7 @@ func upgradeChartAndRestart(
 	ctr := dag.Container().From("alpine/helm:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec(upgradeCmd)
+		With(CacheBustingExec(upgradeCmd))
 
 	out, err := ctr.Stdout(ctx)
 	if err != nil {
@@ -654,7 +654,10 @@ func upgradeChartAndRestart(
 		ctr = dag.Container().From("bitnami/kubectl:latest").
 			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-			WithExec([]string{"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50"})
+			With(CacheBustingExec(
+				[]string{
+					"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50",
+				}))
 		out, err2 := ctr.Stdout(ctx)
 		if err2 != nil {
 			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
@@ -670,7 +673,10 @@ func upgradeChartAndRestart(
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
-		WithExec([]string{"kubectl", "rollout", "restart", "deploy/test-chart"})
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "restart", "deploy/test-chart",
+			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
