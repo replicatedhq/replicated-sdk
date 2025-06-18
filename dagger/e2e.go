@@ -541,7 +541,7 @@ spec:
 
 		allResourcesReady := true
 		for _, resourceName := range resourceNames {
-			if !checkResourceReady(events, resourceName.Kind, resourceName.Name) {
+			if !checkResourceUpdatingOrReady(events, resourceName.Kind, resourceName.Name) {
 				fmt.Printf("%s Resource %s %s is not ready on attempt %d\n", distribution, resourceName.Kind, resourceName.Name, attempt)
 				allResourcesReady = false
 			} else {
@@ -627,14 +627,14 @@ func getEvents(ctx context.Context, authToken string, appID string) ([]Event, er
 	return respObj.Events, nil
 }
 
-func checkResourceReady(events []Event, kind string, name string) bool {
+func checkResourceUpdatingOrReady(events []Event, kind string, name string) bool {
 	foundFalse := false
 	for _, event := range events {
 		if event.FieldName == "appStatus" {
 			for _, resourceState := range event.Meta.ResourceStates {
 				if resourceState.Kind == kind && resourceState.Name == name {
 					fmt.Printf("%s resourceState for %s %s: %s\n", event.ReportedAt, kind, name, resourceState.State)
-					if resourceState.State == "ready" {
+					if resourceState.State == "ready" || resourceState.State == "updating" {
 						return true
 					} else {
 						foundFalse = true
