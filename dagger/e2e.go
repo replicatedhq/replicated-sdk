@@ -544,6 +544,7 @@ spec:
 
 	newResourceNames := []Resource{
 		{Kind: "deployment", Name: "second-test-chart"},
+		{Kind: "service", Name: "replicated"},
 	}
 	err = waitForResourcesReady(ctx, newResourceNames, 5, 30*time.Second, tokenPlaintext, appID, distribution)
 	if err != nil {
