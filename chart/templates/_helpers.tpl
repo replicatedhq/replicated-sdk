@@ -261,21 +261,6 @@ Get deployment names from status informers
 {{- end -}}
 
 {{/*
-Check if there are any deployment status informers
-*/}}
-{{- define "replicated.statusInformers.hasDeployments" -}}
-{{- $hasDeployments := false -}}
-{{- if .Values.statusInformers -}}
-{{- range .Values.statusInformers -}}
-  {{- if hasPrefix "deployment/" . -}}
-    {{- $hasDeployments = true -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-{{- $hasDeployments -}}
-{{- end -}}
-
-{{/*
 Get statefulset names from status informers
 */}}
 {{- define "replicated.statusInformers.statefulsets" -}}
@@ -291,21 +276,6 @@ Get statefulset names from status informers
 {{- range $statefulsets }}
 - {{ . }}
 {{- end -}}
-{{- end -}}
-
-{{/*
-Check if there are any statefulset status informers
-*/}}
-{{- define "replicated.statusInformers.hasStatefulsets" -}}
-{{- $hasStatefulsets := false -}}
-{{- if .Values.statusInformers -}}
-{{- range .Values.statusInformers -}}
-  {{- if hasPrefix "statefulset/" . -}}
-    {{- $hasStatefulsets = true -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-{{- $hasStatefulsets -}}
 {{- end -}}
 
 {{/*
@@ -327,21 +297,6 @@ Get service names from status informers
 {{- end -}}
 
 {{/*
-Check if there are any service status informers
-*/}}
-{{- define "replicated.statusInformers.hasServices" -}}
-{{- $hasServices := false -}}
-{{- if .Values.statusInformers -}}
-{{- range .Values.statusInformers -}}
-  {{- if hasPrefix "service/" . -}}
-    {{- $hasServices = true -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-{{- $hasServices -}}
-{{- end -}}
-
-{{/*
 Get ingress names from status informers
 */}}
 {{- define "replicated.statusInformers.ingresses" -}}
@@ -357,21 +312,6 @@ Get ingress names from status informers
 {{- range $ingresses }}
 - {{ . }}
 {{- end -}}
-{{- end -}}
-
-{{/*
-Check if there are any ingress status informers
-*/}}
-{{- define "replicated.statusInformers.hasIngresses" -}}
-{{- $hasIngresses := false -}}
-{{- if .Values.statusInformers -}}
-{{- range .Values.statusInformers -}}
-  {{- if hasPrefix "ingress/" . -}}
-    {{- $hasIngresses = true -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-{{- $hasIngresses -}}
 {{- end -}}
 
 {{/*
@@ -393,21 +333,6 @@ Get PVC names from status informers
 {{- end -}}
 
 {{/*
-Check if there are any PVC status informers
-*/}}
-{{- define "replicated.statusInformers.hasPvcs" -}}
-{{- $hasPvcs := false -}}
-{{- if .Values.statusInformers -}}
-{{- range .Values.statusInformers -}}
-  {{- if hasPrefix "pvc/" . -}}
-    {{- $hasPvcs = true -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-{{- $hasPvcs -}}
-{{- end -}}
-
-{{/*
 Get daemonset names from status informers
 */}}
 {{- define "replicated.statusInformers.daemonsets" -}}
@@ -423,19 +348,4 @@ Get daemonset names from status informers
 {{- range $daemonsets }}
 - {{ . }}
 {{- end -}}
-{{- end -}}
-
-{{/*
-Check if there are any daemonset status informers
-*/}}
-{{- define "replicated.statusInformers.hasDaemonsets" -}}
-{{- $hasDaemonsets := false -}}
-{{- if .Values.statusInformers -}}
-{{- range .Values.statusInformers -}}
-  {{- if hasPrefix "daemonset/" . -}}
-    {{- $hasDaemonsets = true -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-{{- $hasDaemonsets -}}
 {{- end -}}
