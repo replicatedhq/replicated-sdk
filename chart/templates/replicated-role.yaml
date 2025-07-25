@@ -89,6 +89,7 @@ rules:
     - 'get'
   resourceNames:
     - 'replicated-sdk'
+
 {{ if not .Values.statusInformers }}
 # the SDK needs to get the helm chart secret to determine what resources to report
 - apiGroups:
