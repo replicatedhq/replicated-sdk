@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+// kubeconfigPath is the location inside the container where we mount the kubeconfig.
+// The Bitnami images we use run as the non-root user 1001, which cannot access /root,
+// so we place the file in that user’s home directory instead.
+const kubeconfigPath = "/home/1001/.kube/config"
+
 func e2e(
 	ctx context.Context,
 	source *dagger.Directory,
@@ -62,8 +67,8 @@ func e2e(
 	if distribution == "eks" {
 		fmt.Println("Patching eks gp2 storage class to be default...")
 		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", kubeconfigPath).
 			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
 		out, err = ctr.Stdout(ctx)
 		if err != nil {
@@ -75,7 +80,7 @@ func e2e(
 	}
 
 	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
 		WithExec([]string{"helm", "install", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0"})
 
@@ -88,8 +93,8 @@ func e2e(
 
 	// wait for the pod to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		WithExec(
 			[]string{
 				"kubectl", "wait",
@@ -107,8 +112,8 @@ func e2e(
 	fmt.Println(out)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "ns",
@@ -122,8 +127,8 @@ func e2e(
 	fmt.Println(out)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "pods",
@@ -146,10 +151,10 @@ func e2e(
 
 	// create a TLS secret within the namespace
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithFile("/certs/test-cert.crt", certDir.File("/test-cert.crt")).
 		WithFile("/certs/test-key.key", certDir.File("/test-key.key")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		WithExec(
 			[]string{
 				"kubectl", "create", "secret", "tls", "test-tls", "--cert=/certs/test-cert.crt", "--key=/certs/test-key.key",
@@ -168,8 +173,8 @@ func e2e(
 	}
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "secrets",
@@ -183,8 +188,8 @@ func e2e(
 	fmt.Println(out)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "pods",
@@ -227,8 +232,8 @@ spec:
 	deploymentSource := source.WithNewFile("/replicated-ssl-test.yaml", deploymentYaml)
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		WithFile("/root/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
 		WithExec([]string{"kubectl", "apply", "-f", "/root/replicated-ssl-test.yaml"})
 	out, err = ctr.Stdout(ctx)
@@ -241,14 +246,14 @@ spec:
 
 	// wait for the replicated-ssl-test deployment to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		WithExec([]string{"kubectl", "wait", "--for=condition=available", "deployment/replicated-ssl-test", "--timeout=1m"})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", kubeconfigPath).
 			WithExec([]string{"kubectl", "logs", "-p", "-l", "app.kubernetes.io/name=replicated"})
 		out, err2 := ctr.Stdout(ctx)
 		if err2 != nil {
@@ -262,8 +267,8 @@ spec:
 
 	// print the final pods
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "pods",
@@ -289,8 +294,8 @@ spec:
 
 	// Check the role to verify minimal RBAC is applied
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "describe", "role", "replicated-role",
@@ -383,8 +388,8 @@ spec:
 
 	// Get final pod status
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "pods", "-o", "wide",
@@ -398,8 +403,8 @@ spec:
 
 	// get SDK logs for final debugging
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "logs", "deployment/replicated", "--tail=100",
@@ -614,7 +619,7 @@ func upgradeChartAndRestart(
 	upgradeCmd = append(upgradeCmd, helmArgs...)
 
 	ctr := dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
 		With(CacheBustingExec(upgradeCmd))
 
@@ -626,8 +631,8 @@ func upgradeChartAndRestart(
 
 	// Restart replicated deployment
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "rollout", "restart", "deploy/replicated",
@@ -639,8 +644,8 @@ func upgradeChartAndRestart(
 
 	// Wait for replicated deployment to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "rollout", "status",
@@ -654,8 +659,8 @@ func upgradeChartAndRestart(
 
 		// Get logs to help debug if replicated didn't start properly
 		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+			WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", kubeconfigPath).
 			With(CacheBustingExec(
 				[]string{
 					"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50",
@@ -673,8 +678,8 @@ func upgradeChartAndRestart(
 
 	// Restart test-chart deployment
 	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "rollout", "restart", "deploy/test-chart",
