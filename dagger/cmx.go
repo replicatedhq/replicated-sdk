@@ -39,7 +39,7 @@ func listCMXDistributionsAndVersions(
 
 	versionsToInclude := map[string][]string{
 		"gke": {},
-		"eks": {},
+		// "eks": {},
 		// "openshift": {},
 		"oke": {},
 	}
