@@ -80,7 +80,7 @@ func e2e(
 	}
 
 	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
 		WithExec([]string{"helm", "install", "test-chart", fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug), "--version", "0.1.0"})
 
@@ -619,7 +619,7 @@ func upgradeChartAndRestart(
 	upgradeCmd = append(upgradeCmd, helmArgs...)
 
 	ctr := dag.Container().From("alpine/helm:latest").
-		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
 		With(CacheBustingExec(upgradeCmd))
 
@@ -641,6 +641,7 @@ func upgradeChartAndRestart(
 	if err != nil {
 		return fmt.Errorf("failed to restart replicated deployment: %w", err)
 	}
+	fmt.Println(out)
 
 	// Wait for replicated deployment to be ready
 	ctr = dag.Container().From("bitnami/kubectl:latest").
