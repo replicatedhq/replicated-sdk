@@ -234,8 +234,8 @@ spec:
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", kubeconfigPath).
-		WithFile("/root/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
-		WithExec([]string{"kubectl", "apply", "-f", "/root/replicated-ssl-test.yaml"})
+		WithFile("/tmp/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/tmp/replicated-ssl-test.yaml"})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		// Get stderr to see the actual error
