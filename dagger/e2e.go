@@ -53,13 +53,15 @@ func e2e(
 		return fmt.Errorf("failed to get kubeconfig: %w", err)
 	}
 
-	kubeconfigSource := source.WithNewFile("/kubeconfig", kubeconfig)
+	kubeconfigSource := source.WithNewFile("/kubeconfig", kubeconfig, dagger.DirectoryWithNewFileOpts{
+		Permissions: 0644,
+	})
 
 	// if the cluster type is eks, we need to patch the storage class to be default - otherwise the statefulset will fail to create
 	// kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 	if distribution == "eks" {
 		fmt.Println("Patching eks gp2 storage class to be default...")
-		ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+		ctr = dag.Container().From("bitnami/kubectl:latest").
 			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 			WithExec([]string{"kubectl", "patch", "storageclass", "gp2", "-p", `{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}`})
@@ -85,7 +87,7 @@ func e2e(
 	fmt.Println(out)
 
 	// wait for the pod to be ready
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec(
@@ -104,7 +106,7 @@ func e2e(
 
 	fmt.Println(out)
 
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -119,7 +121,7 @@ func e2e(
 
 	fmt.Println(out)
 
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -143,7 +145,7 @@ func e2e(
 		Directory("/certs")
 
 	// create a TLS secret within the namespace
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithFile("/certs/test-cert.crt", certDir.File("/test-cert.crt")).
 		WithFile("/certs/test-key.key", certDir.File("/test-key.key")).
@@ -165,7 +167,7 @@ func e2e(
 		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
 	}
 
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -180,7 +182,7 @@ func e2e(
 
 	fmt.Println(out)
 
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -224,7 +226,7 @@ spec:
           periodSeconds: 10`
 	deploymentSource := source.WithNewFile("/replicated-ssl-test.yaml", deploymentYaml)
 
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithFile("/root/replicated-ssl-test.yaml", deploymentSource.File("/replicated-ssl-test.yaml")).
@@ -238,13 +240,13 @@ spec:
 	fmt.Println(out)
 
 	// wait for the replicated-ssl-test deployment to be ready
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		WithExec([]string{"kubectl", "wait", "--for=condition=available", "deployment/replicated-ssl-test", "--timeout=1m"})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+		ctr = dag.Container().From("bitnami/kubectl:latest").
 			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 			WithExec([]string{"kubectl", "logs", "-p", "-l", "app.kubernetes.io/name=replicated"})
@@ -259,7 +261,7 @@ spec:
 	fmt.Println(out)
 
 	// print the final pods
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -286,7 +288,7 @@ spec:
 	}
 
 	// Check the role to verify minimal RBAC is applied
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -380,7 +382,7 @@ spec:
 	}
 
 	// Get final pod status
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -395,7 +397,7 @@ spec:
 	fmt.Println(out)
 
 	// get SDK logs for final debugging
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -623,7 +625,7 @@ func upgradeChartAndRestart(
 	fmt.Println(out)
 
 	// Restart replicated deployment
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -636,7 +638,7 @@ func upgradeChartAndRestart(
 	}
 
 	// Wait for replicated deployment to be ready
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
@@ -651,7 +653,7 @@ func upgradeChartAndRestart(
 		fmt.Printf("failed to wait for replicated deployment to rollout: %v\n", err)
 
 		// Get logs to help debug if replicated didn't start properly
-		ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+		ctr = dag.Container().From("bitnami/kubectl:latest").
 			WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 			WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 			With(CacheBustingExec(
@@ -670,7 +672,7 @@ func upgradeChartAndRestart(
 	fmt.Println(out)
 
 	// Restart test-chart deployment
-	ctr = dag.Container().From("bitnami/kubectl:1.32.0").
+	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
 		With(CacheBustingExec(
