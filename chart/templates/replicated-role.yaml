@@ -22,6 +22,14 @@ rules:
   - 'watch'
 {{ end }}
 - apiGroups:
+    - ''
+  resources:
+    - 'configmaps'
+  verbs:
+    - 'get'
+  resourceNames:
+    - 'replicated-sdk'
+- apiGroups:
   - ''
   resources:
   - 'secrets'
