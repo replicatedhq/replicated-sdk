@@ -80,6 +80,15 @@ rules:
   - "get"
   resourceNames:
   - {{ include "replicated.secretName" . }}
+# the legacy replicated-sdk configmap is required when the SDK secret is not found
+- apiGroups:
+    - ''
+  resources:
+    - 'configmaps'
+  verbs:
+    - 'get'
+  resourceNames:
+    - 'replicated-sdk'
 
 {{ if not .Values.statusInformers }}
 # the SDK needs to get the helm chart secret to determine what resources to report
