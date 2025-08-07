@@ -275,16 +275,28 @@ func (mr *MockStoreMockRecorder) GetRunningImages() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRunningImages", reflect.TypeOf((*MockStore)(nil).GetRunningImages))
 }
 
-// SetRunningImages mocks base method.
-func (m *MockStore) SetRunningImages(images map[string][]string) {
+// SetPodImages mocks base method.
+func (m *MockStore) SetPodImages(namespace, podUID string, images []types.ImageInfo) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetRunningImages", images)
+	m.ctrl.Call(m, "SetPodImages", namespace, podUID, images)
 }
 
-// SetRunningImages indicates an expected call of SetRunningImages.
-func (mr *MockStoreMockRecorder) SetRunningImages(images interface{}) *gomock.Call {
+// SetPodImages indicates an expected call of SetPodImages.
+func (mr *MockStoreMockRecorder) SetPodImages(namespace, podUID, images interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRunningImages", reflect.TypeOf((*MockStore)(nil).SetRunningImages), images)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPodImages", reflect.TypeOf((*MockStore)(nil).SetPodImages), namespace, podUID, images)
+}
+
+// DeletePodImages mocks base method.
+func (m *MockStore) DeletePodImages(namespace, podUID string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeletePodImages", namespace, podUID)
+}
+
+// DeletePodImages indicates an expected call of DeletePodImages.
+func (mr *MockStoreMockRecorder) DeletePodImages(namespace, podUID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePodImages", reflect.TypeOf((*MockStore)(nil).DeletePodImages), namespace, podUID)
 }
 
 // GetVersionLabel mocks base method.

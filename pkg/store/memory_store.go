@@ -25,7 +25,8 @@ type InMemoryStore struct {
 	namespace             string
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
-	runningImages         map[string][]string
+	// podImages holds namespace -> podUID -> []ImageInfo
+	podImages map[string]map[string][]appstatetypes.ImageInfo
 }
 
 type InitInMemoryStoreOptions struct {
@@ -155,12 +156,57 @@ func (s *InMemoryStore) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
 }
 
-func (s *InMemoryStore) GetRunningImages() map[string][]string {
-	return s.runningImages
+func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []appstatetypes.ImageInfo) {
+	if s.podImages == nil {
+		s.podImages = make(map[string]map[string][]appstatetypes.ImageInfo)
+	}
+	if s.podImages[namespace] == nil {
+		s.podImages[namespace] = make(map[string][]appstatetypes.ImageInfo)
+	}
+	// Copy values to avoid external mutation
+	copied := make([]appstatetypes.ImageInfo, len(images))
+	copy(copied, images)
+	s.podImages[namespace][podUID] = copied
 }
 
-func (s *InMemoryStore) SetRunningImages(images map[string][]string) {
-	s.runningImages = images
+func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {
+	if s.podImages == nil {
+		return
+	}
+	if s.podImages[namespace] == nil {
+		return
+	}
+	delete(s.podImages[namespace], podUID)
+	if len(s.podImages[namespace]) == 0 {
+		delete(s.podImages, namespace)
+	}
+}
+
+func (s *InMemoryStore) GetRunningImages() map[string][]string {
+	// Aggregate image -> unique SHA set across all namespaces/pods
+	resultSet := make(map[string]map[string]struct{})
+	for _, pods := range s.podImages {
+		for _, images := range pods {
+			for _, info := range images {
+				if info.Name == "" || info.SHA == "" {
+					continue
+				}
+				if _, ok := resultSet[info.Name]; !ok {
+					resultSet[info.Name] = make(map[string]struct{})
+				}
+				resultSet[info.Name][info.SHA] = struct{}{}
+			}
+		}
+	}
+	out := make(map[string][]string, len(resultSet))
+	for name, shas := range resultSet {
+		list := make([]string, 0, len(shas))
+		for sha := range shas {
+			list = append(list, sha)
+		}
+		out[name] = list
+	}
+	return out
 }
 
 func (s *InMemoryStore) GetUpdates() []upstreamtypes.ChannelRelease {

@@ -34,8 +34,10 @@ type Store interface {
 	GetNamespace() string
 	GetAppStatus() appstatetypes.AppStatus
 	SetAppStatus(status appstatetypes.AppStatus)
+	// Pod image tracking
+	SetPodImages(namespace string, podUID string, images []appstatetypes.ImageInfo)
+	DeletePodImages(namespace string, podUID string)
 	GetRunningImages() map[string][]string
-	SetRunningImages(images map[string][]string)
 	GetUpdates() []upstreamtypes.ChannelRelease
 	SetUpdates(updates []upstreamtypes.ChannelRelease)
 }

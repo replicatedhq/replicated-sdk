@@ -46,7 +46,16 @@ func GetInstanceDataPayload(instanceData *types.InstanceData) (map[string]interf
 	}
 
 	if instanceData.RunningImages != nil {
-		payload["running_images"] = instanceData.RunningImages
+		nonEmpty := false
+		for _, shas := range instanceData.RunningImages {
+			if len(shas) > 0 {
+				nonEmpty = true
+				break
+			}
+		}
+		if nonEmpty {
+			payload["running_images"] = instanceData.RunningImages
+		}
 	}
 
 	return payload, nil
