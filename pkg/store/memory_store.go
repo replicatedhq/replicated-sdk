@@ -22,6 +22,7 @@ type InMemoryStore struct {
 	releaseNotes          string
 	versionLabel          string
 	replicatedAppEndpoint string
+	releaseImages         []string
 	namespace             string
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
@@ -43,6 +44,7 @@ type InitInMemoryStoreOptions struct {
 	ReleaseNotes          string
 	VersionLabel          string
 	ReplicatedAppEndpoint string
+	ReleaseImages         []string
 	Namespace             string
 }
 
@@ -62,6 +64,7 @@ func InitInMemory(options InitInMemoryStoreOptions) {
 		releaseNotes:          options.ReleaseNotes,
 		versionLabel:          options.VersionLabel,
 		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
+		releaseImages:         options.ReleaseImages,
 		namespace:             options.Namespace,
 	})
 }
@@ -142,6 +145,10 @@ func (s *InMemoryStore) GetVersionLabel() string {
 
 func (s *InMemoryStore) GetReplicatedAppEndpoint() string {
 	return s.replicatedAppEndpoint
+}
+
+func (s *InMemoryStore) GetReleaseImages() []string {
+	return s.releaseImages
 }
 
 func (s *InMemoryStore) GetNamespace() string {

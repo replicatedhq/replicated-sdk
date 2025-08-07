@@ -107,6 +107,7 @@ func bootstrap(params APIServerParams) error {
 		ReleaseNotes:          params.ReleaseNotes,
 		VersionLabel:          params.VersionLabel,
 		ReplicatedAppEndpoint: params.ReplicatedAppEndpoint,
+		ReleaseImages:         params.ReleaseImages,
 		Namespace:             params.Namespace,
 		ReplicatedID:          replicatedID,
 		AppID:                 appID,

@@ -227,6 +227,20 @@ func (m *MockStore) GetReplicatedAppEndpoint() string {
 	return ret0
 }
 
+// GetReleaseImages mocks base method.
+func (m *MockStore) GetReleaseImages() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReleaseImages")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// GetReleaseImages indicates an expected call of GetReleaseImages.
+func (mr *MockStoreMockRecorder) GetReleaseImages() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReleaseImages", reflect.TypeOf((*MockStore)(nil).GetReleaseImages))
+}
+
 // GetReplicatedAppEndpoint indicates an expected call of GetReplicatedAppEndpoint.
 func (mr *MockStoreMockRecorder) GetReplicatedAppEndpoint() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
