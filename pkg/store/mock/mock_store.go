@@ -261,6 +261,32 @@ func (mr *MockStoreMockRecorder) GetUpdates() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockStore)(nil).GetUpdates))
 }
 
+// GetRunningImages mocks base method.
+func (m *MockStore) GetRunningImages() map[string][]string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRunningImages")
+	ret0, _ := ret[0].(map[string][]string)
+	return ret0
+}
+
+// GetRunningImages indicates an expected call of GetRunningImages.
+func (mr *MockStoreMockRecorder) GetRunningImages() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRunningImages", reflect.TypeOf((*MockStore)(nil).GetRunningImages))
+}
+
+// SetRunningImages mocks base method.
+func (m *MockStore) SetRunningImages(images map[string][]string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetRunningImages", images)
+}
+
+// SetRunningImages indicates an expected call of SetRunningImages.
+func (mr *MockStoreMockRecorder) SetRunningImages(images interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRunningImages", reflect.TypeOf((*MockStore)(nil).SetRunningImages), images)
+}
+
 // GetVersionLabel mocks base method.
 func (m *MockStore) GetVersionLabel() string {
 	m.ctrl.T.Helper()

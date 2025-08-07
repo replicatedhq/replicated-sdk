@@ -25,6 +25,7 @@ type InMemoryStore struct {
 	namespace             string
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
+	runningImages         map[string][]string
 }
 
 type InitInMemoryStoreOptions struct {
@@ -152,6 +153,14 @@ func (s *InMemoryStore) GetAppStatus() appstatetypes.AppStatus {
 
 func (s *InMemoryStore) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
+}
+
+func (s *InMemoryStore) GetRunningImages() map[string][]string {
+	return s.runningImages
+}
+
+func (s *InMemoryStore) SetRunningImages(images map[string][]string) {
+	s.runningImages = images
 }
 
 func (s *InMemoryStore) GetUpdates() []upstreamtypes.ChannelRelease {

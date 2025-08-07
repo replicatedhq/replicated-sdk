@@ -45,6 +45,10 @@ func GetInstanceDataPayload(instanceData *types.InstanceData) (map[string]interf
 		payload["resource_states"] = string(marshalledRS)
 	}
 
+	if instanceData.RunningImages != nil {
+		payload["running_images"] = instanceData.RunningImages
+	}
+
 	return payload, nil
 }
 

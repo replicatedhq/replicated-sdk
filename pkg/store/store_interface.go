@@ -34,6 +34,8 @@ type Store interface {
 	GetNamespace() string
 	GetAppStatus() appstatetypes.AppStatus
 	SetAppStatus(status appstatetypes.AppStatus)
+	GetRunningImages() map[string][]string
+	SetRunningImages(images map[string][]string)
 	GetUpdates() []upstreamtypes.ChannelRelease
 	SetUpdates(updates []upstreamtypes.ChannelRelease)
 }

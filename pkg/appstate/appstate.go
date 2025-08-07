@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -202,6 +203,17 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		namespaceKinds[informer.Namespace] = kindsInNs
 	}
 
+	// Start/ensure an ImageShaTracker per namespace like other controllers
+	namespaces := make([]string, 0, len(namespaceKinds))
+	for ns := range namespaceKinds {
+		namespaces = append(namespaces, ns)
+	}
+	EnsureImageShaTrackers(m.clientset, namespaces)
+	defer ReleaseImageShaTrackers(namespaces)
+
+	// Update running images in the store immediately based on current trackers
+	store.GetStore().SetRunningImages(GetActiveRunningImages())
+
 	goRun := func(fn runControllerFunc, namespace string, informers []types.StatusInformer) {
 		shutdown.Add(1)
 		go func() {
@@ -237,6 +249,9 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 			appStatus.State = types.GetState(appStatus.ResourceStates)
 			appStatus.UpdatedAt = time.Now() // TODO: this should come from the informer
 			m.appStatusCh <- appStatus
+
+			// Refresh running images whenever we observe resource changes
+			store.GetStore().SetRunningImages(GetActiveRunningImages())
 		}
 	}
 }
