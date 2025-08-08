@@ -56,3 +56,40 @@ func TestInMemoryStore_RunningImagesAggregation(t *testing.T) {
 	got = s.GetRunningImages()
 	require.Len(t, got, 0)
 }
+
+func TestInMemoryStore_SetPodImages_FiltersByReleaseImages_NameTagOnly(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"nginx:latest@sha256:abcdefg", // allow any digest for nginx:latest
+			"busybox:musl",                // allow by tag without digest
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "nginx:latest", SHA: "sha256:111"},
+		{Name: "nginx:latest", SHA: "sha256:222"},
+		{Name: "busybox:musl", SHA: "sha256:333"},
+		{Name: "redis:7", SHA: "sha256:444"}, // not allowed
+	})
+
+	got := s.GetRunningImages()
+	// both nginx digests should be included since name:tag matches
+	require.ElementsMatch(t, []string{"sha256:111", "sha256:222"}, got["nginx:latest"])
+	// busybox is included
+	require.ElementsMatch(t, []string{"sha256:333"}, got["busybox:musl"])
+	// redis should be excluded entirely
+	require.Nil(t, got["redis:7"])
+}
+
+func TestInMemoryStore_SetPodImages_NoFilterWhenNoReleaseImages(t *testing.T) {
+	s := &InMemoryStore{}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "nginx:1.29-alpine", SHA: "sha256:aaa"},
+		{Name: "redis:7", SHA: "sha256:bbb"},
+	})
+
+	got := s.GetRunningImages()
+	require.ElementsMatch(t, []string{"sha256:aaa"}, got["nginx:1.29-alpine"])
+	require.ElementsMatch(t, []string{"sha256:bbb"}, got["redis:7"])
+}

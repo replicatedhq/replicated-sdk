@@ -1,6 +1,8 @@
 package store
 
 import (
+	"strings"
+
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
@@ -170,9 +172,38 @@ func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []a
 	if s.podImages[namespace] == nil {
 		s.podImages[namespace] = make(map[string][]appstatetypes.ImageInfo)
 	}
+	// If releaseImages are configured, filter by name:tag only.
+	// The allowlist may include entries with a content digest (e.g., name:tag@sha256:abc),
+	// which should be treated as allowing any digest for that name:tag.
+	var filtered []appstatetypes.ImageInfo
+	if len(s.releaseImages) > 0 {
+		allowed := make(map[string]struct{}, len(s.releaseImages))
+		for _, img := range s.releaseImages {
+			if img == "" {
+				continue
+			}
+			// canonicalize: drop any @sha... suffix so we match by name:tag only
+			canonical := img
+			if at := strings.LastIndex(img, "@"); at != -1 {
+				canonical = img[:at]
+			}
+			allowed[canonical] = struct{}{}
+		}
+		for _, info := range images {
+			if info.Name == "" {
+				continue
+			}
+			if _, ok := allowed[info.Name]; ok {
+				filtered = append(filtered, info)
+			}
+		}
+	} else {
+		filtered = images
+	}
+
 	// Copy values to avoid external mutation
-	copied := make([]appstatetypes.ImageInfo, len(images))
-	copy(copied, images)
+	copied := make([]appstatetypes.ImageInfo, len(filtered))
+	copy(copied, filtered)
 	s.podImages[namespace][podUID] = copied
 }
 
