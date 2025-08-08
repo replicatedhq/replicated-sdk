@@ -15,45 +15,60 @@ import (
 
 func TestExtractImageInfo(t *testing.T) {
 	tests := []struct {
-		name     string
-		imageRef string
-		expected appstatetypes.ImageInfo
+		name            string
+		containerStatus corev1.ContainerStatus
+		expected        appstatetypes.ImageInfo
 	}{
 		{
-			name:     "image with SHA digest",
-			imageRef: "registry.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			name: "image with SHA digest",
+			containerStatus: corev1.ContainerStatus{
+				Image:   "registry.com/my-app",
+				ImageID: "registry.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			},
 			expected: appstatetypes.ImageInfo{
 				Name: "registry.com/my-app",
 				SHA:  "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			},
 		},
 		{
-			name:     "image with tag only",
-			imageRef: "registry.com/my-app:latest",
+			name: "image with tag only",
+			containerStatus: corev1.ContainerStatus{
+				Image:   "registry.com/my-app:latest",
+				ImageID: "registry.com/my-app:latest",
+			},
 			expected: appstatetypes.ImageInfo{
 				Name: "",
 				SHA:  "",
 			},
 		},
 		{
-			name:     "image with multiple @ symbols",
-			imageRef: "registry@company.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			name: "image with multiple @ symbols",
+			containerStatus: corev1.ContainerStatus{
+				Image:   "registry@company.com/my-app",
+				ImageID: "registry@company.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			},
 			expected: appstatetypes.ImageInfo{
 				Name: "registry@company.com/my-app",
 				SHA:  "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			},
 		},
 		{
-			name:     "simple image name with SHA",
-			imageRef: "nginx@sha256:1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234567890",
+			name: "simple image name with SHA",
+			containerStatus: corev1.ContainerStatus{
+				Image:   "nginx",
+				ImageID: "nginx@sha256:1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234567890",
+			},
 			expected: appstatetypes.ImageInfo{
 				Name: "nginx",
 				SHA:  "sha256:1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234567890",
 			},
 		},
 		{
-			name:     "image without registry",
-			imageRef: "my-app:v1.0.0",
+			name: "image without registry",
+			containerStatus: corev1.ContainerStatus{
+				Image:   "my-app:v1.0.0",
+				ImageID: "my-app:v1.0.0",
+			},
 			expected: appstatetypes.ImageInfo{
 				Name: "",
 				SHA:  "",
@@ -63,7 +78,7 @@ func TestExtractImageInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := extractImageInfo(tt.imageRef)
+			result := extractImageInfo(tt.containerStatus)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -86,12 +101,12 @@ func TestPodImageEventHandler_MockStoreCalls(t *testing.T) {
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{{
-				Image: "nginx@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+				ImageID: "nginx@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			}, {
-				Image: "redis@sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678",
+				ImageID: "redis@sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678",
 			}},
 			InitContainerStatuses: []corev1.ContainerStatus{{
-				Image: "busybox@sha256:ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012",
+				ImageID: "busybox@sha256:ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012",
 			}},
 		},
 	}
@@ -104,7 +119,7 @@ func TestPodImageEventHandler_MockStoreCalls(t *testing.T) {
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{{
-				Image: "postgres@sha256:mnop3456789012mnop3456789012mnop3456789012mnop3456789012mnop3456",
+				ImageID: "postgres@sha256:mnop3456789012mnop3456789012mnop3456789012mnop3456789012mnop3456",
 			}},
 		},
 	}

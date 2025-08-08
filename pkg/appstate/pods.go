@@ -82,14 +82,14 @@ func extractPodImages(pod *corev1.Pod) []appstatetypes.ImageInfo {
 
 	// Extract from regular container statuses
 	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if info := extractImageInfo(containerStatus.Image); info.SHA != "" {
+		if info := extractImageInfo(containerStatus); info.SHA != "" {
 			images = append(images, info)
 		}
 	}
 
 	// Extract from init container statuses
 	for _, containerStatus := range pod.Status.InitContainerStatuses {
-		if info := extractImageInfo(containerStatus.Image); info.SHA != "" {
+		if info := extractImageInfo(containerStatus); info.SHA != "" {
 			images = append(images, info)
 		}
 	}
@@ -97,21 +97,18 @@ func extractPodImages(pod *corev1.Pod) []appstatetypes.ImageInfo {
 	return images
 }
 
-// extractImageInfo extracts the image name and SHA digest from an image reference
-// Examples:
-//   - "registry.com/image@sha256:abcd1234..." -> ImageInfo{Name: "registry.com/image", SHA: "sha256:abcd1234..."}
-//   - "registry.com/image:tag" -> ImageInfo{Name: "", SHA: ""}
-func extractImageInfo(imageRef string) appstatetypes.ImageInfo {
+// extractImageInfo extracts the image name and SHA digest from a container status
+func extractImageInfo(containerStatus corev1.ContainerStatus) appstatetypes.ImageInfo {
+	imageRef := containerStatus.ImageID
 	atIndex := strings.LastIndex(imageRef, "@")
 	if atIndex == -1 {
 		return appstatetypes.ImageInfo{Name: "", SHA: ""}
 	}
 
-	imageName := imageRef[:atIndex]
 	sha := imageRef[atIndex+1:]
 
 	return appstatetypes.ImageInfo{
-		Name: imageName,
+		Name: containerStatus.Image,
 		SHA:  sha,
 	}
 }

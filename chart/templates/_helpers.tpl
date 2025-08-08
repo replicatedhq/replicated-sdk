@@ -100,9 +100,9 @@ Looks up list of images from values provided by the parent app/release. Supports
 global.replicated.releaseImages and replicated.releaseImages locations.
 */}}
 {{- define "replicated.releaseImages" -}}
-  {{- if (((.Values.global).replicated).releaseImages) -}}
+  {{- if and .Values.global .Values.global.replicated .Values.global.replicated.releaseImages -}}
     {{- .Values.global.replicated.releaseImages | toYaml -}}
-  {{- else if ((.Values).replicated) and ((.Values.replicated).releaseImages) -}}
+  {{- else if and .Values.replicated .Values.replicated.releaseImages -}}
     {{- .Values.replicated.releaseImages | toYaml -}}
   {{- end -}}
 {{- end -}}
