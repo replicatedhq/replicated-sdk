@@ -97,13 +97,13 @@ License Fields
 {{/*
 Release Images
 Looks up list of images from values provided by the parent app/release. Supports both
-global.replicated.images and replicated.images locations.
+global.replicated.releaseImages and replicated.releaseImages locations.
 */}}
 {{- define "replicated.releaseImages" -}}
-  {{- if (((.Values.global).replicated).images) -}}
-    {{- .Values.global.replicated.images | toYaml -}}
-  {{- else if ((.Values).replicated) and ((.Values.replicated).images) -}}
-    {{- .Values.replicated.images | toYaml -}}
+  {{- if (((.Values.global).replicated).releaseImages) -}}
+    {{- .Values.global.replicated.releaseImages | toYaml -}}
+  {{- else if ((.Values).replicated) and ((.Values.replicated).releaseImages) -}}
+    {{- .Values.replicated.releaseImages | toYaml -}}
   {{- end -}}
 {{- end -}}
 
