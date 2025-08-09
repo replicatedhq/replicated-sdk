@@ -19,6 +19,7 @@ type ReplicatedConfig struct {
 	ReleaseNotes          string                               `yaml:"releaseNotes"`
 	VersionLabel          string                               `yaml:"versionLabel"`
 	ReplicatedAppEndpoint string                               `yaml:"replicatedAppEndpoint"`
+	ReleaseImages         []string                             `yaml:"releaseImages"`
 	StatusInformers       []appstatetypes.StatusInformerString `yaml:"statusInformers"`
 	ReplicatedID          string                               `yaml:"replicatedID"`
 	AppID                 string                               `yaml:"appID"`

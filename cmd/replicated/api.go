@@ -70,6 +70,7 @@ func APICmd() *cobra.Command {
 				ReleaseNotes:          replicatedConfig.ReleaseNotes,
 				VersionLabel:          replicatedConfig.VersionLabel,
 				ReplicatedAppEndpoint: replicatedConfig.ReplicatedAppEndpoint,
+				ReleaseImages:         replicatedConfig.ReleaseImages,
 				StatusInformers:       replicatedConfig.StatusInformers,
 				ReplicatedID:          replicatedConfig.ReplicatedID,
 				AppID:                 replicatedConfig.AppID,

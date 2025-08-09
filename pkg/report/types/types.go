@@ -37,6 +37,7 @@ type InstanceData struct {
 	K8sVersion      string                       `json:"k8s_version"`
 	K8sDistribution string                       `json:"k8s_distribution"`
 	Tags            metatypes.InstanceTagData    `json:"tags"`
+	RunningImages   map[string][]string          `json:"running_images"`
 }
 
 func (d Distribution) String() string {

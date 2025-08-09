@@ -61,6 +61,13 @@ type ResourceState struct {
 
 type State string
 
+// ImageInfo describes a container image and its content digest
+// extracted from a Pod status.
+type ImageInfo struct {
+	Name string
+	SHA  string
+}
+
 func GetState(resourceStates []ResourceState) State {
 	if len(resourceStates) == 0 {
 		return StateMissing

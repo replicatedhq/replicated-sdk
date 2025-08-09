@@ -218,6 +218,10 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		ServiceResourceKind:               runServiceController,
 		StatefulSetResourceKind:           runStatefulSetController,
 	}
+	// Start a Pod image controller per namespace
+	for ns := range namespaceKinds {
+		goRun(runPodImageController, ns, nil)
+	}
 	for namespace, kinds := range namespaceKinds {
 		for kind, informers := range kinds {
 			if impl, ok := kindImpls[kind]; ok {
@@ -237,6 +241,7 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 			appStatus.State = types.GetState(appStatus.ResourceStates)
 			appStatus.UpdatedAt = time.Now() // TODO: this should come from the informer
 			m.appStatusCh <- appStatus
+
 		}
 	}
 }

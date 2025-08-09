@@ -34,6 +34,7 @@ type APIServerParams struct {
 	ReleaseNotes          string
 	VersionLabel          string
 	ReplicatedAppEndpoint string
+	ReleaseImages         []string
 	StatusInformers       []appstatetypes.StatusInformerString
 	ReplicatedID          string
 	AppID                 string

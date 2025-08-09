@@ -416,22 +416,22 @@ spec:
 	fmt.Println("SDK logs after minimal RBAC test:")
 	fmt.Println(out)
 
-	// Extract appID from the SDK logs
-	var appID string
+	// Extract instanceAppID from the SDK logs
+	var instanceAppID string
 	lines := strings.Split(out, "\n")
-	appIDRegex := regexp.MustCompile(`appID:\s+([a-f0-9-]+)`)
+	instanceAppIDRegex := regexp.MustCompile(`appID:\s+([a-f0-9-]+)`)
 	for _, line := range lines {
-		if match := appIDRegex.FindStringSubmatch(line); match != nil {
-			appID = match[1]
-			fmt.Printf("Extracted appID: %s\n", appID)
+		if match := instanceAppIDRegex.FindStringSubmatch(line); match != nil {
+			instanceAppID = match[1]
+			fmt.Printf("Extracted instanceAppID: %s\n", instanceAppID)
 			break
 		}
 	}
-	if appID == "" {
-		return fmt.Errorf("appID not found in SDK logs")
+	if instanceAppID == "" {
+		return fmt.Errorf("instanceAppID not found in SDK logs")
 	}
 
-	// make a request to https://api.replicated.com/v1/instance/{appid}/events?pageSize=500
+	// make a request to https://api.replicated.com/v1/instance/{instanceID}/events?pageSize=500
 	tokenPlaintext, err := replicatedServiceAccount.Plaintext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get service account token: %w", err)
@@ -446,7 +446,7 @@ spec:
 	}
 
 	// Retry up to 5 times with 30 seconds between attempts
-	err = waitForResourcesReady(ctx, resourceNames, 30, 5*time.Second, tokenPlaintext, appID, distribution)
+	err = waitForResourcesReady(ctx, resourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
@@ -465,7 +465,7 @@ spec:
 		{Kind: "deployment", Name: "second-test-chart"},
 		{Kind: "service", Name: "replicated"},
 	}
-	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, appID, distribution)
+	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
@@ -490,8 +490,8 @@ type Event struct {
 	} `json:"meta"`
 }
 
-func getEvents(ctx context.Context, authToken string, appID string) ([]Event, error) {
-	url := fmt.Sprintf("https://api.replicated.com/v1/instance/%s/events?pageSize=500", appID)
+func getEvents(ctx context.Context, authToken string, instanceAppID string) ([]Event, error) {
+	url := fmt.Sprintf("https://api.replicated.com/v1/instance/%s/events?pageSize=500", instanceAppID)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -561,12 +561,12 @@ type Resource struct {
 	Name string
 }
 
-func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries int, retryInterval time.Duration, authToken string, appID string, distribution string) error {
+func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries int, retryInterval time.Duration, authToken string, instanceAppID string, distribution string) error {
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		fmt.Printf("Attempt %d/%d: Checking resource states...\n", attempt, maxRetries)
 
-		events, err := getEvents(ctx, authToken, appID)
+		events, err := getEvents(ctx, authToken, instanceAppID)
 		if err != nil {
 			if attempt == maxRetries {
 				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)

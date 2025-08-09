@@ -77,6 +77,7 @@ func Test_SendInstanceData(t *testing.T) {
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
+				mockStore.EXPECT().GetRunningImages().AnyTimes().Return(map[string][]string{})
 			},
 		},
 		{
@@ -113,6 +114,7 @@ func Test_SendInstanceData(t *testing.T) {
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
+				mockStore.EXPECT().GetRunningImages().AnyTimes().Return(map[string][]string{})
 			},
 		},
 	}

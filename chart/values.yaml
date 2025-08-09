@@ -286,6 +286,7 @@ versionLabel: ""
 parentChartURL: ""
 statusInformers: null
 replicatedAppEndpoint: ""
+releaseImages: []
 
 # Domain for the Replicated App Service - takes precedence over replicatedAppEndpoint if set
 # If not specified, the default domain "replicated.app" will be used

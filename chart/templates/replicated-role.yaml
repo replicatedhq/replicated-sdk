@@ -71,6 +71,8 @@ rules:
   - "pods"
   verbs:
   - "get"
+  - "list"
+  - "watch"
 # the SDK secret is required by default (to determine if integration test mode is enabled)
 - apiGroups:
   - ""

@@ -1,6 +1,8 @@
 package store
 
 import (
+	"strings"
+
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
@@ -22,9 +24,12 @@ type InMemoryStore struct {
 	releaseNotes          string
 	versionLabel          string
 	replicatedAppEndpoint string
+	releaseImages         []string
 	namespace             string
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
+	// podImages holds namespace -> podUID -> []ImageInfo
+	podImages map[string]map[string][]appstatetypes.ImageInfo
 }
 
 type InitInMemoryStoreOptions struct {
@@ -41,6 +46,7 @@ type InitInMemoryStoreOptions struct {
 	ReleaseNotes          string
 	VersionLabel          string
 	ReplicatedAppEndpoint string
+	ReleaseImages         []string
 	Namespace             string
 }
 
@@ -60,6 +66,7 @@ func InitInMemory(options InitInMemoryStoreOptions) {
 		releaseNotes:          options.ReleaseNotes,
 		versionLabel:          options.VersionLabel,
 		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
+		releaseImages:         options.ReleaseImages,
 		namespace:             options.Namespace,
 	})
 }
@@ -142,6 +149,10 @@ func (s *InMemoryStore) GetReplicatedAppEndpoint() string {
 	return s.replicatedAppEndpoint
 }
 
+func (s *InMemoryStore) GetReleaseImages() []string {
+	return s.releaseImages
+}
+
 func (s *InMemoryStore) GetNamespace() string {
 	return s.namespace
 }
@@ -152,6 +163,88 @@ func (s *InMemoryStore) GetAppStatus() appstatetypes.AppStatus {
 
 func (s *InMemoryStore) SetAppStatus(status appstatetypes.AppStatus) {
 	s.appStatus = status
+}
+
+func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []appstatetypes.ImageInfo) {
+	if s.podImages == nil {
+		s.podImages = make(map[string]map[string][]appstatetypes.ImageInfo)
+	}
+	if s.podImages[namespace] == nil {
+		s.podImages[namespace] = make(map[string][]appstatetypes.ImageInfo)
+	}
+	// If releaseImages are configured, filter by name:tag only.
+	// The allowlist may include entries with a content digest (e.g., name:tag@sha256:abc),
+	// which should be treated as allowing any digest for that name:tag.
+	var filtered []appstatetypes.ImageInfo
+	if len(s.releaseImages) > 0 {
+		allowed := make(map[string]struct{}, len(s.releaseImages))
+		for _, img := range s.releaseImages {
+			if img == "" {
+				continue
+			}
+			// canonicalize: drop any @sha... suffix so we match by name:tag only
+			canonical := img
+			if at := strings.LastIndex(img, "@"); at != -1 {
+				canonical = img[:at]
+			}
+			allowed[canonical] = struct{}{}
+		}
+		for _, info := range images {
+			if info.Name == "" {
+				continue
+			}
+			if _, ok := allowed[info.Name]; ok {
+				filtered = append(filtered, info)
+			}
+		}
+	} else {
+		filtered = images
+	}
+
+	// Copy values to avoid external mutation
+	copied := make([]appstatetypes.ImageInfo, len(filtered))
+	copy(copied, filtered)
+	s.podImages[namespace][podUID] = copied
+}
+
+func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {
+	if s.podImages == nil {
+		return
+	}
+	if s.podImages[namespace] == nil {
+		return
+	}
+	delete(s.podImages[namespace], podUID)
+	if len(s.podImages[namespace]) == 0 {
+		delete(s.podImages, namespace)
+	}
+}
+
+func (s *InMemoryStore) GetRunningImages() map[string][]string {
+	// Aggregate image -> unique SHA set across all namespaces/pods
+	resultSet := make(map[string]map[string]struct{})
+	for _, pods := range s.podImages {
+		for _, images := range pods {
+			for _, info := range images {
+				if info.Name == "" || info.SHA == "" {
+					continue
+				}
+				if _, ok := resultSet[info.Name]; !ok {
+					resultSet[info.Name] = make(map[string]struct{})
+				}
+				resultSet[info.Name][info.SHA] = struct{}{}
+			}
+		}
+	}
+	out := make(map[string][]string, len(resultSet))
+	for name, shas := range resultSet {
+		list := make([]string, 0, len(shas))
+		for sha := range shas {
+			list = append(list, sha)
+		}
+		out[name] = list
+	}
+	return out
 }
 
 func (s *InMemoryStore) GetUpdates() []upstreamtypes.ChannelRelease {
