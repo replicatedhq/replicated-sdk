@@ -101,11 +101,14 @@ func TestPodImageEventHandler_MockStoreCalls(t *testing.T) {
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{{
+				Image:   "nginx",
 				ImageID: "nginx@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			}, {
+				Image:   "redis",
 				ImageID: "redis@sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678",
 			}},
 			InitContainerStatuses: []corev1.ContainerStatus{{
+				Image:   "busybox",
 				ImageID: "busybox@sha256:ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012",
 			}},
 		},
@@ -119,6 +122,7 @@ func TestPodImageEventHandler_MockStoreCalls(t *testing.T) {
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{{
+				Image:   "postgres:17",
 				ImageID: "postgres@sha256:mnop3456789012mnop3456789012mnop3456789012mnop3456789012mnop3456",
 			}},
 		},
@@ -130,7 +134,7 @@ func TestPodImageEventHandler_MockStoreCalls(t *testing.T) {
 		{Name: "busybox", SHA: "sha256:ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012"},
 	}
 	expectedPod2Images := []appstatetypes.ImageInfo{
-		{Name: "postgres", SHA: "sha256:mnop3456789012mnop3456789012mnop3456789012mnop3456789012mnop3456"},
+		{Name: "postgres:17", SHA: "sha256:mnop3456789012mnop3456789012mnop3456789012mnop3456789012mnop3456"},
 	}
 
 	gomock.InOrder(
