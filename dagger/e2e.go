@@ -639,7 +639,7 @@ func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries
 
 // getRunningImages calls the vendor API to retrieve running images for the given instance and returns a set of image names.
 func getRunningImages(ctx context.Context, appID string, customerID string, instanceAppID string, authToken string) (map[string]struct{}, error) {
-	url := fmt.Sprintf("https://vendor-api.replicated.com/v3/apps/%s/customers/%s/instances/%s/running-images", appID, customerID, instanceAppID)
+	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/apps/%s/customers/%s/instances/%s/running-images", appID, customerID, instanceAppID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

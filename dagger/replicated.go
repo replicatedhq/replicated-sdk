@@ -116,7 +116,7 @@ func getAppID(
 		return "", fmt.Errorf("failed to get service account token: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://vendor-api.replicated.com/v3/apps", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.replicated.com/vendor/v3/apps", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
