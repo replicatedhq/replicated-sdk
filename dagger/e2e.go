@@ -483,7 +483,8 @@ spec:
 	}
 
 	// 2. Validate expected images
-	required := []string{"nginx:latest", "nginx:alpine", strings.TrimSpace(sdkImage)}
+	required := []string{"docker.io/library/nginx:latest", "docker.io/library/nginx:alpine", strings.TrimSpace(sdkImage)}
+	forbidden := []string{"docker.io/alpine/curl:latest"}
 	missing := []string{}
 	for _, img := range required {
 		if img == "" {
@@ -500,6 +501,11 @@ spec:
 			seen = append(seen, k)
 		}
 		return fmt.Errorf("running images missing expected entries: %v. Seen: %v", missing, seen)
+	}
+	for _, img := range forbidden {
+		if _, ok := imagesSet[img]; ok {
+			return fmt.Errorf("running images contains forbidden entry: %s", img)
+		}
 	}
 
 	return nil
