@@ -87,11 +87,32 @@ spec:
           default: "0"
 `)
 
+	replicatedHelmFile := dag.File("helm.yaml", `
+apiVersion: kots.io/v1beta2
+kind: HelmChart
+metadata:
+  name: replicated-sdk-e2e
+spec:
+  # chart identifies a matching chart from a .tgz
+  chart:
+    name: test-chart
+    chartVersion: 0.1.0
+  
+  # values are used in the customer environment, as a pre-render step
+  # these values will be supplied to helm template
+  values: {}
+
+  # builder values provide a way to render the chart with all images
+  # and manifests. this is used in replicated to create air gap packages
+  builder: {}
+`)
+
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
 		WithMountedFile("/chart/test-chart-0.1.0.tgz", testChartFile).
 		WithMountedFile("/chart/app.yaml", replicatedAppFile).
 		WithMountedFile("/chart/config.yaml", replicatedConfigFile).
+		WithMountedFile("/chart/helm.yaml", replicatedHelmFile).
 		WithExec([]string{"/replicated", "channel", "create", "--app", "replicated-sdk-e2e", "--name", channelName}).
 		WithExec([]string{"/replicated", "release", "create", "--app", "replicated-sdk-e2e", "--version", "0.1.0", "--promote", channelName, "--yaml-dir", "/chart"})
 
