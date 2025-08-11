@@ -60,11 +60,40 @@ func createAppTestRelease(
 	now := time.Now().Format("20060102150405")
 	channelName := fmt.Sprintf("automated-%s", now)
 
+	// create non-chart files for the app
+	replicatedAppFile := dag.File("app.yaml", `
+apiVersion: kots.io/v1beta1
+kind: Application
+metadata:
+  name: replicated-sdk-e2e
+spec:
+  title: Replicated SDK E2E
+  icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.png
+`)
+
+	replicatedConfigFile := dag.File("config.yaml", `
+apiVersion: kots.io/v1beta1
+kind: Config
+metadata:
+  name: my-application
+spec:
+  groups:
+    - name: replicated_sdk_e2e
+      title: Replicated SDK E2E
+      description: Configuration for the Replicated SDK E2E
+      items:
+        - name: test_item
+          type: bool
+          default: "0"
+`)
+
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
-		WithMountedFile("/test-chart-0.1.0.tgz", testChartFile).
+		WithMountedFile("/chart/test-chart-0.1.0.tgz", testChartFile).
+		WithMountedFile("/chart/app.yaml", replicatedAppFile).
+		WithMountedFile("/chart/config.yaml", replicatedConfigFile).
 		WithExec([]string{"/replicated", "channel", "create", "--app", "replicated-sdk-e2e", "--name", channelName}).
-		WithExec([]string{"/replicated", "release", "create", "--app", "replicated-sdk-e2e", "--version", "0.1.0", "--promote", channelName, "--chart", "/test-chart-0.1.0.tgz"})
+		WithExec([]string{"/replicated", "release", "create", "--app", "replicated-sdk-e2e", "--version", "0.1.0", "--promote", channelName, "--yaml-dir", "/chart"})
 
 	out, err := ctr.Stdout(ctx)
 	if err != nil {
