@@ -43,7 +43,6 @@ func bootstrap(params APIServerParams) error {
 
 	log.Println("replicatedID:", replicatedID)
 	log.Println("appID:", appID)
-	log.Printf("expected images: %v\n", params.ReleaseImages)
 
 	var unverifiedLicense *kotsv1beta1.License
 	if len(params.LicenseBytes) > 0 {

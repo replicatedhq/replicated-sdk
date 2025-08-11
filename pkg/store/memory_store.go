@@ -172,9 +172,11 @@ func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []a
 	if s.podImages[namespace] == nil {
 		s.podImages[namespace] = make(map[string][]appstatetypes.ImageInfo)
 	}
-	// If releaseImages are configured, filter by name:tag only.
-	// The allowlist may include entries with a content digest (e.g., name:tag@sha256:abc),
-	// which should be treated as allowing any digest for that name:tag.
+
+	// If releaseImages are configured, filter by name:tag only and
+	// normalize docker hub references so that, for example,
+	// "nginx:alpine" matches "docker.io/library/nginx:alpine" and
+	// "alpine/curl:latest" matches "docker.io/alpine/curl:latest".
 	var filtered []appstatetypes.ImageInfo
 	if len(s.releaseImages) > 0 {
 		allowed := make(map[string]struct{}, len(s.releaseImages))
@@ -182,18 +184,16 @@ func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []a
 			if img == "" {
 				continue
 			}
-			// canonicalize: drop any @sha... suffix so we match by name:tag only
-			canonical := img
-			if at := strings.LastIndex(img, "@"); at != -1 {
-				canonical = img[:at]
-			}
+			// Drop any @sha... suffix and normalize docker hub references
+			canonical := canonicalNameTag(img)
 			allowed[canonical] = struct{}{}
 		}
 		for _, info := range images {
 			if info.Name == "" {
 				continue
 			}
-			if _, ok := allowed[info.Name]; ok {
+			// Normalize the runtime reported image for comparison only.
+			if _, ok := allowed[canonicalNameTag(info.Name)]; ok {
 				filtered = append(filtered, info)
 			}
 		}
@@ -205,6 +205,40 @@ func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []a
 	copied := make([]appstatetypes.ImageInfo, len(filtered))
 	copy(copied, filtered)
 	s.podImages[namespace][podUID] = copied
+}
+
+// canonicalNameTag returns a canonical key for "name:tag" comparison.
+// It removes any content digest suffix ("@sha256:...") and normalizes
+// docker hub references by removing leading "docker.io/" or
+// "index.docker.io/" and an optional leading "library/" namespace.
+// If the reference does not include a tag, ":latest" is appended.
+// Examples:
+//
+//	canonicalNameTag("nginx:latest") => "nginx:latest"
+//	canonicalNameTag("docker.io/library/nginx:latest") => "nginx:latest"
+//	canonicalNameTag("docker.io/nginx:latest") => "nginx:latest"
+//	canonicalNameTag("docker.io/alpine/curl:latest") => "alpine/curl:latest"
+func canonicalNameTag(s string) string {
+	// strip content digest if present
+	if at := strings.LastIndex(s, "@"); at != -1 {
+		s = s[:at]
+	}
+	// normalize docker hub hostnames
+	s = strings.TrimPrefix(s, "index.docker.io/")
+	s = strings.TrimPrefix(s, "docker.io/")
+	// if it is a docker hub library image, drop the implicit namespace
+	// Only drop the library/ namespace for docker hub images.
+	// At this point, we have already trimmed docker.io, so this is safe for hub
+	// or for shorthand references that omit the registry host entirely.
+	s = strings.TrimPrefix(s, "library/")
+	// ensure a tag exists; if not, default to latest
+	// a tag is present if there is a ':' after the last '/'
+	lastSlash := strings.LastIndexByte(s, '/')
+	lastColon := strings.LastIndexByte(s, ':')
+	if lastColon == -1 || lastColon < lastSlash {
+		s += ":latest"
+	}
+	return s
 }
 
 func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {

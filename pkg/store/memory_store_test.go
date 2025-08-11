@@ -93,3 +93,81 @@ func TestInMemoryStore_SetPodImages_NoFilterWhenNoReleaseImages(t *testing.T) {
 	require.ElementsMatch(t, []string{"sha256:aaa"}, got["nginx:1.29-alpine"])
 	require.ElementsMatch(t, []string{"sha256:bbb"}, got["redis:7"])
 }
+
+func TestInMemoryStore_SetPodImages_DockerHubNormalization_AllowsShortReleaseName(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"nginx:latest@sha256:abcdef", // allow any digest for nginx:latest
+			"alpine/curl:latest",         // allow by tag
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "docker.io/library/nginx:latest", SHA: "sha256:111"},
+		{Name: "docker.io/alpine/curl:latest", SHA: "sha256:222"},
+		{Name: "redis:7", SHA: "sha256:333"}, // not allowed
+	})
+
+	got := s.GetRunningImages()
+	require.ElementsMatch(t, []string{"sha256:111"}, got["docker.io/library/nginx:latest"]) // matched via normalization
+	require.ElementsMatch(t, []string{"sha256:222"}, got["docker.io/alpine/curl:latest"])   // matched via normalization
+	require.Nil(t, got["redis:7"])                                                          // excluded
+}
+
+func TestInMemoryStore_SetPodImages_DockerHubNormalization_AllowsPrefixedReleaseName(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"docker.io/library/nginx:latest",
+			"docker.io/alpine/curl:latest",
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "nginx:latest", SHA: "sha256:aaa"},
+		{Name: "alpine/curl:latest", SHA: "sha256:bbb"},
+		{Name: "busybox:musl", SHA: "sha256:ccc"}, // not allowed
+	})
+
+	got := s.GetRunningImages()
+	require.ElementsMatch(t, []string{"sha256:aaa"}, got["nginx:latest"])       // matched via normalization
+	require.ElementsMatch(t, []string{"sha256:bbb"}, got["alpine/curl:latest"]) // matched via normalization
+	require.Nil(t, got["busybox:musl"])                                         // excluded
+}
+
+func TestInMemoryStore_SetPodImages_AddsLatestTagWhenMissing(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"nginx",           // should normalize to nginx:latest
+			"docker.io/redis", // should normalize to redis:latest
+			"alpine/curl",     // should normalize to alpine/curl:latest
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "docker.io/library/nginx:latest", SHA: "sha256:1"},
+		{Name: "redis:latest", SHA: "sha256:2"},
+		{Name: "docker.io/alpine/curl:latest", SHA: "sha256:3"},
+		{Name: "busybox:musl", SHA: "sha256:4"}, // not allowed
+	})
+
+	got := s.GetRunningImages()
+	require.ElementsMatch(t, []string{"sha256:1"}, got["docker.io/library/nginx:latest"]) // matched via :latest defaulting
+	require.ElementsMatch(t, []string{"sha256:2"}, got["redis:latest"])                   // matched via :latest defaulting
+	require.ElementsMatch(t, []string{"sha256:3"}, got["docker.io/alpine/curl:latest"])   // matched via :latest defaulting
+	require.Nil(t, got["busybox:musl"])                                                   // excluded
+}
+
+func TestInMemoryStore_SetPodImages_AddsLatestTagWhenMissing_RuntimeImage(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"docker.io/library/nginx:latest",
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "nginx", SHA: "sha256:abc"}, // runtime without tag should be normalized to :latest
+	})
+
+	got := s.GetRunningImages()
+	require.ElementsMatch(t, []string{"sha256:abc"}, got["nginx"]) // stored key is original name but filter matches via :latest
+}
