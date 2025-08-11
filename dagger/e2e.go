@@ -433,6 +433,11 @@ spec:
 	if instanceAppID == "" {
 		return fmt.Errorf("instanceAppID not found in SDK logs")
 	}
+	for _, line := range lines {
+		if strings.HasPrefix(line, "expected images: ") {
+			fmt.Printf("Extracted expected images for distribution %s: %s\n", distribution, line)
+		}
+	}
 
 	// make a request to https://api.replicated.com/v1/instance/{instanceID}/events?pageSize=500
 	tokenPlaintext, err := replicatedServiceAccount.Plaintext(ctx)
