@@ -5,6 +5,8 @@ import (
 	"dagger/replicated-sdk/internal/dagger"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 )
 
@@ -100,4 +102,58 @@ func createCustomer(
 	}
 
 	return replicatedCustomer.ID, replicatedCustomer.InstallationID, nil
+}
+
+// getAppID resolves the application ID for a given app slug via the vendor API
+func getAppID(
+	ctx context.Context,
+	opServiceAccount *dagger.Secret,
+	appSlug string,
+) (string, error) {
+	token := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
+	tokenPlaintext, err := token.Plaintext(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get service account token: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://vendor-api.replicated.com/v3/apps", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", tokenPlaintext)
+
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("vendor API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	type app struct {
+		ID   string `json:"appId"`
+		Slug string `json:"appSlug"`
+	}
+
+	var listResp struct {
+		Apps []app `json:"apps"`
+	}
+	if err := json.Unmarshal(body, &listResp); err == nil && len(listResp.Apps) > 0 {
+		for _, a := range listResp.Apps {
+			if a.Slug == appSlug {
+				return a.ID, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("app with slug %q not found in vendor API response", appSlug)
 }

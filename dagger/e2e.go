@@ -21,6 +21,9 @@ func e2e(
 	ctx context.Context,
 	source *dagger.Directory,
 	opServiceAccount *dagger.Secret,
+	appID string,
+	customerID string,
+	sdkImage string,
 	licenseID string,
 	distribution string,
 	version string,
@@ -471,6 +474,34 @@ spec:
 	}
 
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
+
+	// Validate running images via vendor API
+	// 1. Call vendor API to get running images for this instance
+	imagesSet, err := getRunningImages(ctx, appID, customerID, instanceAppID, tokenPlaintext)
+	if err != nil {
+		return fmt.Errorf("failed to get running images: %w", err)
+	}
+
+	// 2. Validate expected images
+	required := []string{"nginx:latest", "nginx:alpine", strings.TrimSpace(sdkImage)}
+	missing := []string{}
+	for _, img := range required {
+		if img == "" {
+			continue
+		}
+		if _, ok := imagesSet[img]; !ok {
+			missing = append(missing, img)
+		}
+	}
+	if len(missing) > 0 {
+		// Build a small preview of what we saw for debugging
+		seen := make([]string, 0, len(imagesSet))
+		for k := range imagesSet {
+			seen = append(seen, k)
+		}
+		return fmt.Errorf("running images missing expected entries: %v. Seen: %v", missing, seen)
+	}
+
 	return nil
 }
 
@@ -606,6 +637,53 @@ func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries
 	return fmt.Errorf("unreachable code")
 }
 
+// getRunningImages calls the vendor API to retrieve running images for the given instance and returns a set of image names.
+func getRunningImages(ctx context.Context, appID string, customerID string, instanceAppID string, authToken string) (map[string]struct{}, error) {
+	url := fmt.Sprintf("https://vendor-api.replicated.com/v3/apps/%s/customers/%s/instances/%s/running-images", appID, customerID, instanceAppID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", authToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("vendor API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var response struct {
+		RunningImages map[string][]string `json:"running_images"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal vendor API response: %w", err)
+	}
+	if len(response.RunningImages) == 0 {
+		return nil, fmt.Errorf("vendor API returned no running_images: %s", string(body))
+	}
+
+	imagesSet := map[string]struct{}{}
+	for name := range response.RunningImages {
+		if name != "" {
+			imagesSet[name] = struct{}{}
+		}
+	}
+	return imagesSet, nil
+}
+
 // upgradeChartAndRestart upgrades the helm chart with the provided arguments and restarts deployments
 func upgradeChartAndRestart(
 	ctx context.Context,
@@ -685,7 +763,7 @@ func upgradeChartAndRestart(
 			[]string{
 				"kubectl", "rollout", "restart", "deploy/test-chart",
 			}))
-	out, err = ctr.Stdout(ctx)
+	_, err = ctr.Stdout(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
 	}
