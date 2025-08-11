@@ -5,8 +5,8 @@ import (
 	"dagger/replicated-sdk/internal/dagger"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -110,50 +110,37 @@ func getAppID(
 	opServiceAccount *dagger.Secret,
 	appSlug string,
 ) (string, error) {
-	token := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
-	tokenPlaintext, err := token.Plaintext(ctx)
+	// Use vendor CLI output from `replicated app ls`
+	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
+	ctr := dag.Container().From("replicated/vendor-cli:latest").
+		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
+		WithExec([]string{"/replicated", "app", "ls"})
+
+	out, err := ctr.Stdout(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get service account token: %w", err)
+		return "", fmt.Errorf("failed to list apps: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.replicated.com/vendor/v3/apps", nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", tokenPlaintext)
-
-	resp, err := (&http.Client{}).Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("vendor API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	type app struct {
-		ID   string `json:"appId"`
-		Slug string `json:"appSlug"`
-	}
-
-	var listResp struct {
-		Apps []app `json:"apps"`
-	}
-	if err := json.Unmarshal(body, &listResp); err == nil && len(listResp.Apps) > 0 {
-		for _, a := range listResp.Apps {
-			if a.Slug == appSlug {
-				return a.ID, nil
-			}
+	// Parse table rows; columns: ID NAME SLUG SCHEDULER
+	rowRE := regexp.MustCompile(`^\s*-?([A-Za-z0-9._\-]+)\s+.+?\s+([A-Za-z0-9._\-]+)\s+[A-Za-z0-9._\-]+\s*$`)
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		upper := strings.ToUpper(line)
+		if strings.HasPrefix(upper, "ID ") || strings.HasPrefix(upper, "ID\t") {
+			continue
+		}
+		m := rowRE.FindStringSubmatch(line)
+		if len(m) == 0 {
+			continue
+		}
+		id := m[1]
+		slug := m[2]
+		if slug == appSlug {
+			return id, nil
 		}
 	}
-
-	return "", fmt.Errorf("app with slug %q not found in vendor API response", appSlug)
+	return "", fmt.Errorf("app with slug %q not found in 'replicated app ls' output", appSlug)
 }
