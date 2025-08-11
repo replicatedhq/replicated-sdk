@@ -104,6 +104,8 @@ global.replicated.releaseImages and replicated.releaseImages locations.
     {{- .Values.global.replicated.releaseImages | toYaml -}}
   {{- else if and .Values.replicated .Values.replicated.releaseImages -}}
     {{- .Values.replicated.releaseImages | toYaml -}}
+  {{- else if .Values.releaseImages -}}
+    {{- .Values.releaseImages | toYaml -}}
   {{- end -}}
 {{- end -}}
 
