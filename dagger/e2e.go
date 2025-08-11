@@ -657,7 +657,7 @@ func getRunningImages(ctx context.Context, appID string, customerID string, inst
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("vendor API request failed with status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("vendor API request %s failed with status %d: %s", url, resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
