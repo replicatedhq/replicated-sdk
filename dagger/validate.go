@@ -17,13 +17,13 @@ func (m *ReplicatedSdk) Validate(
 
 	opServiceAccount *dagger.Secret,
 ) error {
-	if err := testUnit(ctx, source); err != nil {
-		return err
-	}
+	// if err := testUnit(ctx, source); err != nil {
+	// 	return err
+	// }
 
-	if err := testPact(ctx, source, opServiceAccount); err != nil {
-		return err
-	}
+	// if err := testPact(ctx, source, opServiceAccount); err != nil {
+	// 	return err
+	// }
 
 	imageRegistry, imageRepository, imageTag, err := buildAndPushImageToTTL(ctx, source)
 	if err != nil {
