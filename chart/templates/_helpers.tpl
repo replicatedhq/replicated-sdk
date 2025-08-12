@@ -95,6 +95,21 @@ License Fields
 {{- end -}}
 
 {{/*
+Release Images
+Looks up list of images from values provided by the parent app/release. Supports both
+global.replicated.releaseImages and replicated.releaseImages locations.
+*/}}
+{{- define "replicated.releaseImages" -}}
+  {{- if and .Values.global .Values.global.replicated .Values.global.replicated.releaseImages -}}
+    {{- .Values.global.replicated.releaseImages | toYaml -}}
+  {{- else if and .Values.replicated .Values.replicated.releaseImages -}}
+    {{- .Values.replicated.releaseImages | toYaml -}}
+  {{- else if .Values.releaseImages -}}
+    {{- .Values.releaseImages | toYaml -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
 Detect if we're running on OpenShift
 */}}
 {{- define "replicated.isOpenShift" -}}

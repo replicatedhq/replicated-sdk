@@ -21,6 +21,9 @@ func e2e(
 	ctx context.Context,
 	source *dagger.Directory,
 	opServiceAccount *dagger.Secret,
+	appID string,
+	customerID string,
+	sdkImage string,
 	licenseID string,
 	distribution string,
 	version string,
@@ -416,22 +419,22 @@ spec:
 	fmt.Println("SDK logs after minimal RBAC test:")
 	fmt.Println(out)
 
-	// Extract appID from the SDK logs
-	var appID string
+	// Extract instanceAppID from the SDK logs
+	var instanceAppID string
 	lines := strings.Split(out, "\n")
-	appIDRegex := regexp.MustCompile(`appID:\s+([a-f0-9-]+)`)
+	instanceAppIDRegex := regexp.MustCompile(`appID:\s+([a-f0-9-]+)`)
 	for _, line := range lines {
-		if match := appIDRegex.FindStringSubmatch(line); match != nil {
-			appID = match[1]
-			fmt.Printf("Extracted appID: %s\n", appID)
+		if match := instanceAppIDRegex.FindStringSubmatch(line); match != nil {
+			instanceAppID = match[1]
+			fmt.Printf("Extracted instanceAppID: %s\n", instanceAppID)
 			break
 		}
 	}
-	if appID == "" {
-		return fmt.Errorf("appID not found in SDK logs")
+	if instanceAppID == "" {
+		return fmt.Errorf("instanceAppID not found in SDK logs")
 	}
 
-	// make a request to https://api.replicated.com/v1/instance/{appid}/events?pageSize=500
+	// make a request to https://api.replicated.com/v1/instance/{instanceID}/events?pageSize=500
 	tokenPlaintext, err := replicatedServiceAccount.Plaintext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get service account token: %w", err)
@@ -446,7 +449,7 @@ spec:
 	}
 
 	// Retry up to 5 times with 30 seconds between attempts
-	err = waitForResourcesReady(ctx, resourceNames, 30, 5*time.Second, tokenPlaintext, appID, distribution)
+	err = waitForResourcesReady(ctx, resourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
@@ -465,12 +468,46 @@ spec:
 		{Kind: "deployment", Name: "second-test-chart"},
 		{Kind: "service", Name: "replicated"},
 	}
-	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, appID, distribution)
+	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
 
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
+
+	// Validate running images via vendor API
+	// 1. Call vendor API to get running images for this instance
+	imagesSet, err := getRunningImages(ctx, appID, customerID, instanceAppID, tokenPlaintext)
+	if err != nil {
+		return fmt.Errorf("failed to get running images: %w", err)
+	}
+
+	// 2. Validate expected images
+	required := []string{"docker.io/library/nginx:latest", "docker.io/library/nginx:alpine", strings.TrimSpace(sdkImage)}
+	forbidden := []string{"docker.io/alpine/curl:latest"}
+	missing := []string{}
+	for _, img := range required {
+		if img == "" {
+			continue
+		}
+		if _, ok := imagesSet[img]; !ok {
+			missing = append(missing, img)
+		}
+	}
+	if len(missing) > 0 {
+		// Build a small preview of what we saw for debugging
+		seen := make([]string, 0, len(imagesSet))
+		for k := range imagesSet {
+			seen = append(seen, k)
+		}
+		return fmt.Errorf("running images missing expected entries: %v. Seen: %v", missing, seen)
+	}
+	for _, img := range forbidden {
+		if _, ok := imagesSet[img]; ok {
+			return fmt.Errorf("running images contains forbidden entry: %s", img)
+		}
+	}
+
 	return nil
 }
 
@@ -490,8 +527,8 @@ type Event struct {
 	} `json:"meta"`
 }
 
-func getEvents(ctx context.Context, authToken string, appID string) ([]Event, error) {
-	url := fmt.Sprintf("https://api.replicated.com/v1/instance/%s/events?pageSize=500", appID)
+func getEvents(ctx context.Context, authToken string, instanceAppID string) ([]Event, error) {
+	url := fmt.Sprintf("https://api.replicated.com/v1/instance/%s/events?pageSize=500", instanceAppID)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -561,12 +598,12 @@ type Resource struct {
 	Name string
 }
 
-func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries int, retryInterval time.Duration, authToken string, appID string, distribution string) error {
+func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries int, retryInterval time.Duration, authToken string, instanceAppID string, distribution string) error {
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		fmt.Printf("Attempt %d/%d: Checking resource states...\n", attempt, maxRetries)
 
-		events, err := getEvents(ctx, authToken, appID)
+		events, err := getEvents(ctx, authToken, instanceAppID)
 		if err != nil {
 			if attempt == maxRetries {
 				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)
@@ -604,6 +641,53 @@ func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries
 		time.Sleep(retryInterval)
 	}
 	return fmt.Errorf("unreachable code")
+}
+
+// getRunningImages calls the vendor API to retrieve running images for the given instance and returns a set of image names.
+func getRunningImages(ctx context.Context, appID string, customerID string, instanceAppID string, authToken string) (map[string]struct{}, error) {
+	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/app/%s/customer/%s/instance/%s/running-images", appID, customerID, instanceAppID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", authToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("vendor API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var response struct {
+		RunningImages map[string][]string `json:"running_images"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal vendor API response: %w", err)
+	}
+	if len(response.RunningImages) == 0 {
+		return nil, fmt.Errorf("vendor API returned no running_images: %s", string(body))
+	}
+
+	imagesSet := map[string]struct{}{}
+	for name := range response.RunningImages {
+		if name != "" {
+			imagesSet[name] = struct{}{}
+		}
+	}
+	return imagesSet, nil
 }
 
 // upgradeChartAndRestart upgrades the helm chart with the provided arguments and restarts deployments
@@ -685,7 +769,7 @@ func upgradeChartAndRestart(
 			[]string{
 				"kubectl", "rollout", "restart", "deploy/test-chart",
 			}))
-	out, err = ctr.Stdout(ctx)
+	_, err = ctr.Stdout(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to restart test-chart deployment: %w", err)
 	}

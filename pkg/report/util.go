@@ -45,6 +45,19 @@ func GetInstanceDataPayload(instanceData *types.InstanceData) (map[string]interf
 		payload["resource_states"] = string(marshalledRS)
 	}
 
+	if instanceData.RunningImages != nil {
+		nonEmpty := false
+		for _, shas := range instanceData.RunningImages {
+			if len(shas) > 0 {
+				nonEmpty = true
+				break
+			}
+		}
+		if nonEmpty {
+			payload["running_images"] = instanceData.RunningImages
+		}
+	}
+
 	return payload, nil
 }
 

@@ -57,6 +57,7 @@ func TestSendInstanceData(t *testing.T) {
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
+				mockStore.EXPECT().GetRunningImages().AnyTimes().Return(map[string][]string{})
 			},
 			pactInteraction: func() {
 				pact.
@@ -108,6 +109,7 @@ func TestSendInstanceData(t *testing.T) {
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
+				mockStore.EXPECT().GetRunningImages().AnyTimes().Return(map[string][]string{})
 			},
 			pactInteraction: func() {
 				pact.
@@ -159,6 +161,7 @@ func TestSendInstanceData(t *testing.T) {
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
+				mockStore.EXPECT().GetRunningImages().AnyTimes().Return(map[string][]string{})
 			},
 			pactInteraction: func() {
 				pact.
@@ -210,6 +213,7 @@ func TestSendInstanceData(t *testing.T) {
 					State:          appstatetypes.StateMissing,
 					ResourceStates: []appstatetypes.ResourceState{},
 				})
+				mockStore.EXPECT().GetRunningImages().AnyTimes().Return(map[string][]string{})
 			},
 			pactInteraction: func() {
 				pact.
