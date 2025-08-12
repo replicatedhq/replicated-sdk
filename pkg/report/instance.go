@@ -138,6 +138,7 @@ func GetInstanceData(sdkStore store.Store) *types.InstanceData {
 		ChannelSequence: sdkStore.GetChannelSequence(),
 		AppStatus:       string(sdkStore.GetAppStatus().State),
 		ResourceStates:  sdkStore.GetAppStatus().ResourceStates,
+		RunningImages:   sdkStore.GetRunningImages(),
 	}
 
 	clientset, err := k8sutil.GetClientset()

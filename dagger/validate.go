@@ -29,7 +29,8 @@ func (m *ReplicatedSdk) Validate(
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Image pushed to %s/%s:%s\n", imageRegistry, imageRepository, imageTag)
+	sdkImage := fmt.Sprintf("%s/%s:%s", imageRegistry, imageRepository, imageTag)
+	fmt.Printf("Image pushed to %s\n", sdkImage)
 
 	chart, err := buildAndPushChartToTTL(ctx, source, imageRegistry, imageRepository, imageTag)
 	if err != nil {
@@ -48,6 +49,12 @@ func (m *ReplicatedSdk) Validate(
 	}
 	fmt.Println(customerID, licenseID)
 
+	// Resolve app ID for replicated-sdk-e2e (used by vendor API checks)
+	appID, err := getAppID(ctx, opServiceAccount, "replicated-sdk-e2e")
+	if err != nil {
+		return err
+	}
+
 	cmxDistributions, err := listCMXDistributionsAndVersions(ctx, opServiceAccount)
 	if err != nil {
 		return err
@@ -58,7 +65,7 @@ func (m *ReplicatedSdk) Validate(
 		wg.Add(1)
 		go func(distribution DistributionVersion) {
 			defer wg.Done()
-			if err := e2e(ctx, source, opServiceAccount, licenseID, distribution.Distribution, distribution.Version, channelSlug); err != nil {
+			if err := e2e(ctx, source, opServiceAccount, appID, customerID, sdkImage, licenseID, distribution.Distribution, distribution.Version, channelSlug); err != nil {
 				panic(fmt.Sprintf("E2E test failed for distribution %s %s: %v", distribution.Distribution, distribution.Version, err))
 			}
 		}(distribution)

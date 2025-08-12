@@ -5,6 +5,8 @@ import (
 	"dagger/replicated-sdk/internal/dagger"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -58,11 +60,61 @@ func createAppTestRelease(
 	now := time.Now().Format("20060102150405")
 	channelName := fmt.Sprintf("automated-%s", now)
 
+	// create non-chart files for the app
+	replicatedAppFile := dag.File("app.yaml", `
+apiVersion: kots.io/v1beta1
+kind: Application
+metadata:
+  name: replicated-sdk-e2e
+spec:
+  title: Replicated SDK E2E
+  icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.png
+`)
+
+	replicatedConfigFile := dag.File("config.yaml", `
+apiVersion: kots.io/v1beta1
+kind: Config
+metadata:
+  name: my-application
+spec:
+  groups:
+    - name: replicated_sdk_e2e
+      title: Replicated SDK E2E
+      description: Configuration for the Replicated SDK E2E
+      items:
+        - name: test_item
+          type: bool
+          default: "0"
+`)
+
+	replicatedHelmFile := dag.File("helm.yaml", `
+apiVersion: kots.io/v1beta2
+kind: HelmChart
+metadata:
+  name: replicated-sdk-e2e
+spec:
+  # chart identifies a matching chart from a .tgz
+  chart:
+    name: test-chart
+    chartVersion: 0.1.0
+  
+  # values are used in the customer environment, as a pre-render step
+  # these values will be supplied to helm template
+  values: {}
+
+  # builder values provide a way to render the chart with all images
+  # and manifests. this is used in replicated to create air gap packages
+  builder: {}
+`)
+
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
-		WithMountedFile("/test-chart-0.1.0.tgz", testChartFile).
+		WithMountedFile("/chart/test-chart-0.1.0.tgz", testChartFile).
+		WithMountedFile("/chart/app.yaml", replicatedAppFile).
+		WithMountedFile("/chart/config.yaml", replicatedConfigFile).
+		WithMountedFile("/chart/helm.yaml", replicatedHelmFile).
 		WithExec([]string{"/replicated", "channel", "create", "--app", "replicated-sdk-e2e", "--name", channelName}).
-		WithExec([]string{"/replicated", "release", "create", "--app", "replicated-sdk-e2e", "--version", "0.1.0", "--promote", channelName, "--chart", "/test-chart-0.1.0.tgz"})
+		WithExec([]string{"/replicated", "release", "create", "--app", "replicated-sdk-e2e", "--version", "0.1.0", "--promote", channelName, "--yaml-dir", "/chart"})
 
 	out, err := ctr.Stdout(ctx)
 	if err != nil {
@@ -100,4 +152,45 @@ func createCustomer(
 	}
 
 	return replicatedCustomer.ID, replicatedCustomer.InstallationID, nil
+}
+
+// getAppID resolves the application ID for a given app slug via the vendor API
+func getAppID(
+	ctx context.Context,
+	opServiceAccount *dagger.Secret,
+	appSlug string,
+) (string, error) {
+	// Use vendor CLI output from `replicated app ls`
+	replicatedServiceAccount := mustGetSecret(ctx, opServiceAccount, "Replicated", "service_account", VaultDeveloperAutomation)
+	ctr := dag.Container().From("replicated/vendor-cli:latest").
+		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
+		WithExec([]string{"/replicated", "app", "ls"})
+
+	out, err := ctr.Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to list apps: %w", err)
+	}
+
+	// Parse table rows; columns: ID NAME SLUG SCHEDULER
+	rowRE := regexp.MustCompile(`^\s*-?([A-Za-z0-9._\-]+)\s+.+?\s+([A-Za-z0-9._\-]+)\s+[A-Za-z0-9._\-]+\s*$`)
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		upper := strings.ToUpper(line)
+		if strings.HasPrefix(upper, "ID ") || strings.HasPrefix(upper, "ID\t") {
+			continue
+		}
+		m := rowRE.FindStringSubmatch(line)
+		if len(m) == 0 {
+			continue
+		}
+		id := m[1]
+		slug := m[2]
+		if slug == appSlug {
+			return id, nil
+		}
+	}
+	return "", fmt.Errorf("app with slug %q not found in 'replicated app ls' output", appSlug)
 }
