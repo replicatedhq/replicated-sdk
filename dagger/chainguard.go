@@ -316,9 +316,3 @@ func publishChainguardImage(
 	return mainDigest, nil
 }
 
-func sanitizeVersionForMelange(version string) string {
-	v := strings.ReplaceAll(version, "-beta.", "_beta")
-	v = strings.ReplaceAll(v, "-alpha.", "_alpha")
-	v = strings.ReplaceAll(v, "-", "_") // catch any remaining dashes
-	return v
-}

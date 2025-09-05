@@ -1,16 +1,13 @@
 contents:
   repositories:
-    - https://packages.wolfi.dev/os
-    - ./packages/
+    - https://apk.cve0.io
   keyring:
-    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    - ./melange.rsa.pub
+    - https://apk.cve0.io/key/cve0-signing.rsa.pub
   packages:
     - replicated
     - bash
-    - busybox
+    - busybox-bootstrap-1.36
     - curl
-    - wolfi-baselayout
 
 accounts:
   groups:
