@@ -99,6 +99,7 @@ func buildAndPushImageWithSecureBuild(
 		}
 		
 		// Fallback to cve0.io format if parsing fails
+		// Uses consistent image naming with SecureBuild pipeline
 		return "cve0.io", "replicated-sdk", version, nil
 		
 	case SecureBuildEnvStaging:
