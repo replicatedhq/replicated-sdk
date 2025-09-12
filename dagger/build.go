@@ -12,7 +12,7 @@ import (
 // SecureBuild environment constants
 const (
 	SecureBuildEnvDev        = "dev"
-	SecureBuildEnvStaging    = "staging" 
+	SecureBuildEnvStaging    = "staging"
 	SecureBuildEnvProduction = "production"
 )
 
@@ -33,7 +33,7 @@ func buildAndPushImageToTTL(
 		opServiceAccount := dag.SetSecret("op-service-account", "placeholder")
 		return buildAndPushImageWithSecureBuild(ctx, source, SecureBuildEnvDev, "", opServiceAccount)
 	}
-	
+
 	// Default to TTL.sh for backward compatibility
 	return buildAndPushImageToTTLLegacy(ctx, source)
 }
@@ -69,7 +69,7 @@ func buildAndPushImageWithSecureBuild(
 	opServiceAccount *dagger.Secret,
 ) (string, string, string, error) {
 	fmt.Printf("Using SecureBuild for %s image building\n", environment)
-	
+
 	switch environment {
 	case SecureBuildEnvDev:
 		// Generate dev version if not provided
@@ -77,14 +77,14 @@ func buildAndPushImageWithSecureBuild(
 			now := time.Now().Format("20060102150405")
 			version = fmt.Sprintf("dev-%s", now)
 		}
-		
+
 		imageRef, err := (&ReplicatedSdk{}).BuildDevSecureBuild(ctx, source, version, opServiceAccount)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to build with SecureBuild dev: %w", err)
 		}
-		
+
 		fmt.Printf("SecureBuild: Development build completed, image available at %s\n", imageRef)
-		
+
 		// Parse TTL.sh URL to extract components (ttl.sh/automated-20240101120000/replicated-image/replicated-sdk:version)
 		// Return format should match legacy: (registry, repository, tag)
 		if strings.HasPrefix(imageRef, "ttl.sh/") {
@@ -97,31 +97,31 @@ func buildAndPushImageWithSecureBuild(
 				return registry, repository, tag, nil
 			}
 		}
-		
+
 		// Fallback to cve0.io format if parsing fails
 		// Uses consistent image naming with SecureBuild pipeline
 		return "cve0.io", "replicated-sdk", version, nil
-		
+
 	case SecureBuildEnvStaging:
 		imageRef, err := (&ReplicatedSdk{}).PublishSecureBuild(ctx, source, version, SecureBuildEnvStaging, opServiceAccount)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to build with SecureBuild %s: %w", environment, err)
 		}
-		
+
 		fmt.Printf("SecureBuild: %s build completed, image available at %s\n", environment, imageRef)
 		return "cve0.io", "replicated-sdk", version, nil
-		
+
 	case SecureBuildEnvProduction:
 		imageRef, err := (&ReplicatedSdk{}).PublishSecureBuild(ctx, source, version, SecureBuildEnvProduction, opServiceAccount)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to build with SecureBuild %s: %w", environment, err)
 		}
-		
+
 		fmt.Printf("SecureBuild: %s build completed, image available at %s\n", environment, imageRef)
 		return "cve0.io", "replicated-sdk", version, nil
-		
+
 	default:
-		return "", "", "", fmt.Errorf("unsupported SecureBuild environment: %s (use %s, %s, or %s)", 
+		return "", "", "", fmt.Errorf("unsupported SecureBuild environment: %s (use %s, %s, or %s)",
 			environment, SecureBuildEnvDev, SecureBuildEnvStaging, SecureBuildEnvProduction)
 	}
 }

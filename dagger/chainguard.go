@@ -315,4 +315,3 @@ func publishChainguardImage(
 
 	return mainDigest, nil
 }
-

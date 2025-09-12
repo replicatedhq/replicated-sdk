@@ -54,9 +54,9 @@ const (
 
 	// 1Password item names and field names for SecureBuild API tokens
 	// Different environments use different tokens stored in different vaults
-	SecureBuildDevTokenItem  = "SecureBuild-Dev-Token"              // Development token item name
+	SecureBuildDevTokenItem  = "SecureBuild-Dev-Token"                 // Development token item name
 	SecureBuildProdTokenItem = "SecureBuild-Replicated-SDK-Prod-Token" // Production token item name
-	SecureBuildAPITokenField = "APIToken"                           // 1Password field name for API tokens
+	SecureBuildAPITokenField = "APIToken"                              // 1Password field name for API tokens
 
 	// File paths for build configuration
 	APKOConfigFile = "deploy/apko-securebuild.yaml" // APKO configuration file path
@@ -65,12 +65,12 @@ const (
 	APKOVersionTemplate = "VERSION: 1.0.0" // Template version string to replace in APKO config
 
 	// SecureBuild API endpoint paths
-	CustomAPKOEndpoint     = "/api/v1/custom-apko"        // SecureBuild custom APKO submission endpoint
+	CustomAPKOEndpoint       = "/api/v1/custom-apko"              // SecureBuild custom APKO submission endpoint
 	ExternalRegistryEndpoint = "/api/v1/custom-external-registry" // SecureBuild external registry configuration endpoint
 
 	// TTL.sh credential configuration
 	TTLPasswordSecret = "ttl-password" // Secret name for TTL.sh password
-	TTLPassword      = "nopass"        // TTL.sh uses placeholder password
+	TTLPassword       = "nopass"       // TTL.sh uses placeholder password
 )
 
 // =============================================================================
@@ -121,13 +121,13 @@ type CustomAPKORequest struct {
 
 // CustomAPKOResponse represents the SecureBuild API response for custom APKO builds
 type CustomAPKOResponse struct {
-	Success              bool     `json:"success"`
-	Message              string   `json:"message"`
-	CustomImageID        string   `json:"customImageId"`
-	CustomAPKOID         string   `json:"customApkoId"`
-	CustomAPKOVersionID  string   `json:"customApkoVersionId"`
-	Name                 string   `json:"name"`
-	Tags                 []string `json:"tags"`
+	Success             bool     `json:"success"`
+	Message             string   `json:"message"`
+	CustomImageID       string   `json:"customImageId"`
+	CustomAPKOID        string   `json:"customApkoId"`
+	CustomAPKOVersionID string   `json:"customApkoVersionId"`
+	Name                string   `json:"name"`
+	Tags                []string `json:"tags"`
 }
 
 // ExternalRegistry represents a configured external registry in SecureBuild
@@ -140,7 +140,6 @@ type ExternalRegistry struct {
 // =============================================================================
 // PHASE 1: VALIDATION FUNCTIONS
 // =============================================================================
-
 
 // validateCredentialAccess tests 1Password access before starting expensive operations
 // This prevents failures after time-consuming setup steps
@@ -504,7 +503,7 @@ func (m *ReplicatedSdk) publishToRegistry(ctx context.Context, client *SecureBui
 	fmt.Printf("SecureBuild: Submitting %s APKO config for %s with tags %v\n", config.Name, version, tags)
 
 	response, err := client.SubmitCustomAPKO(ctx, CustomAPKORequest{
-		Name:         config.ImageName,             // Registry-specific image name (the key difference!)
+		Name:         config.ImageName, // Registry-specific image name (the key difference!)
 		Tags:         tags,
 		Config:       apkoBase64,
 		Readme:       "Replicated SDK container image",
@@ -677,7 +676,7 @@ func (m *ReplicatedSdk) BuildDevSecureBuild(ctx context.Context,
 
 	apkoBase64 := base64.StdEncoding.EncodeToString([]byte(apkoContent))
 
-	// 4. Use exact TTL.sh registry URL 
+	// 4. Use exact TTL.sh registry URL
 	ttlRegistryURL := TTLRegistry
 
 	// 5. Submit APKO configuration with registry URLs (SecureBuild will push to cve0.io + external registries)

@@ -54,7 +54,7 @@ func (m *ReplicatedSdk) Publish(
 		} else if production {
 			environment = SecureBuildEnvProduction
 		}
-		
+
 		_, _, _, err := buildAndPushImageWithSecureBuild(ctx, source, environment, version, opServiceAccount)
 		return err
 	}
