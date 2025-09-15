@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: dagger/dagger-for-github@8.0.0
+      - uses: dagger/dagger-for-github@v8.1.0
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
         with:
