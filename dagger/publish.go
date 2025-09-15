@@ -4,6 +4,7 @@ import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
 	"fmt"
+	"os"
 )
 
 // Publish publishes the Replicated SDK images and chart
@@ -44,7 +45,21 @@ func (m *ReplicatedSdk) Publish(
 	// +optional
 	cosignPassword *dagger.Secret,
 ) error {
-	// version must be passed in, it will be used to tag the image
+	// Check for SecureBuild feature flag - route staging/production through SecureBuild when enabled
+	// Dev always uses Wolfi pipeline for contributor-friendly builds
+	if useSecureBuild := os.Getenv("USE_SECUREBUILD"); useSecureBuild == "true" && !dev {
+		var environment string
+		if staging {
+			environment = SecureBuildEnvStaging
+		} else if production {
+			environment = SecureBuildEnvProduction
+		}
+
+		_, _, _, err := buildAndPushImageWithSecureBuild(ctx, source, environment, version, opServiceAccount)
+		return err
+	}
+
+	// Default to current Chainguard pipeline
 	amdPackages, armPackages, melangeKey, err := buildAndPublishChainguardImage(ctx, dag, source, version)
 	if err != nil {
 		return err
