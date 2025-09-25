@@ -29,7 +29,7 @@ stringData:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
               {{- end }}
-            namespace: {{ include "replicated.namespace" . }}
+            namespace: {{ include "replicated.namespace" . | quote }}
             command: ["curl"]
             args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/updates"]
             timeout: 5s
@@ -40,7 +40,7 @@ stringData:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
               {{- end }}
-            namespace: {{ include "replicated.namespace" . }}
+            namespace: {{ include "replicated.namespace" . | quote }}
             command: ["curl"]
             args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/history"]
             timeout: 5s
@@ -51,7 +51,7 @@ stringData:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
               {{- end }}
-            namespace: {{ include "replicated.namespace" . }}
+            namespace: {{ include "replicated.namespace" . | quote }}
             command: ["curl"]
             args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info"]
             timeout: 5s
@@ -62,7 +62,7 @@ stringData:
               {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
               - {{ $k }}={{ $v }}
               {{- end }}
-            namespace: {{ include "replicated.namespace" . }}
+            namespace: {{ include "replicated.namespace" . | quote }}
             command: ["curl"]
             args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info"]
             timeout: 5s
