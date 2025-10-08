@@ -38,13 +38,13 @@ func buildAndPublishChainguardImage(
 		Arch:      "aarch64",
 	})
 
-	// Update apko.yaml with just the VERSION environment variable - use Wolfi template for dev builds
-	apkoYaml, err := source.File("deploy/apko-wolfi.yaml").Contents(ctx)
+	// Update apko.yaml with just the VERSION environment variable
+	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	apkoYaml = strings.Replace(apkoYaml, "VERSION: 1.0.0", fmt.Sprintf("VERSION: %s", version), 1)
-	source = source.WithNewFile("deploy/apko-wolfi.yaml", apkoYaml)
+	source = source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
 	return amdPackages, armPackages, melangeKey, nil
 }
@@ -70,8 +70,8 @@ func publishChainguardImage(
 	cosignPassword *dagger.Secret,
 ) (string, error) {
 
-	// Update apko.yaml to set the package version constraint - use Wolfi template
-	apkoYaml, err := source.File("deploy/apko-wolfi.yaml").Contents(ctx)
+	// Update apko.yaml to set the package version constraint
+	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -84,8 +84,8 @@ func publishChainguardImage(
 		1,
 	)
 
-	// Create a new source directory with the updated apko-wolfi.yaml
-	updatedSource := source.WithNewFile("deploy/apko-wolfi.yaml", apkoYaml)
+	// Create a new source directory with the updated apko.yaml
+	updatedSource := source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
 	// get the registry address from the image path
 	registry := strings.Split(imagePath, "/")[0]
@@ -105,7 +105,7 @@ func publishChainguardImage(
 
 	image := apkoWithAuth.
 		Publish(
-			updatedSource.File("deploy/apko-wolfi.yaml"),
+			updatedSource.File("deploy/apko.yaml"),
 			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
 			dagger.ApkoPublishOpts{
 				Arch: []dagger.Platform{dagger.Platform("linux/amd64"), dagger.Platform("linux/arm64")},
@@ -314,4 +314,11 @@ func publishChainguardImage(
 	fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, version, mainDigest)
 
 	return mainDigest, nil
+}
+
+func sanitizeVersionForMelange(version string) string {
+	v := strings.ReplaceAll(version, "-beta.", "_beta")
+	v = strings.ReplaceAll(v, "-alpha.", "_alpha")
+	v = strings.ReplaceAll(v, "-", "_") // catch any remaining dashes
+	return v
 }

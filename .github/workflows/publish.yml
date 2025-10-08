@@ -75,7 +75,6 @@ jobs:
       - uses: dagger/dagger-for-github@8.0.0
         id: dagger-publish
         env:
-          USE_SECUREBUILD: true
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
           OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
         with:
@@ -100,7 +99,6 @@ jobs:
       - uses: dagger/dagger-for-github@8.0.0
         id: dagger-publish
         env:
-          USE_SECUREBUILD: true
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
           OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
