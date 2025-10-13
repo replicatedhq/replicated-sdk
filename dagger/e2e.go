@@ -475,16 +475,16 @@ spec:
 
 	fmt.Printf("E2E test for distribution %s and version %s passed\n", distribution, version)
 
-	// Validate running images via vendor API
+	// Validate running images via vendor API (with default filtering)
 	// 1. Call vendor API to get running images for this instance
 	imagesSet, err := getRunningImages(ctx, appID, customerID, instanceAppID, tokenPlaintext)
 	if err != nil {
 		return fmt.Errorf("failed to get running images: %w", err)
 	}
 
-	// 2. Validate expected images
+	// 2. Validate expected images (should only contain images from releaseImages list)
 	required := []string{"docker.io/library/nginx:latest", "docker.io/library/nginx:alpine", strings.TrimSpace(sdkImage)}
-	forbidden := []string{"docker.io/alpine/curl:latest"}
+	forbidden := []string{"docker.io/alpine/curl:latest"} // This is from replicated-ssl-test, should be filtered out
 	missing := []string{}
 	for _, img := range required {
 		if img == "" {
@@ -504,9 +504,64 @@ spec:
 	}
 	for _, img := range forbidden {
 		if _, ok := imagesSet[img]; ok {
-			return fmt.Errorf("running images contains forbidden entry: %s", img)
+			return fmt.Errorf("running images contains forbidden entry: %s (should be filtered out)", img)
 		}
 	}
+
+	fmt.Println("Default image filtering test passed - only releaseImages are reported")
+
+	// Test reportAllImages functionality
+	fmt.Println("Testing reportAllImages=true functionality...")
+
+	// Upgrade the chart to enable reportAllImages
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.reportAllImages=true",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart enabling reportAllImages: %w", err)
+	}
+
+	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
+	if err != nil {
+		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
+	}
+
+	// Get running images again
+	allImagesSet, err := getRunningImages(ctx, appID, customerID, instanceAppID, tokenPlaintext)
+	if err != nil {
+		return fmt.Errorf("failed to get running images after enabling reportAllImages: %w", err)
+	}
+
+	// Validate that previously excluded images are now present
+	// The alpine/curl image from replicated-ssl-test should now be reported
+	nowRequired := []string{"docker.io/alpine/curl:latest"}
+	missing = []string{}
+	for _, img := range nowRequired {
+		if _, ok := allImagesSet[img]; !ok {
+			missing = append(missing, img)
+		}
+	}
+	if len(missing) > 0 {
+		// Build a small preview of what we saw for debugging
+		seen := make([]string, 0, len(allImagesSet))
+		for k := range allImagesSet {
+			seen = append(seen, k)
+		}
+		return fmt.Errorf("with reportAllImages=true, missing expected images: %v. Seen: %v", missing, seen)
+	}
+
+	// Should still have the original required images
+	for _, img := range required {
+		if img == "" {
+			continue
+		}
+		if _, ok := allImagesSet[img]; !ok {
+			return fmt.Errorf("with reportAllImages=true, missing original required image: %s", img)
+		}
+	}
+
+	fmt.Printf("reportAllImages test passed - found %d total images (vs %d with filtering)\n", len(allImagesSet), len(imagesSet))
 
 	return nil
 }
