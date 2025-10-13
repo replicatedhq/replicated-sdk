@@ -171,3 +171,54 @@ func TestInMemoryStore_SetPodImages_AddsLatestTagWhenMissing_RuntimeImage(t *tes
 	got := s.GetRunningImages()
 	require.ElementsMatch(t, []string{"sha256:abc"}, got["nginx"]) // stored key is original name but filter matches via :latest
 }
+
+func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_MatchesProxyAppPath(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"proxy.replicated.com/proxy/appname/nginx:latest",
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "registry.mybank.com/library/appname/nginx:latest", SHA: "sha256:run1"},
+		{Name: "registry.other.invalid/appname/redis:7", SHA: "sha256:skip1"}, // not allowed
+	})
+
+	got := s.GetRunningImages()
+	require.ElementsMatch(t, []string{"sha256:run1"}, got["registry.mybank.com/library/appname/nginx:latest"]) // matched via suffix normalization
+	require.Nil(t, got["registry.other.invalid/appname/redis:7"])                                              // excluded
+}
+
+func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_MatchesShortName(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"nginx:latest", // short name should match any registry/path suffix ending with nginx:latest
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "registry.mybank.com/library/appname/nginx:latest", SHA: "sha256:run2"},
+		{Name: "ghcr.io/company/nginx:1.27", SHA: "sha256:skip2"}, // not allowed
+	})
+
+	got := s.GetRunningImages()
+	require.ElementsMatch(t, []string{"sha256:run2"}, got["registry.mybank.com/library/appname/nginx:latest"]) // matched via suffix normalization
+	require.Nil(t, got["ghcr.io/company/nginx:1.27"])                                                          // excluded
+}
+
+func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_DoesNotOvermatchSimilarNames(t *testing.T) {
+	s := &InMemoryStore{
+		releaseImages: []string{
+			"myapp/nginx:latest",
+		},
+	}
+
+	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
+		{Name: "registry.example.com/team/myapp/mynginx:latest", SHA: "sha256:nope"}, // should NOT match nginx:latest
+		{Name: "registry.example.com/team/myapp/nginx:latest", SHA: "sha256:ok"},     // should match
+	})
+
+	got := s.GetRunningImages()
+	require.Nil(t, got["registry.example.com/team/myapp/mynginx:latest"])                                // not matched
+	require.ElementsMatch(t, []string{"sha256:ok"}, got["registry.example.com/team/myapp/nginx:latest"]) // matched
+}
