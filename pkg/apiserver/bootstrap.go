@@ -14,6 +14,8 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
+	reporttypes "github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -43,6 +45,16 @@ func bootstrap(params APIServerParams) error {
 
 	log.Println("replicatedID:", replicatedID)
 	log.Println("appID:", appID)
+
+	// In Embedded Cluster installations, automatically enable reporting all images
+	reportAllImages := params.ReportAllImages
+	if !reportAllImages {
+		distribution := report.GetDistribution(clientset)
+		if distribution == reporttypes.EmbeddedCluster {
+			reportAllImages = true
+			log.Println("Detected Embedded Cluster installation, enabling reportAllImages")
+		}
+	}
 
 	var unverifiedLicense *kotsv1beta1.License
 	if len(params.LicenseBytes) > 0 {
@@ -111,6 +123,7 @@ func bootstrap(params APIServerParams) error {
 		Namespace:             params.Namespace,
 		ReplicatedID:          replicatedID,
 		AppID:                 appID,
+		ReportAllImages:       reportAllImages,
 	})
 
 	isIntegrationModeEnabled, err := integration.IsEnabled(params.Context, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())

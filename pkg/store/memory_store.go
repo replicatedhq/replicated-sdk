@@ -29,7 +29,8 @@ type InMemoryStore struct {
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
 	// podImages holds namespace -> podUID -> []ImageInfo
-	podImages map[string]map[string][]appstatetypes.ImageInfo
+	podImages       map[string]map[string][]appstatetypes.ImageInfo
+	reportAllImages bool
 }
 
 type InitInMemoryStoreOptions struct {
@@ -48,6 +49,7 @@ type InitInMemoryStoreOptions struct {
 	ReplicatedAppEndpoint string
 	ReleaseImages         []string
 	Namespace             string
+	ReportAllImages       bool
 }
 
 func InitInMemory(options InitInMemoryStoreOptions) {
@@ -68,6 +70,7 @@ func InitInMemory(options InitInMemoryStoreOptions) {
 		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
 		releaseImages:         options.ReleaseImages,
 		namespace:             options.Namespace,
+		reportAllImages:       options.ReportAllImages,
 	})
 }
 
@@ -173,12 +176,15 @@ func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []a
 		s.podImages[namespace] = make(map[string][]appstatetypes.ImageInfo)
 	}
 
-	// If releaseImages are configured, filter by name:tag only and
+	// If reportAllImages is true, skip filtering and report all images.
+	// Otherwise, if releaseImages are configured, filter by name:tag only and
 	// normalize docker hub references so that, for example,
 	// "nginx:alpine" matches "docker.io/library/nginx:alpine" and
 	// "alpine/curl:latest" matches "docker.io/alpine/curl:latest".
 	var filtered []appstatetypes.ImageInfo
-	if len(s.releaseImages) > 0 {
+	if s.reportAllImages {
+		filtered = images
+	} else if len(s.releaseImages) > 0 {
 		allowed := make(map[string]struct{}, len(s.releaseImages))
 		for _, img := range s.releaseImages {
 			if img == "" {

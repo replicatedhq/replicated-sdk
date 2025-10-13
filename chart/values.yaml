@@ -300,3 +300,8 @@ tlsCertSecretName: ""
 # Use a more restrictive RBAC policy for the Replicated SDK. This requires setting statusInformers directly
 # in order to generate the correct RBAC rules.
 minimalRBAC: false
+
+# Report all images running in the cluster, not just those in the releaseImages list
+# When true, the SDK will report every image+digest in the cluster regardless of the releaseImages filter
+# When false (default), only images matching the releaseImages list will be reported
+reportAllImages: false
