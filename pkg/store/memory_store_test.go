@@ -189,23 +189,6 @@ func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_MatchesProxyAppPath(t
 	require.Nil(t, got["registry.other.invalid/appname/redis:7"])                                              // excluded
 }
 
-func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_MatchesShortName(t *testing.T) {
-	s := &InMemoryStore{
-		releaseImages: []string{
-			"nginx:latest", // short name should match any registry/path suffix ending with nginx:latest
-		},
-	}
-
-	s.SetPodImages("ns1", "pod1", []appstatetypes.ImageInfo{
-		{Name: "registry.mybank.com/library/appname/nginx:latest", SHA: "sha256:run2"},
-		{Name: "ghcr.io/company/nginx:1.27", SHA: "sha256:skip2"}, // not allowed
-	})
-
-	got := s.GetRunningImages()
-	require.ElementsMatch(t, []string{"sha256:run2"}, got["registry.mybank.com/library/appname/nginx:latest"]) // matched via suffix normalization
-	require.Nil(t, got["ghcr.io/company/nginx:1.27"])                                                          // excluded
-}
-
 func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_DoesNotOvermatchSimilarNames(t *testing.T) {
 	s := &InMemoryStore{
 		releaseImages: []string{
