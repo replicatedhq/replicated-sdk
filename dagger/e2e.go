@@ -223,7 +223,7 @@ spec:
     spec:
       containers:
       - name: replicated-ssl-test
-        image: alpine/curl:latest
+        image: docker.io/alpine/curl:latest
         command: ["sleep", "500d"]
         ports:
         - containerPort: 3000
