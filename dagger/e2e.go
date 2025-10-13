@@ -527,28 +527,45 @@ spec:
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
 
-	// Get running images again
-	allImagesSet, err := getRunningImages(ctx, appID, customerID, instanceAppID, tokenPlaintext)
-	if err != nil {
-		return fmt.Errorf("failed to get running images after enabling reportAllImages: %w", err)
-	}
-
-	// Validate that previously excluded images are now present
-	// The alpine/curl image from replicated-ssl-test should now be reported
+	// Get running images again with retries, to allow server to refresh image reporting
+	var allImagesSet map[string]struct{}
 	nowRequired := []string{"docker.io/alpine/curl:latest"}
-	missing = []string{}
-	for _, img := range nowRequired {
-		if _, ok := allImagesSet[img]; !ok {
-			missing = append(missing, img)
+	maxAttempts := 5
+	retryDelay := 5 * time.Second
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		var getErr error
+		allImagesSet, getErr = getRunningImages(ctx, appID, customerID, instanceAppID, tokenPlaintext)
+		if getErr != nil {
+			if attempt == maxAttempts {
+				return fmt.Errorf("failed to get running images after enabling reportAllImages (after %d attempts): %w", maxAttempts, getErr)
+			}
+			fmt.Printf("attempt %d/%d: failed to get running images: %v\n", attempt, maxAttempts, getErr)
+			time.Sleep(retryDelay)
+			continue
 		}
-	}
-	if len(missing) > 0 {
-		// Build a small preview of what we saw for debugging
-		seen := make([]string, 0, len(allImagesSet))
-		for k := range allImagesSet {
-			seen = append(seen, k)
+
+		// Validate that previously excluded images are now present
+		// The alpine/curl image from replicated-ssl-test should now be reported
+		missing = []string{}
+		for _, img := range nowRequired {
+			if _, ok := allImagesSet[img]; !ok {
+				missing = append(missing, img)
+			}
 		}
-		return fmt.Errorf("with reportAllImages=true, missing expected images: %v. Seen: %v", missing, seen)
+		if len(missing) == 0 {
+			break
+		}
+
+		if attempt == maxAttempts {
+			seen := make([]string, 0, len(allImagesSet))
+			for k := range allImagesSet {
+				seen = append(seen, k)
+			}
+			return fmt.Errorf("with reportAllImages=true, missing expected images after %d attempts: %v. Seen: %v", maxAttempts, missing, seen)
+		}
+
+		fmt.Printf("attempt %d/%d: still missing expected images with reportAllImages=true: %v (retrying)\n", attempt, maxAttempts, missing)
+		time.Sleep(retryDelay)
 	}
 
 	// Should still have the original required images
