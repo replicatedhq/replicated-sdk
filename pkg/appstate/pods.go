@@ -106,9 +106,13 @@ func extractImageInfo(containerStatus corev1.ContainerStatus) appstatetypes.Imag
 	}
 
 	sha := imageRef[atIndex+1:]
+	image := imageRef[:atIndex]
+	if image == "" {
+		image = containerStatus.Image
+	}
 
 	return appstatetypes.ImageInfo{
-		Name: containerStatus.Image,
+		Name: image,
 		SHA:  sha,
 	}
 }
