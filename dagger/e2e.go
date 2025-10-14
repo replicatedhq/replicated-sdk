@@ -513,6 +513,101 @@ spec:
 	// Test reportAllImages functionality
 	fmt.Println("Testing reportAllImages=true functionality...")
 
+	// Create a ClusterRole and ClusterRoleBinding to allow the SDK to read pods across all namespaces
+	fmt.Println("Creating ClusterRole for cross-namespace pod access...")
+	clusterRoleYaml := `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: replicated-cross-namespace-reader
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"`
+	clusterRoleSource := source.WithNewFile("/clusterrole.yaml", clusterRoleYaml)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		WithFile("/tmp/clusterrole.yaml", clusterRoleSource.File("/clusterrole.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/tmp/clusterrole.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply clusterrole: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println(out)
+
+	// Create ClusterRoleBinding
+	clusterRoleBindingYaml := `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: replicated-cross-namespace-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: replicated-cross-namespace-reader
+subjects:
+- kind: ServiceAccount
+  name: replicated
+  namespace: default`
+	clusterRoleBindingSource := source.WithNewFile("/clusterrolebinding.yaml", clusterRoleBindingYaml)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		WithFile("/tmp/clusterrolebinding.yaml", clusterRoleBindingSource.File("/clusterrolebinding.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/tmp/clusterrolebinding.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply clusterrolebinding: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println(out)
+
+	// Deploy a test pod in kube-system namespace to verify cross-namespace image reporting
+	fmt.Println("Deploying test pod in kube-system namespace...")
+	kubeSystemPodYaml := `apiVersion: v1
+kind: Pod
+metadata:
+  name: replicated-test-pod
+  namespace: kube-system
+  labels:
+    app: replicated-test
+spec:
+  containers:
+  - name: busybox
+    image: docker.io/library/busybox:latest
+    command: ["sleep", "500d"]`
+	kubeSystemPodSource := source.WithNewFile("/kube-system-pod.yaml", kubeSystemPodYaml)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		WithFile("/tmp/kube-system-pod.yaml", kubeSystemPodSource.File("/kube-system-pod.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/tmp/kube-system-pod.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply kube-system pod: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println(out)
+
+	// Wait for the kube-system pod to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		WithExec([]string{"kubectl", "wait", "--for=condition=ready", "pod/replicated-test-pod", "-n", "kube-system", "--timeout=1m"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for kube-system pod to be ready: %w", err)
+	}
+	fmt.Println(out)
+
 	// Upgrade the chart to enable reportAllImages
 	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
 		"--set", "replicated.tlsCertSecretName=test-tls",
@@ -529,7 +624,11 @@ spec:
 
 	// Get running images again with retries, to allow server to refresh image reporting
 	var allImagesSet map[string]struct{}
-	nowRequired := []string{"docker.io/alpine/curl:latest"}
+	// Now we expect both the alpine/curl from default namespace AND busybox from kube-system
+	nowRequired := []string{
+		"docker.io/alpine/curl:latest",  // from replicated-ssl-test in default namespace
+		"docker.io/library/busybox:latest", // from kube-system namespace
+	}
 	maxAttempts := 5
 	retryDelay := 5 * time.Second
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
