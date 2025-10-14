@@ -525,14 +525,12 @@ rules:
   resources:
   - "namespaces"
   verbs:
-  - "get"
   - "list"
 - apiGroups:
   - ""
   resources:
   - "pods"
   verbs:
-  - "get"
   - "list"
   - "watch"`
 	clusterRoleSource := source.WithNewFile("/clusterrole.yaml", clusterRoleYaml)
