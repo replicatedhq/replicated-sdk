@@ -273,6 +273,20 @@ func (mr *MockStoreMockRecorder) GetReplicatedID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReplicatedID", reflect.TypeOf((*MockStore)(nil).GetReplicatedID))
 }
 
+// GetReportAllImages mocks base method.
+func (m *MockStore) GetReportAllImages() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReportAllImages")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// GetReportAllImages indicates an expected call of GetReportAllImages.
+func (mr *MockStoreMockRecorder) GetReportAllImages() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReportAllImages", reflect.TypeOf((*MockStore)(nil).GetReportAllImages))
+}
+
 // GetRunningImages mocks base method.
 func (m *MockStore) GetRunningImages() map[string][]string {
 	m.ctrl.T.Helper()
