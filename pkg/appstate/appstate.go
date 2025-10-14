@@ -7,6 +7,10 @@ import (
 	"time"
 
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
+	reporttypes "github.com/replicatedhq/replicated-sdk/pkg/report/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -219,7 +223,33 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		StatefulSetResourceKind:           runStatefulSetController,
 	}
 	// Start a Pod image controller per namespace
-	for ns := range namespaceKinds {
+	// When reportAllImages is true or in embedded cluster, watch all accessible namespaces
+	sdkStore := store.GetStore()
+	shouldWatchAllNamespaces := sdkStore.GetReportAllImages() || report.GetDistribution(m.clientset) == reporttypes.EmbeddedCluster
+
+	namespacesToWatch := make(map[string]struct{})
+	if shouldWatchAllNamespaces {
+		// Get all namespaces
+		namespaces, err := m.clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			log.Printf("Failed to list namespaces for pod image tracking: %v", err)
+			// Fall back to only watching namespaces with informers
+			for ns := range namespaceKinds {
+				namespacesToWatch[ns] = struct{}{}
+			}
+		} else {
+			for _, ns := range namespaces.Items {
+				namespacesToWatch[ns.Name] = struct{}{}
+			}
+		}
+	} else {
+		// Only watch namespaces that have status informers
+		for ns := range namespaceKinds {
+			namespacesToWatch[ns] = struct{}{}
+		}
+	}
+
+	for ns := range namespacesToWatch {
 		goRun(runPodImageController, ns, nil)
 	}
 	for namespace, kinds := range namespaceKinds {

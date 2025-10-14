@@ -314,3 +314,7 @@ func (s *InMemoryStore) GetUpdates() []upstreamtypes.ChannelRelease {
 func (s *InMemoryStore) SetUpdates(updates []upstreamtypes.ChannelRelease) {
 	s.updates = updates
 }
+
+func (s *InMemoryStore) GetReportAllImages() bool {
+	return s.reportAllImages
+}

@@ -523,6 +523,13 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - "namespaces"
+  verbs:
+  - "get"
+  - "list"
+- apiGroups:
+  - ""
+  resources:
   - "pods"
   verbs:
   - "get"
