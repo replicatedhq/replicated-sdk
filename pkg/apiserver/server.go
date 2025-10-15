@@ -40,6 +40,7 @@ type APIServerParams struct {
 	AppID                 string
 	Namespace             string
 	TlsCertSecretName     string
+	ReportAllImages       bool
 }
 
 func Start(params APIServerParams) {
