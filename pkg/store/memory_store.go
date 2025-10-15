@@ -29,7 +29,8 @@ type InMemoryStore struct {
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
 	// podImages holds namespace -> podUID -> []ImageInfo
-	podImages map[string]map[string][]appstatetypes.ImageInfo
+	podImages       map[string]map[string][]appstatetypes.ImageInfo
+	reportAllImages bool
 }
 
 type InitInMemoryStoreOptions struct {
@@ -48,6 +49,7 @@ type InitInMemoryStoreOptions struct {
 	ReplicatedAppEndpoint string
 	ReleaseImages         []string
 	Namespace             string
+	ReportAllImages       bool
 }
 
 func InitInMemory(options InitInMemoryStoreOptions) {
@@ -68,6 +70,7 @@ func InitInMemory(options InitInMemoryStoreOptions) {
 		replicatedAppEndpoint: options.ReplicatedAppEndpoint,
 		releaseImages:         options.ReleaseImages,
 		namespace:             options.Namespace,
+		reportAllImages:       options.ReportAllImages,
 	})
 }
 
@@ -173,18 +176,22 @@ func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []a
 		s.podImages[namespace] = make(map[string][]appstatetypes.ImageInfo)
 	}
 
-	// If releaseImages are configured, filter by name:tag only and
-	// normalize docker hub references so that, for example,
-	// "nginx:alpine" matches "docker.io/library/nginx:alpine" and
+	// If reportAllImages is true, skip filtering and report all images.
+	// Otherwise, if releaseImages are configured, filter by name:tag only and
+	// normalize image references so that, for example,
+	// "nginx:alpine" matches "docker.io/library/nginx:alpine",
+	// "nginx:1.27" matches "myregistry.com/library/nginx:1.27" and
 	// "alpine/curl:latest" matches "docker.io/alpine/curl:latest".
 	var filtered []appstatetypes.ImageInfo
-	if len(s.releaseImages) > 0 {
+	if s.reportAllImages {
+		filtered = images
+	} else if len(s.releaseImages) > 0 {
 		allowed := make(map[string]struct{}, len(s.releaseImages))
 		for _, img := range s.releaseImages {
 			if img == "" {
 				continue
 			}
-			// Drop any @sha... suffix and normalize docker hub references
+			// Drop any @sha... suffix and normalize image references
 			canonical := canonicalNameTag(img)
 			allowed[canonical] = struct{}{}
 		}
@@ -218,27 +225,46 @@ func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []a
 //	canonicalNameTag("docker.io/library/nginx:latest") => "nginx:latest"
 //	canonicalNameTag("docker.io/nginx:latest") => "nginx:latest"
 //	canonicalNameTag("docker.io/alpine/curl:latest") => "alpine/curl:latest"
+//	canonicalNameTag("myregistry.com/nginx:alpine") => "nginx:alpine"
+//	canonicalNameTag("myregistry.com/library/nginx:1.27") => "nginx:1.27"
+//	canonicalNameTag("myregistry.com/notlibrary/nginx:1.27") => "notlibrary/nginx:1.27"
+//	canonicalNameTag("myregistry.com/proxy/myapp/notlibrary/nginx:1.27") => "notlibrary/nginx:1.27"
 func canonicalNameTag(s string) string {
 	// strip content digest if present
 	if at := strings.LastIndex(s, "@"); at != -1 {
 		s = s[:at]
 	}
-	// normalize docker hub hostnames
-	s = strings.TrimPrefix(s, "index.docker.io/")
-	s = strings.TrimPrefix(s, "docker.io/")
-	// if it is a docker hub library image, drop the implicit namespace
-	// Only drop the library/ namespace for docker hub images.
-	// At this point, we have already trimmed docker.io, so this is safe for hub
-	// or for shorthand references that omit the registry host entirely.
-	s = strings.TrimPrefix(s, "library/")
+	// strip registry host (heuristic: before first '/' contains '.' or ':' or is 'localhost')
+	if idx := strings.IndexByte(s, '/'); idx != -1 {
+		host := s[:idx]
+		if strings.Contains(host, ".") || strings.Contains(host, ":") || host == "localhost" {
+			s = s[idx+1:]
+		}
+	}
 	// ensure a tag exists; if not, default to latest
-	// a tag is present if there is a ':' after the last '/'
 	lastSlash := strings.LastIndexByte(s, '/')
 	lastColon := strings.LastIndexByte(s, ':')
 	if lastColon == -1 || lastColon < lastSlash {
 		s += ":latest"
+		lastColon = strings.LastIndexByte(s, ':')
 	}
-	return s
+	// split name and tag
+	name := s[:lastColon]
+	tag := s[lastColon:]
+	// drop leading library/ namespace if present
+	name = strings.TrimPrefix(name, "library/")
+	// keep only the last one or two segments of the name
+	parts := strings.Split(name, "/")
+	if len(parts) >= 3 {
+		name = parts[len(parts)-2] + "/" + parts[len(parts)-1]
+	} else if len(parts) == 2 {
+		name = parts[0] + "/" + parts[1]
+	} else if len(parts) == 1 {
+		name = parts[0]
+	} else {
+		name = ""
+	}
+	return name + tag
 }
 
 func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {
@@ -287,4 +313,8 @@ func (s *InMemoryStore) GetUpdates() []upstreamtypes.ChannelRelease {
 
 func (s *InMemoryStore) SetUpdates(updates []upstreamtypes.ChannelRelease) {
 	s.updates = updates
+}
+
+func (s *InMemoryStore) GetReportAllImages() bool {
+	return s.reportAllImages
 }

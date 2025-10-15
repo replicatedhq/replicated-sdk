@@ -82,14 +82,14 @@ func extractPodImages(pod *corev1.Pod) []appstatetypes.ImageInfo {
 
 	// Extract from regular container statuses
 	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if info := extractImageInfo(containerStatus); info.SHA != "" {
+		if info := extractImageInfo(pod, containerStatus, false); info.SHA != "" {
 			images = append(images, info)
 		}
 	}
 
 	// Extract from init container statuses
 	for _, containerStatus := range pod.Status.InitContainerStatuses {
-		if info := extractImageInfo(containerStatus); info.SHA != "" {
+		if info := extractImageInfo(pod, containerStatus, true); info.SHA != "" {
 			images = append(images, info)
 		}
 	}
@@ -97,8 +97,28 @@ func extractPodImages(pod *corev1.Pod) []appstatetypes.ImageInfo {
 	return images
 }
 
+// getContainerImageFromSpec looks up the container image from the pod spec by name
+func getContainerImageFromSpec(pod *corev1.Pod, containerName string) string {
+	for _, container := range pod.Spec.Containers {
+		if container.Name == containerName {
+			return container.Image
+		}
+	}
+	return ""
+}
+
+// getInitContainerImageFromSpec looks up the init container image from the pod spec by name
+func getInitContainerImageFromSpec(pod *corev1.Pod, containerName string) string {
+	for _, container := range pod.Spec.InitContainers {
+		if container.Name == containerName {
+			return container.Image
+		}
+	}
+	return ""
+}
+
 // extractImageInfo extracts the image name and SHA digest from a container status
-func extractImageInfo(containerStatus corev1.ContainerStatus) appstatetypes.ImageInfo {
+func extractImageInfo(pod *corev1.Pod, containerStatus corev1.ContainerStatus, isInitContainer bool) appstatetypes.ImageInfo {
 	imageRef := containerStatus.ImageID
 	atIndex := strings.LastIndex(imageRef, "@")
 	if atIndex == -1 {
@@ -107,8 +127,33 @@ func extractImageInfo(containerStatus corev1.ContainerStatus) appstatetypes.Imag
 
 	sha := imageRef[atIndex+1:]
 
+	// Try to get the image name from the pod spec first (includes tag)
+	var image string
+	if isInitContainer {
+		image = getInitContainerImageFromSpec(pod, containerStatus.Name)
+	} else {
+		image = getContainerImageFromSpec(pod, containerStatus.Name)
+	}
+
+	// Remove digest from spec image if present (e.g., image:tag@sha256:... or image@sha256:...)
+	if image != "" {
+		if digestIndex := strings.LastIndex(image, "@"); digestIndex != -1 {
+			image = image[:digestIndex]
+		}
+	}
+
+	// Fall back to ImageID if spec lookup fails
+	if image == "" {
+		image = imageRef[:atIndex]
+	}
+
+	// Last resort: use containerStatus.Image if we still don't have an image
+	if image == "" {
+		image = containerStatus.Image
+	}
+
 	return appstatetypes.ImageInfo{
-		Name: containerStatus.Image,
+		Name: image,
 		SHA:  sha,
 	}
 }
