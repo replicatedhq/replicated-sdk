@@ -41,6 +41,7 @@ type Store interface {
 	GetRunningImages() map[string][]string
 	GetUpdates() []upstreamtypes.ChannelRelease
 	SetUpdates(updates []upstreamtypes.ChannelRelease)
+	GetReportAllImages() bool
 }
 
 func SetStore(s Store) {

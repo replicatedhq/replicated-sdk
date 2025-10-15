@@ -7,6 +7,11 @@ import (
 	"time"
 
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/report"
+	reporttypes "github.com/replicatedhq/replicated-sdk/pkg/report/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
+	authv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -219,8 +224,44 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		StatefulSetResourceKind:           runStatefulSetController,
 	}
 	// Start a Pod image controller per namespace
-	for ns := range namespaceKinds {
-		goRun(runPodImageController, ns, nil)
+	// When reportAllImages is true or in embedded cluster, watch all accessible namespaces
+	sdkStore := store.GetStore()
+	shouldWatchAllNamespaces := sdkStore.GetReportAllImages() || report.GetDistribution(m.clientset) == reporttypes.EmbeddedCluster
+
+	informerNamespaces := make(map[string]struct{})
+	for _, informer := range informers {
+		informerNamespaces[informer.Namespace] = struct{}{}
+	}
+	namespacesToWatch := make(map[string]struct{})
+	if shouldWatchAllNamespaces {
+		// Check if we have permission to list namespaces before attempting
+		if canListNamespaces(ctx, m.clientset) {
+			// Get all namespaces
+			namespaces, err := m.clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				log.Printf("Failed to list namespaces for pod image tracking: %v", err)
+				// Fall back to only watching namespaces with informers
+				namespacesToWatch = informerNamespaces
+			} else {
+				for _, ns := range namespaces.Items {
+					namespacesToWatch[ns.Name] = struct{}{}
+				}
+			}
+		} else {
+			log.Printf("No permission to list namespaces, falling back to namespaces with status informers")
+			// Fall back to only watching namespaces with informers
+			namespacesToWatch = informerNamespaces
+		}
+	} else {
+		// Only watch namespaces that have status informers
+		namespacesToWatch = informerNamespaces
+	}
+
+	// Filter out namespaces we don't have permission to access
+	for ns := range namespacesToWatch {
+		if canAccessPodsInNamespace(ctx, m.clientset, ns) {
+			goRun(runPodImageController, ns, nil)
+		}
 	}
 	for namespace, kinds := range namespaceKinds {
 		for kind, informers := range kinds {
@@ -262,4 +303,70 @@ func runInformer(ctx context.Context, informer cache.SharedInformer, eventHandle
 	})
 
 	informer.Run(ctx.Done())
+}
+
+// canAccessPodsInNamespace checks if the current service account has permission to list and watch pods in the given namespace
+func canAccessPodsInNamespace(ctx context.Context, clientset kubernetes.Interface, namespace string) bool {
+	// Create a SelfSubjectAccessReview to check if we can list pods in this namespace
+	sar := &authv1.SelfSubjectAccessReview{
+		Spec: authv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authv1.ResourceAttributes{
+				Namespace: namespace,
+				Verb:      "list",
+				Group:     "",
+				Resource:  "pods",
+			},
+		},
+	}
+
+	result, err := clientset.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
+	if err != nil {
+		log.Printf("Failed to check access for pods in namespace %s: %v", namespace, err)
+		return false
+	}
+
+	if !result.Status.Allowed {
+		log.Printf("No permission to list pods in namespace %s, skipping", namespace)
+		return false
+	}
+
+	// Also check watch permission
+	sar.Spec.ResourceAttributes.Verb = "watch"
+	result, err = clientset.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
+	if err != nil {
+		log.Printf("Failed to check watch access for pods in namespace %s: %v", namespace, err)
+		return false
+	}
+
+	if !result.Status.Allowed {
+		log.Printf("No permission to watch pods in namespace %s, skipping", namespace)
+		return false
+	}
+
+	return true
+}
+
+// canListNamespaces checks if the current service account has permission to list namespaces
+func canListNamespaces(ctx context.Context, clientset kubernetes.Interface) bool {
+	sar := &authv1.SelfSubjectAccessReview{
+		Spec: authv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authv1.ResourceAttributes{
+				Verb:     "list",
+				Group:    "",
+				Resource: "namespaces",
+			},
+		},
+	}
+
+	result, err := clientset.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
+	if err != nil {
+		log.Printf("Failed to check namespace list permission: %v", err)
+		return false
+	}
+
+	if !result.Status.Allowed {
+		return false
+	}
+
+	return true
 }

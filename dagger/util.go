@@ -2,7 +2,6 @@ package main
 
 import (
 	"dagger/replicated-sdk/internal/dagger"
-	"strings"
 	"time"
 )
 
@@ -18,14 +17,4 @@ func CacheBustingExec(args []string, opts ...dagger.ContainerWithExecOpts) dagge
 		}
 		return c.WithEnvVariable("DAGGER_CACHEBUSTER_CBE", time.Now().String()).WithExec(args, opts...)
 	}
-}
-
-// sanitizeVersionForMelange converts version strings to be compatible with melange/apko packages
-// Converts dashes to underscores to follow melange naming conventions
-// Examples: "1.6.0-beta.1" → "1_6_0_beta1", "1.6.0-alpha" → "1_6_0_alpha"
-func sanitizeVersionForMelange(version string) string {
-	v := strings.ReplaceAll(version, "-beta.", "_beta")
-	v = strings.ReplaceAll(v, "-alpha.", "_alpha")
-	v = strings.ReplaceAll(v, "-", "_") // catch any remaining dashes
-	return v
 }
