@@ -50,16 +50,16 @@ func e2e(
 	// Defer cluster deletion if we got a cluster ID, regardless of creation success
 	if unmarshalErr == nil && replicatedCluster.ID != "" {
 		defer func() {
-			fmt.Printf("Cleaning up cluster %s...\n", replicatedCluster.ID)
+			fmt.Printf("Cleaning up cluster %s of distribution %s and version %s...\n", replicatedCluster.ID, distribution, version)
 			cleanupCtr := dag.Container().From("replicated/vendor-cli:latest").
 				WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
 				WithExec([]string{"/replicated", "cluster", "rm", replicatedCluster.ID})
 
 			cleanupOut, cleanupErr := cleanupCtr.Stdout(ctx)
 			if cleanupErr != nil {
-				fmt.Printf("Warning: failed to delete cluster %s: %v\n", replicatedCluster.ID, cleanupErr)
+				fmt.Printf("Warning: failed to delete cluster %s of distribution %s and version %s: %v\n", replicatedCluster.ID, distribution, version, cleanupErr)
 			} else {
-				fmt.Printf("Successfully deleted cluster %s: %s\n", replicatedCluster.ID, cleanupOut)
+				fmt.Printf("Successfully deleted cluster %s of distribution %s and version %s: %s\n", replicatedCluster.ID, distribution, version, cleanupOut)
 			}
 		}()
 	}
@@ -653,7 +653,7 @@ spec:
 	var allImagesSet map[string]struct{}
 	// Now we expect both the alpine/curl from default namespace AND busybox from kube-system
 	nowRequired := []string{
-		"docker.io/alpine/curl:latest",  // from replicated-ssl-test in default namespace
+		"docker.io/alpine/curl:latest",     // from replicated-ssl-test in default namespace
 		"docker.io/library/busybox:latest", // from kube-system namespace
 	}
 	maxAttempts := 5
