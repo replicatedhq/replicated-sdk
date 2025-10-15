@@ -135,6 +135,13 @@ func extractImageInfo(pod *corev1.Pod, containerStatus corev1.ContainerStatus, i
 		image = getContainerImageFromSpec(pod, containerStatus.Name)
 	}
 
+	// Remove digest from spec image if present (e.g., image:tag@sha256:... or image@sha256:...)
+	if image != "" {
+		if digestIndex := strings.LastIndex(image, "@"); digestIndex != -1 {
+			image = image[:digestIndex]
+		}
+	}
+
 	// Fall back to ImageID if spec lookup fails
 	if image == "" {
 		image = imageRef[:atIndex]

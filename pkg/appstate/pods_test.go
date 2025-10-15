@@ -158,6 +158,48 @@ func TestExtractImageInfo(t *testing.T) {
 				SHA:  "",
 			},
 		},
+		{
+			name: "spec has image with tag and digest - strip digest",
+			pod: &corev1.Pod{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "operator",
+						Image: "proxy.staging.replicated.com/anonymous/replicated/embedded-cluster-operator-image:v2.11.3-k8s-1.33-amd64@sha256:bf5128d4b342ccb8c7c42f1c8f1df6569fcb3e3ea3c58f43e0e3d40cabd4e75b",
+					}},
+				},
+			},
+			containerStatus: corev1.ContainerStatus{
+				Name:    "operator",
+				Image:   "sha256:a2f472acaf6839c6e046f3c157f9b47be1e01128695f14a3f108e68b078a3f90",
+				ImageID: "proxy.staging.replicated.com/anonymous/replicated/embedded-cluster-operator-image@sha256:bf5128d4b342ccb8c7c42f1c8f1df6569fcb3e3ea3c58f43e0e3d40cabd4e75b",
+			},
+			isInitContainer: false,
+			expected: appstatetypes.ImageInfo{
+				Name: "proxy.staging.replicated.com/anonymous/replicated/embedded-cluster-operator-image:v2.11.3-k8s-1.33-amd64",
+				SHA:  "sha256:bf5128d4b342ccb8c7c42f1c8f1df6569fcb3e3ea3c58f43e0e3d40cabd4e75b",
+			},
+		},
+		{
+			name: "spec has image with digest only - strip digest",
+			pod: &corev1.Pod{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "operator",
+						Image: "proxy.staging.replicated.com/anonymous/replicated/embedded-cluster-operator-image@sha256:bf5128d4b342ccb8c7c42f1c8f1df6569fcb3e3ea3c58f43e0e3d40cabd4e75b",
+					}},
+				},
+			},
+			containerStatus: corev1.ContainerStatus{
+				Name:    "operator",
+				Image:   "sha256:a2f472acaf6839c6e046f3c157f9b47be1e01128695f14a3f108e68b078a3f90",
+				ImageID: "proxy.staging.replicated.com/anonymous/replicated/embedded-cluster-operator-image@sha256:bf5128d4b342ccb8c7c42f1c8f1df6569fcb3e3ea3c58f43e0e3d40cabd4e75b",
+			},
+			isInitContainer: false,
+			expected: appstatetypes.ImageInfo{
+				Name: "proxy.staging.replicated.com/anonymous/replicated/embedded-cluster-operator-image",
+				SHA:  "sha256:bf5128d4b342ccb8c7c42f1c8f1df6569fcb3e3ea3c58f43e0e3d40cabd4e75b",
+			},
+		},
 	}
 
 	for _, tt := range tests {
