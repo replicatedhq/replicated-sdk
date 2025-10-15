@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: test-container
-        image: nginx:latest
+        image: docker.io/library/nginx:latest
         command: ["sleep", "500d"]
       tolerations:
       - operator: Exists
