@@ -16,26 +16,96 @@ import (
 func TestExtractImageInfo(t *testing.T) {
 	tests := []struct {
 		name            string
+		pod             *corev1.Pod
 		containerStatus corev1.ContainerStatus
+		isInitContainer bool
 		expected        appstatetypes.ImageInfo
 	}{
 		{
-			name: "image with SHA digest",
+			name: "image with SHA digest - use spec with tag",
+			pod: &corev1.Pod{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "my-container",
+						Image: "registry.com/my-app:v1.0",
+					}},
+				},
+			},
 			containerStatus: corev1.ContainerStatus{
-				Image:   "registry.com/my-app",
+				Name:    "my-container",
+				Image:   "sha256:blah",
 				ImageID: "registry.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			},
+			isInitContainer: false,
+			expected: appstatetypes.ImageInfo{
+				Name: "registry.com/my-app:v1.0",
+				SHA:  "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			},
+		},
+		{
+			name: "init container with SHA digest - use spec with tag",
+			pod: &corev1.Pod{
+				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{{
+						Name:  "init-container",
+						Image: "busybox:1.36",
+					}},
+				},
+			},
+			containerStatus: corev1.ContainerStatus{
+				Name:    "init-container",
+				Image:   "sha256:xyz123",
+				ImageID: "busybox@sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678",
+			},
+			isInitContainer: true,
+			expected: appstatetypes.ImageInfo{
+				Name: "busybox:1.36",
+				SHA:  "sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678",
+			},
+		},
+		{
+			name: "container not in spec - fallback to ImageID",
+			pod: &corev1.Pod{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "different-container",
+						Image: "other:v1",
+					}},
+				},
+			},
+			containerStatus: corev1.ContainerStatus{
+				Name:    "my-container",
+				Image:   "sha256:abcd1234",
+				ImageID: "registry.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			},
+			isInitContainer: false,
 			expected: appstatetypes.ImageInfo{
 				Name: "registry.com/my-app",
 				SHA:  "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			},
 		},
 		{
-			name: "image with tag only",
+			name: "empty spec - fallback to ImageID",
+			pod:  &corev1.Pod{},
+			containerStatus: corev1.ContainerStatus{
+				Name:    "my-container",
+				Image:   "sha256:abcd1234",
+				ImageID: "registry.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			},
+			isInitContainer: false,
+			expected: appstatetypes.ImageInfo{
+				Name: "registry.com/my-app",
+				SHA:  "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			},
+		},
+		{
+			name: "image with tag only - no SHA",
+			pod:  &corev1.Pod{},
 			containerStatus: corev1.ContainerStatus{
 				Image:   "registry.com/my-app:latest",
 				ImageID: "registry.com/my-app:latest",
 			},
+			isInitContainer: false,
 			expected: appstatetypes.ImageInfo{
 				Name: "",
 				SHA:  "",
@@ -43,32 +113,46 @@ func TestExtractImageInfo(t *testing.T) {
 		},
 		{
 			name: "image with multiple @ symbols",
+			pod:  &corev1.Pod{},
 			containerStatus: corev1.ContainerStatus{
 				Image:   "registry@company.com/my-app",
 				ImageID: "registry@company.com/my-app@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			},
+			isInitContainer: false,
 			expected: appstatetypes.ImageInfo{
 				Name: "registry@company.com/my-app",
 				SHA:  "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			},
 		},
 		{
-			name: "simple image name with SHA",
+			name: "spec has tag, status.Image is sha256 - prefer spec",
+			pod: &corev1.Pod{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "nginx-container",
+						Image: "nginx:1.25",
+					}},
+				},
+			},
 			containerStatus: corev1.ContainerStatus{
-				Image:   "nginx",
+				Name:    "nginx-container",
+				Image:   "sha256:1234567890abcd",
 				ImageID: "nginx@sha256:1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234567890",
 			},
+			isInitContainer: false,
 			expected: appstatetypes.ImageInfo{
-				Name: "nginx",
+				Name: "nginx:1.25",
 				SHA:  "sha256:1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234567890",
 			},
 		},
 		{
 			name: "image without registry",
+			pod:  &corev1.Pod{},
 			containerStatus: corev1.ContainerStatus{
 				Image:   "my-app:v1.0.0",
 				ImageID: "my-app:v1.0.0",
 			},
+			isInitContainer: false,
 			expected: appstatetypes.ImageInfo{
 				Name: "",
 				SHA:  "",
@@ -78,7 +162,7 @@ func TestExtractImageInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := extractImageInfo(tt.containerStatus)
+			result := extractImageInfo(tt.pod, tt.containerStatus, tt.isInitContainer)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -98,16 +182,32 @@ func TestPodImageEventHandler_MockStoreCalls(t *testing.T) {
 
 	pod1Running := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "pod-1", UID: pod1UID},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:  "nginx-container",
+				Image: "nginx:1",
+			}, {
+				Name:  "redis-container",
+				Image: "redis:2",
+			}},
+			InitContainers: []corev1.Container{{
+				Name:  "busybox-container",
+				Image: "busybox:3",
+			}},
+		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:    "nginx-container",
 				Image:   "nginx",
 				ImageID: "nginx@sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 			}, {
+				Name:    "redis-container",
 				Image:   "redis",
 				ImageID: "redis@sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678",
 			}},
 			InitContainerStatuses: []corev1.ContainerStatus{{
+				Name:    "busybox-container",
 				Image:   "busybox",
 				ImageID: "busybox@sha256:ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012",
 			}},
@@ -119,19 +219,26 @@ func TestPodImageEventHandler_MockStoreCalls(t *testing.T) {
 	}
 	pod2Running := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "pod-2", UID: pod2UID},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:  "postgres-container",
+				Image: "postgres:17",
+			}},
+		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{{
-				Image:   "postgres:17",
+				Name:    "postgres-container",
+				Image:   "postgres",
 				ImageID: "postgres@sha256:mnop3456789012mnop3456789012mnop3456789012mnop3456789012mnop3456",
 			}},
 		},
 	}
 
 	expectedPod1Images := []appstatetypes.ImageInfo{
-		{Name: "nginx", SHA: "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234"},
-		{Name: "redis", SHA: "sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678"},
-		{Name: "busybox", SHA: "sha256:ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012"},
+		{Name: "nginx:1", SHA: "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234"},
+		{Name: "redis:2", SHA: "sha256:efgh5678901234efgh5678901234efgh5678901234efgh5678901234efgh5678"},
+		{Name: "busybox:3", SHA: "sha256:ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012345678ijkl9012"},
 	}
 	expectedPod2Images := []appstatetypes.ImageInfo{
 		{Name: "postgres:17", SHA: "sha256:mnop3456789012mnop3456789012mnop3456789012mnop3456789012mnop3456"},
