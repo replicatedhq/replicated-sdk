@@ -20,7 +20,7 @@ spec:
       serviceAccountName: {{ include "test-chart.serviceAccountName" . }}
       containers:
         - name: second-{{ .Chart.Name }}
-          image: "nginx:alpine"
+          image: "docker.io/library/nginx:alpine"
           ports:
             - name: http
               containerPort: 80
