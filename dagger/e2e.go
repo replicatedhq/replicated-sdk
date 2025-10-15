@@ -38,17 +38,22 @@ func e2e(
 		WithExec([]string{"/replicated", "cluster", "create", "--distribution", distribution, "--version", version, "--wait", "15m", "--output", "json"})
 
 	out, err := ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create cluster: %w", err)
+	}
 
-	// Try to unmarshal cluster info even on error, as the cluster may have been partially created
 	type ReplicatedCluster struct {
 		ID     string `json:"id"`
 		Status string `json:"status"`
 	}
 	replicatedCluster := ReplicatedCluster{}
-	unmarshalErr := json.Unmarshal([]byte(out), &replicatedCluster)
+	err = json.Unmarshal([]byte(out), &replicatedCluster)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal cluster: %w", err)
+	}
 
-	// Defer cluster deletion if we got a cluster ID, regardless of creation success
-	if unmarshalErr == nil && replicatedCluster.ID != "" {
+	// Defer cluster deletion if we got a cluster ID
+	if replicatedCluster.ID != "" {
 		defer func() {
 			fmt.Printf("Cleaning up cluster %s of distribution %s and version %s...\n", replicatedCluster.ID, distribution, version)
 			cleanupCtr := dag.Container().From("replicated/vendor-cli:latest").
@@ -62,15 +67,6 @@ func e2e(
 				fmt.Printf("Successfully deleted cluster %s of distribution %s and version %s: %s\n", replicatedCluster.ID, distribution, version, cleanupOut)
 			}
 		}()
-	}
-
-	// Now check for creation errors
-	if err != nil {
-		return fmt.Errorf("failed to create cluster: %w", err)
-	}
-
-	if unmarshalErr != nil {
-		return fmt.Errorf("failed to unmarshal cluster: %w", unmarshalErr)
 	}
 
 	// get the kubeconfig
