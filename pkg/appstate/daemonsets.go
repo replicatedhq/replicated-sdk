@@ -37,10 +37,10 @@ func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			return clientset.AppsV1().DaemonSets(targetNamespace).List(context.TODO(), options)
+			return clientset.AppsV1().DaemonSets(targetNamespace).List(ctx, options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			return clientset.AppsV1().DaemonSets(targetNamespace).Watch(context.TODO(), options)
+			return clientset.AppsV1().DaemonSets(targetNamespace).Watch(ctx, options)
 		},
 	}
 

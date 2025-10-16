@@ -11,8 +11,11 @@ import (
 	reporttypes "github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	authv1 "k8s.io/api/authorization/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -223,6 +226,16 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		ServiceResourceKind:               runServiceController,
 		StatefulSetResourceKind:           runStatefulSetController,
 	}
+	for namespace, kinds := range namespaceKinds {
+		for kind, informers := range kinds {
+			if impl, ok := kindImpls[kind]; ok {
+				goRun(impl, namespace, informers)
+			} else {
+				log.Printf("Informer requested for unsupported resource kind %v", kind)
+			}
+		}
+	}
+
 	// Start a Pod image controller per namespace
 	// When reportAllImages is true or in embedded cluster, watch all accessible namespaces
 	sdkStore := store.GetStore()
@@ -257,20 +270,59 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		namespacesToWatch = informerNamespaces
 	}
 
-	// Filter out namespaces we don't have permission to access
-	for ns := range namespacesToWatch {
-		if canAccessPodsInNamespace(ctx, m.clientset, ns) {
-			goRun(runPodImageController, ns, nil)
+	// Track started pod watchers to avoid duplicates from dynamic namespace events
+	var startedMu sync.Mutex
+	startedNamespaces := make(map[string]struct{})
+
+	maybeStartPodWatcher := func(ns string) {
+		if !canAccessPodsInNamespace(ctx, m.clientset, ns) {
+			return
 		}
+		startedMu.Lock()
+		if _, ok := startedNamespaces[ns]; ok {
+			startedMu.Unlock()
+			return
+		}
+		startedNamespaces[ns] = struct{}{}
+		startedMu.Unlock()
+		goRun(runPodImageController, ns, nil)
 	}
-	for namespace, kinds := range namespaceKinds {
-		for kind, informers := range kinds {
-			if impl, ok := kindImpls[kind]; ok {
-				goRun(impl, namespace, informers)
-			} else {
-				log.Printf("Informer requested for unsupported resource kind %v", kind)
-			}
+
+	// Start initial pod watchers for namespaces we can access
+	for ns := range namespacesToWatch {
+		maybeStartPodWatcher(ns)
+	}
+
+	// If configured to watch all namespaces and we have list+watch perms on namespaces,
+	// start a namespace informer to dynamically watch new namespaces and spawn pod watchers
+	if shouldWatchAllNamespaces && canListNamespaces(ctx, m.clientset) && canWatchNamespaces(ctx, m.clientset) {
+		listwatch := &cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return m.clientset.CoreV1().Namespaces().List(ctx, options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return m.clientset.CoreV1().Namespaces().Watch(ctx, options)
+			},
 		}
+		informer := cache.NewSharedInformer(
+			listwatch,
+			&corev1.Namespace{},
+			time.Minute,
+		)
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				ns, _ := obj.(*corev1.Namespace)
+				if ns == nil {
+					return
+				}
+				maybeStartPodWatcher(ns.Name)
+			},
+		})
+		shutdown.Add(1)
+		go func() {
+			defer shutdown.Done()
+			informer.Run(ctx.Done())
+		}()
 	}
 
 	for {
@@ -361,6 +413,31 @@ func canListNamespaces(ctx context.Context, clientset kubernetes.Interface) bool
 	result, err := clientset.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
 	if err != nil {
 		log.Printf("Failed to check namespace list permission: %v", err)
+		return false
+	}
+
+	if !result.Status.Allowed {
+		return false
+	}
+
+	return true
+}
+
+// canWatchNamespaces checks if the current service account has permission to watch namespaces
+func canWatchNamespaces(ctx context.Context, clientset kubernetes.Interface) bool {
+	sar := &authv1.SelfSubjectAccessReview{
+		Spec: authv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authv1.ResourceAttributes{
+				Verb:     "watch",
+				Group:    "",
+				Resource: "namespaces",
+			},
+		},
+	}
+
+	result, err := clientset.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
+	if err != nil {
+		log.Printf("Failed to check namespace watch permission: %v", err)
 		return false
 	}
 

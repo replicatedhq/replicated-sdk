@@ -28,10 +28,10 @@ func runServiceController(
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			return clientset.CoreV1().Services(targetNamespace).List(context.TODO(), options)
+			return clientset.CoreV1().Services(targetNamespace).List(ctx, options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			return clientset.CoreV1().Services(targetNamespace).Watch(context.TODO(), options)
+			return clientset.CoreV1().Services(targetNamespace).Watch(ctx, options)
 		},
 	}
 	informer := cache.NewSharedInformer(
