@@ -31,10 +31,10 @@ func runIngressController(
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			return clientset.NetworkingV1().Ingresses(targetNamespace).List(context.TODO(), options)
+			return clientset.NetworkingV1().Ingresses(targetNamespace).List(ctx, options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			return clientset.NetworkingV1().Ingresses(targetNamespace).Watch(context.TODO(), options)
+			return clientset.NetworkingV1().Ingresses(targetNamespace).Watch(ctx, options)
 		},
 	}
 	informer := cache.NewSharedInformer(
