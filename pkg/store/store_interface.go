@@ -1,9 +1,8 @@
 package store
 
 import (
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
 
@@ -16,10 +15,10 @@ var (
 type Store interface {
 	GetReplicatedID() string
 	GetAppID() string
-	GetLicense() *kotsv1beta1.License
-	SetLicense(license *kotsv1beta1.License)
-	GetLicenseFields() sdklicensetypes.LicenseFields
-	SetLicenseFields(licenseFields sdklicensetypes.LicenseFields)
+	GetLicense() licensetypes.LicenseWrapper
+	SetLicense(license licensetypes.LicenseWrapper)
+	GetLicenseFields() licensetypes.LicenseFields
+	SetLicenseFields(licenseFields licensetypes.LicenseFields)
 	IsDevLicense() bool
 	GetAppSlug() string
 	GetAppName() string
