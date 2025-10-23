@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	kotsv1beta2 "github.com/replicatedhq/kotskinds/apis/kots/v1beta2"
+	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 )
 
 var (
@@ -41,7 +43,29 @@ func (e LicenseDataError) Error() string {
 	return e.message
 }
 
-func VerifySignature(license *kotsv1beta1.License) (*kotsv1beta1.License, error) {
+// VerifySignature verifies a license wrapper using the appropriate algorithm
+func VerifySignature(wrapper licensetypes.LicenseWrapper) (licensetypes.LicenseWrapper, error) {
+	if wrapper.V1 != nil {
+		verified, err := verifyV1Signature(wrapper.V1)
+		if err != nil {
+			return licensetypes.LicenseWrapper{}, err
+		}
+		return licensetypes.LicenseWrapper{V1: verified}, nil
+	}
+
+	if wrapper.V2 != nil {
+		verified, err := verifyV2Signature(wrapper.V2)
+		if err != nil {
+			return licensetypes.LicenseWrapper{}, err
+		}
+		return licensetypes.LicenseWrapper{V2: verified}, nil
+	}
+
+	return licensetypes.LicenseWrapper{}, errors.New("license wrapper is empty")
+}
+
+// verifyV1Signature verifies a v1beta1 license using MD5 (existing logic)
+func verifyV1Signature(license *kotsv1beta1.License) (*kotsv1beta1.License, error) {
 	outerSignature := &OuterSignature{}
 	if err := json.Unmarshal(license.Spec.Signature, outerSignature); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal license outer signature")
@@ -91,6 +115,51 @@ func VerifySignature(license *kotsv1beta1.License) (*kotsv1beta1.License, error)
 	return verifiedLicense, nil
 }
 
+// verifyV2Signature verifies a v1beta2 license using SHA-256
+func verifyV2Signature(license *kotsv1beta2.License) (*kotsv1beta2.License, error) {
+	outerSignature := &OuterSignature{}
+	if err := json.Unmarshal(license.Spec.Signature256, outerSignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 outer signature")
+	}
+
+	innerSignature := &InnerSignature{}
+	if err := json.Unmarshal(outerSignature.InnerSignature, innerSignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 inner signature")
+	}
+
+	keySignature := &KeySignature{}
+	if err := json.Unmarshal(innerSignature.KeySignature, keySignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 key signature")
+	}
+
+	globalKeyPEM, ok := PublicKeys[keySignature.GlobalKeyId]
+	if !ok {
+		return nil, errors.New("unknown global key")
+	}
+
+	// Verify app public key with global key (SHA-256)
+	if err := VerifySHA256([]byte(innerSignature.PublicKey), keySignature.Signature, globalKeyPEM); err != nil {
+		return nil, errors.Wrap(err, "failed to verify v1beta2 key signature")
+	}
+
+	// Verify license data with app key (SHA-256)
+	if err := VerifySHA256(outerSignature.LicenseData, innerSignature.LicenseSignature, []byte(innerSignature.PublicKey)); err != nil {
+		return nil, errors.Wrap(err, "failed to verify v1beta2 license signature")
+	}
+
+	verifiedLicense := &kotsv1beta2.License{}
+	if err := json.Unmarshal(outerSignature.LicenseData, verifiedLicense); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 license data")
+	}
+
+	// TODO: Add verifyV2LicenseData function similar to v1
+	// For now, skip field-by-field validation
+
+	verifiedLicense.Spec.Signature256 = license.Spec.Signature256
+
+	return verifiedLicense, nil
+}
+
 func Verify(message, signature, publicKeyPEM []byte) error {
 	pubBlock, _ := pem.Decode(publicKeyPEM)
 	publicKey, err := x509.ParsePKIXPublicKey(pubBlock.Bytes)
@@ -109,6 +178,30 @@ func Verify(message, signature, publicKeyPEM []byte) error {
 	err = rsa.VerifyPSS(publicKey.(*rsa.PublicKey), newHash, hashed, signature, &opts)
 	if err != nil {
 		// this ordering makes errors.Cause a little more useful
+		return errors.Wrap(ErrSignatureInvalid, err.Error())
+	}
+
+	return nil
+}
+
+// VerifySHA256 verifies a signature using SHA-256 hashing (for v1beta2 licenses)
+func VerifySHA256(message, signature, publicKeyPEM []byte) error {
+	pubBlock, _ := pem.Decode(publicKeyPEM)
+	publicKey, err := x509.ParsePKIXPublicKey(pubBlock.Bytes)
+	if err != nil {
+		return errors.Wrap(err, "failed to load public key from PEM")
+	}
+
+	var opts rsa.PSSOptions
+	opts.SaltLength = rsa.PSSSaltLengthAuto
+
+	hash := crypto.SHA256
+	hasher := hash.New()
+	hasher.Write(message)
+	hashed := hasher.Sum(nil)
+
+	err = rsa.VerifyPSS(publicKey.(*rsa.PublicKey), hash, hashed, signature, &opts)
+	if err != nil {
 		return errors.Wrap(ErrSignatureInvalid, err.Error())
 	}
 
