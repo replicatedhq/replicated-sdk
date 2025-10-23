@@ -14,6 +14,7 @@ import (
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"k8s.io/client-go/kubernetes/fake"
@@ -75,7 +76,7 @@ func TestSendCustomAppMetrics(t *testing.T) {
 		pactInteraction()
 
 		storeOptions := store.InitInMemoryStoreOptions{
-			License:               license,
+			License:               licensetypes.LicenseWrapper{V1: license},
 			LicenseFields:         nil,
 			ReplicatedAppEndpoint: license.Spec.Endpoint,
 			ChannelID:             license.Spec.ChannelID,
