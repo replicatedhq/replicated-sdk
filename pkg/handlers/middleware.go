@@ -46,7 +46,7 @@ func RequireValidLicenseIDMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if store.GetStore().GetLicense().Spec.LicenseID != licenseID {
+		if store.GetStore().GetLicense().GetLicenseID() != licenseID {
 			response := types.ErrorResponse{Error: "license ID is not valid"}
 			JSON(w, http.StatusUnauthorized, response)
 			return

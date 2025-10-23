@@ -5,7 +5,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
@@ -56,40 +56,40 @@ func bootstrap(params APIServerParams) error {
 		}
 	}
 
-	var unverifiedLicense *kotsv1beta1.License
+	var unverifiedWrapper licensetypes.LicenseWrapper
 	if len(params.LicenseBytes) > 0 {
-		l, err := sdklicense.LoadLicenseFromBytes(params.LicenseBytes)
+		wrapper, err := sdklicense.LoadLicenseFromBytes(params.LicenseBytes)
 		if err != nil {
 			return errors.Wrap(err, "failed to parse license from base64")
 		}
-		unverifiedLicense = l
+		unverifiedWrapper = wrapper
 	} else if params.IntegrationLicenseID != "" {
-		l, err := sdklicense.GetLicenseByID(params.IntegrationLicenseID, params.ReplicatedAppEndpoint)
+		wrapper, err := sdklicense.GetLicenseByID(params.IntegrationLicenseID, params.ReplicatedAppEndpoint)
 		if err != nil {
 			return backoff.Permanent(errors.Wrap(err, "failed to get license by id for integration license id"))
 		}
-		if l.Spec.LicenseType != "dev" {
+		if wrapper.GetLicenseType() != "dev" {
 			return errors.New("integration license must be a dev license")
 		}
-		unverifiedLicense = l
+		unverifiedWrapper = wrapper
 	}
 
-	verifiedLicense, err := sdklicense.VerifySignature(unverifiedLicense)
+	verifiedWrapper, err := sdklicense.VerifySignature(unverifiedWrapper)
 	if err != nil {
 		return backoff.Permanent(errors.Wrap(err, "failed to verify license signature"))
 	}
 
 	if !util.IsAirgap() {
 		// sync license
-		licenseData, err := sdklicense.GetLatestLicense(verifiedLicense, params.ReplicatedAppEndpoint)
+		licenseData, err := sdklicense.GetLatestLicense(verifiedWrapper, params.ReplicatedAppEndpoint)
 		if err != nil {
 			return errors.Wrap(err, "failed to get latest license")
 		}
-		verifiedLicense = licenseData.License
+		verifiedWrapper = licenseData.License
 	}
 
 	// check license expiration
-	expired, err := sdklicense.LicenseIsExpired(verifiedLicense)
+	expired, err := sdklicense.LicenseIsExpired(verifiedWrapper)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if license is expired")
 	}
@@ -99,16 +99,16 @@ func bootstrap(params APIServerParams) error {
 
 	channelID := params.ChannelID
 	if channelID == "" {
-		channelID = verifiedLicense.Spec.ChannelID
+		channelID = verifiedWrapper.GetChannelID()
 	}
 
 	channelName := params.ChannelName
 	if channelName == "" {
-		channelName = verifiedLicense.Spec.ChannelName
+		channelName = verifiedWrapper.GetChannelName()
 	}
 
 	store.InitInMemory(store.InitInMemoryStoreOptions{
-		License:               verifiedLicense,
+		License:               verifiedWrapper,
 		LicenseFields:         params.LicenseFields,
 		AppName:               params.AppName,
 		ChannelID:             channelID,
