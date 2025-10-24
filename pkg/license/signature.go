@@ -296,13 +296,10 @@ func verifyLicenseData(outerLicense *kotsv1beta1.License, innerLicense *kotsv1be
 				return errors.Wrap(err, "failed to get app public key for entitlement signature verification")
 			}
 
-			// Serialize the entitlement value for signature verification
-			serializedValue, err := json.Marshal(outerEntitlement.Value.Value())
-			if err != nil {
-				return errors.Wrapf(err, "failed to marshal entitlement value for signature verification: %s", k)
-			}
+			// Serialize the entitlement value using fmt.Sprint to match vandoor's signing format
+			valueBytes := []byte(fmt.Sprint(outerEntitlement.Value.Value()))
 
-			if err := Verify(serializedValue, outerEntitlement.Signature.V1, appPublicKey); err != nil {
+			if err := Verify(valueBytes, outerEntitlement.Signature.V1, appPublicKey); err != nil {
 				return errors.Wrapf(err, "entitlement signature verification failed for field: %s", k)
 			}
 		}
@@ -396,13 +393,10 @@ func verifyV2LicenseData(outerLicense *kotsv1beta2.License, innerLicense *kotsv1
 				return errors.Wrap(err, "failed to get app public key for v1beta2 entitlement signature verification")
 			}
 
-			// Serialize the entitlement value for signature verification
-			serializedValue, err := json.Marshal(outerEntitlement.Value.Value())
-			if err != nil {
-				return errors.Wrapf(err, "failed to marshal v1beta2 entitlement value for signature verification: %s", k)
-			}
+			// Serialize the entitlement value using fmt.Sprint to match vandoor's signing format
+			valueBytes := []byte(fmt.Sprint(outerEntitlement.Value.Value()))
 
-			if err := VerifySHA256(serializedValue, outerEntitlement.Signature.V2, appPublicKey); err != nil {
+			if err := VerifySHA256(valueBytes, outerEntitlement.Signature.V2, appPublicKey); err != nil {
 				return errors.Wrapf(err, "v1beta2 entitlement signature verification failed for field: %s", k)
 			}
 		}
