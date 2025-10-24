@@ -3,17 +3,16 @@ package store
 import (
 	"strings"
 
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
 
 type InMemoryStore struct {
 	replicatedID          string
 	appID                 string
-	license               *kotsv1beta1.License
-	licenseFields         sdklicensetypes.LicenseFields
+	license               licensetypes.LicenseWrapper
+	licenseFields         licensetypes.LicenseFields
 	appSlug               string
 	appName               string
 	channelID             string
@@ -36,8 +35,8 @@ type InMemoryStore struct {
 type InitInMemoryStoreOptions struct {
 	ReplicatedID          string
 	AppID                 string
-	License               *kotsv1beta1.License
-	LicenseFields         sdklicensetypes.LicenseFields
+	License               licensetypes.LicenseWrapper
+	LicenseFields         licensetypes.LicenseFields
 	AppName               string
 	ChannelID             string
 	ChannelName           string
@@ -56,7 +55,7 @@ func InitInMemory(options InitInMemoryStoreOptions) {
 	SetStore(&InMemoryStore{
 		replicatedID:          options.ReplicatedID,
 		appID:                 options.AppID,
-		appSlug:               options.License.Spec.AppSlug,
+		appSlug:               options.License.GetAppSlug(),
 		license:               options.License,
 		licenseFields:         options.LicenseFields,
 		appName:               options.AppName,
@@ -82,26 +81,35 @@ func (s *InMemoryStore) GetAppID() string {
 	return s.appID
 }
 
-func (s *InMemoryStore) GetLicense() *kotsv1beta1.License {
+func (s *InMemoryStore) GetLicense() licensetypes.LicenseWrapper {
 	return s.license
 }
 
-func (s *InMemoryStore) SetLicense(license *kotsv1beta1.License) {
-	s.license = license.DeepCopy()
+func (s *InMemoryStore) SetLicense(license licensetypes.LicenseWrapper) {
+	// DeepCopy appropriate version
+	if license.V1 != nil {
+		s.license = licensetypes.LicenseWrapper{
+			V1: license.V1.DeepCopy(),
+		}
+	} else if license.V2 != nil {
+		s.license = licensetypes.LicenseWrapper{
+			V2: license.V2.DeepCopy(),
+		}
+	}
 }
 
-func (s *InMemoryStore) GetLicenseFields() sdklicensetypes.LicenseFields {
+func (s *InMemoryStore) GetLicenseFields() licensetypes.LicenseFields {
 	return s.licenseFields
 }
 
-func (s *InMemoryStore) SetLicenseFields(licenseFields sdklicensetypes.LicenseFields) {
+func (s *InMemoryStore) SetLicenseFields(licenseFields licensetypes.LicenseFields) {
 	// copy by value not reference
 	if licenseFields == nil {
 		s.licenseFields = nil
 		return
 	}
 	if s.licenseFields == nil {
-		s.licenseFields = sdklicensetypes.LicenseFields{}
+		s.licenseFields = licensetypes.LicenseFields{}
 	}
 	for k, v := range licenseFields {
 		s.licenseFields[k] = v
@@ -109,7 +117,7 @@ func (s *InMemoryStore) SetLicenseFields(licenseFields sdklicensetypes.LicenseFi
 }
 
 func (s *InMemoryStore) IsDevLicense() bool {
-	return s.license.Spec.LicenseType == "dev"
+	return s.license.GetLicenseType() == "dev"
 }
 
 func (s *InMemoryStore) GetAppSlug() string {

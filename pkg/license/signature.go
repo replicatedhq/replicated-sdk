@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	kotsv1beta2 "github.com/replicatedhq/kotskinds/apis/kots/v1beta2"
+	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 )
 
 var (
@@ -18,9 +20,11 @@ var (
 )
 
 type InnerSignature struct {
-	LicenseSignature []byte `json:"licenseSignature"`
-	PublicKey        string `json:"publicKey"`
-	KeySignature     []byte `json:"keySignature"`
+	LicenseSignature   []byte `json:"licenseSignature,omitempty"`   // MD5 signature (v1beta1)
+	V2LicenseSignature []byte `json:"v2LicenseSignature,omitempty"` // SHA-256 signature (v1beta2)
+	PublicKey          string `json:"publicKey"`
+	KeySignature       []byte `json:"keySignature,omitempty"`       // MD5 signature (v1beta1)
+	V2KeySignature     []byte `json:"v2KeySignature,omitempty"`     // SHA-256 signature (v1beta2)
 }
 
 type OuterSignature struct {
@@ -41,7 +45,29 @@ func (e LicenseDataError) Error() string {
 	return e.message
 }
 
-func VerifySignature(license *kotsv1beta1.License) (*kotsv1beta1.License, error) {
+// VerifySignature verifies a license wrapper using the appropriate algorithm
+func VerifySignature(wrapper licensetypes.LicenseWrapper) (licensetypes.LicenseWrapper, error) {
+	if wrapper.V1 != nil {
+		verified, err := verifyV1Signature(wrapper.V1)
+		if err != nil {
+			return licensetypes.LicenseWrapper{}, err
+		}
+		return licensetypes.LicenseWrapper{V1: verified}, nil
+	}
+
+	if wrapper.V2 != nil {
+		verified, err := verifyV2Signature(wrapper.V2)
+		if err != nil {
+			return licensetypes.LicenseWrapper{}, err
+		}
+		return licensetypes.LicenseWrapper{V2: verified}, nil
+	}
+
+	return licensetypes.LicenseWrapper{}, errors.New("license wrapper is empty")
+}
+
+// verifyV1Signature verifies a v1beta1 license using MD5 (existing logic)
+func verifyV1Signature(license *kotsv1beta1.License) (*kotsv1beta1.License, error) {
 	outerSignature := &OuterSignature{}
 	if err := json.Unmarshal(license.Spec.Signature, outerSignature); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal license outer signature")
@@ -91,6 +117,52 @@ func VerifySignature(license *kotsv1beta1.License) (*kotsv1beta1.License, error)
 	return verifiedLicense, nil
 }
 
+// verifyV2Signature verifies a v1beta2 license using SHA-256
+func verifyV2Signature(license *kotsv1beta2.License) (*kotsv1beta2.License, error) {
+	outerSignature := &OuterSignature{}
+	if err := json.Unmarshal(license.Spec.Signature, outerSignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 outer signature")
+	}
+
+	innerSignature := &InnerSignature{}
+	if err := json.Unmarshal(outerSignature.InnerSignature, innerSignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 inner signature")
+	}
+
+	keySignature := &KeySignature{}
+	if err := json.Unmarshal(innerSignature.V2KeySignature, keySignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 key signature")
+	}
+
+	globalKeyPEM, ok := PublicKeys[keySignature.GlobalKeyId]
+	if !ok {
+		return nil, errors.New("unknown global key")
+	}
+
+	// Verify app public key with global key (SHA-256)
+	if err := VerifySHA256([]byte(innerSignature.PublicKey), keySignature.Signature, globalKeyPEM); err != nil {
+		return nil, errors.Wrap(err, "failed to verify v1beta2 key signature")
+	}
+
+	// Verify license data with app key (SHA-256)
+	if err := VerifySHA256(outerSignature.LicenseData, innerSignature.V2LicenseSignature, []byte(innerSignature.PublicKey)); err != nil {
+		return nil, errors.Wrap(err, "failed to verify v1beta2 license signature")
+	}
+
+	verifiedLicense := &kotsv1beta2.License{}
+	if err := json.Unmarshal(outerSignature.LicenseData, verifiedLicense); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 license data")
+	}
+
+	if err := verifyV2LicenseData(license, verifiedLicense); err != nil {
+		return nil, LicenseDataError{message: err.Error()}
+	}
+
+	verifiedLicense.Spec.Signature = license.Spec.Signature
+
+	return verifiedLicense, nil
+}
+
 func Verify(message, signature, publicKeyPEM []byte) error {
 	pubBlock, _ := pem.Decode(publicKeyPEM)
 	publicKey, err := x509.ParsePKIXPublicKey(pubBlock.Bytes)
@@ -109,6 +181,30 @@ func Verify(message, signature, publicKeyPEM []byte) error {
 	err = rsa.VerifyPSS(publicKey.(*rsa.PublicKey), newHash, hashed, signature, &opts)
 	if err != nil {
 		// this ordering makes errors.Cause a little more useful
+		return errors.Wrap(ErrSignatureInvalid, err.Error())
+	}
+
+	return nil
+}
+
+// VerifySHA256 verifies a signature using SHA-256 hashing (for v1beta2 licenses)
+func VerifySHA256(message, signature, publicKeyPEM []byte) error {
+	pubBlock, _ := pem.Decode(publicKeyPEM)
+	publicKey, err := x509.ParsePKIXPublicKey(pubBlock.Bytes)
+	if err != nil {
+		return errors.Wrap(err, "failed to load public key from PEM")
+	}
+
+	var opts rsa.PSSOptions
+	opts.SaltLength = rsa.PSSSaltLengthAuto
+
+	hash := crypto.SHA256
+	hasher := hash.New()
+	hasher.Write(message)
+	hashed := hasher.Sum(nil)
+
+	err = rsa.VerifyPSS(publicKey.(*rsa.PublicKey), hash, hashed, signature, &opts)
+	if err != nil {
 		return errors.Wrap(ErrSignatureInvalid, err.Error())
 	}
 
@@ -152,11 +248,20 @@ func verifyLicenseData(outerLicense *kotsv1beta1.License, innerLicense *kotsv1be
 	if outerLicense.Spec.IsSnapshotSupported != innerLicense.Spec.IsSnapshotSupported {
 		return errors.New("\"IsSnapshotSupported\" field has changed")
 	}
+	if outerLicense.Spec.IsDisasterRecoverySupported != innerLicense.Spec.IsDisasterRecoverySupported {
+		return errors.New("\"IsDisasterRecoverySupported\" field has changed")
+	}
 	if outerLicense.Spec.IsSupportBundleUploadSupported != innerLicense.Spec.IsSupportBundleUploadSupported {
 		return errors.New("\"IsSupportBundleUploadSupported\" field has changed")
 	}
 	if outerLicense.Spec.IsSemverRequired != innerLicense.Spec.IsSemverRequired {
 		return errors.New("\"IsSemverRequired\" field has changed")
+	}
+	if outerLicense.Spec.IsEmbeddedClusterDownloadEnabled != innerLicense.Spec.IsEmbeddedClusterDownloadEnabled {
+		return errors.New("\"IsEmbeddedClusterDownloadEnabled\" field has changed")
+	}
+	if outerLicense.Spec.IsEmbeddedClusterMultiNodeEnabled != innerLicense.Spec.IsEmbeddedClusterMultiNodeEnabled {
+		return errors.New("\"IsEmbeddedClusterMultiNodeEnabled\" field has changed")
 	}
 
 	// Check entitlements
@@ -182,6 +287,118 @@ func verifyLicenseData(outerLicense *kotsv1beta1.License, innerLicense *kotsv1be
 		}
 		if outerEntitlement.ValueType != innerEntitlement.ValueType {
 			return errors.New("one or more of the entitlements value types have changed")
+		}
+
+		// Verify entitlement field signature (v1/MD5)
+		if len(outerEntitlement.Signature.V1) > 0 {
+			appPublicKey, err := GetAppPublicKey(outerLicense)
+			if err != nil {
+				return errors.Wrap(err, "failed to get app public key for entitlement signature verification")
+			}
+
+			// Serialize the entitlement value using fmt.Sprint to match vandoor's signing format
+			valueBytes := []byte(fmt.Sprint(outerEntitlement.Value.Value()))
+
+			if err := Verify(valueBytes, outerEntitlement.Signature.V1, appPublicKey); err != nil {
+				return errors.Wrapf(err, "entitlement signature verification failed for field: %s", k)
+			}
+		}
+	}
+
+	return nil
+}
+
+func verifyV2LicenseData(outerLicense *kotsv1beta2.License, innerLicense *kotsv1beta2.License) error {
+	if outerLicense.Spec.AppSlug != innerLicense.Spec.AppSlug {
+		return errors.New("\"appSlug\" field has changed")
+	}
+	if outerLicense.Spec.Endpoint != innerLicense.Spec.Endpoint {
+		return errors.New("\"endpoint\" field has changed")
+	}
+	if outerLicense.Spec.ChannelID != innerLicense.Spec.ChannelID {
+		return errors.New("\"channelID\" field has changed")
+	}
+	if outerLicense.Spec.ChannelName != innerLicense.Spec.ChannelName {
+		return errors.New("\"channelName\" field has changed")
+	}
+	if outerLicense.Spec.LicenseSequence != innerLicense.Spec.LicenseSequence {
+		return errors.New("\"licenseSequence\" field has changed")
+	}
+	if outerLicense.Spec.LicenseID != innerLicense.Spec.LicenseID {
+		return errors.New("\"licenseID\" field has changed")
+	}
+	if outerLicense.Spec.LicenseType != innerLicense.Spec.LicenseType {
+		return errors.New("\"LicenseType\" field has changed")
+	}
+	if outerLicense.Spec.IsAirgapSupported != innerLicense.Spec.IsAirgapSupported {
+		return errors.New("\"IsAirgapSupported\" field has changed")
+	}
+	if outerLicense.Spec.IsGitOpsSupported != innerLicense.Spec.IsGitOpsSupported {
+		return errors.New("\"IsGitOpsSupported\" field has changed")
+	}
+	if outerLicense.Spec.IsIdentityServiceSupported != innerLicense.Spec.IsIdentityServiceSupported {
+		return errors.New("\"IsIdentityServiceSupported\" field has changed")
+	}
+	if outerLicense.Spec.IsGeoaxisSupported != innerLicense.Spec.IsGeoaxisSupported {
+		return errors.New("\"IsGeoaxisSupported\" field has changed")
+	}
+	if outerLicense.Spec.IsSnapshotSupported != innerLicense.Spec.IsSnapshotSupported {
+		return errors.New("\"IsSnapshotSupported\" field has changed")
+	}
+	if outerLicense.Spec.IsDisasterRecoverySupported != innerLicense.Spec.IsDisasterRecoverySupported {
+		return errors.New("\"IsDisasterRecoverySupported\" field has changed")
+	}
+	if outerLicense.Spec.IsSupportBundleUploadSupported != innerLicense.Spec.IsSupportBundleUploadSupported {
+		return errors.New("\"IsSupportBundleUploadSupported\" field has changed")
+	}
+	if outerLicense.Spec.IsSemverRequired != innerLicense.Spec.IsSemverRequired {
+		return errors.New("\"IsSemverRequired\" field has changed")
+	}
+	if outerLicense.Spec.IsEmbeddedClusterDownloadEnabled != innerLicense.Spec.IsEmbeddedClusterDownloadEnabled {
+		return errors.New("\"IsEmbeddedClusterDownloadEnabled\" field has changed")
+	}
+	if outerLicense.Spec.IsEmbeddedClusterMultiNodeEnabled != innerLicense.Spec.IsEmbeddedClusterMultiNodeEnabled {
+		return errors.New("\"IsEmbeddedClusterMultiNodeEnabled\" field has changed")
+	}
+
+	// Check entitlements
+	if len(outerLicense.Spec.Entitlements) != len(innerLicense.Spec.Entitlements) {
+		return errors.New("\"entitlements\" field has changed")
+	}
+	for k, outerEntitlement := range outerLicense.Spec.Entitlements {
+		innerEntitlement, ok := innerLicense.Spec.Entitlements[k]
+		if !ok {
+			return errors.New("entitlement not found in the inner license")
+		}
+		if outerEntitlement.Value.Value() != innerEntitlement.Value.Value() {
+			return errors.New("one or more of the entitlements values have changed")
+		}
+		if outerEntitlement.Title != innerEntitlement.Title {
+			return errors.New("one or more of the entitlements titles have changed")
+		}
+		if outerEntitlement.Description != innerEntitlement.Description {
+			return errors.New("one or more of the entitlements descriptions have changed")
+		}
+		if outerEntitlement.IsHidden != innerEntitlement.IsHidden {
+			return errors.New("one or more of the entitlements hidden flags have changed")
+		}
+		if outerEntitlement.ValueType != innerEntitlement.ValueType {
+			return errors.New("one or more of the entitlements value types have changed")
+		}
+
+		// Verify entitlement field signature (v2/SHA-256)
+		if len(outerEntitlement.Signature.V2) > 0 {
+			appPublicKey, err := GetV2AppPublicKey(outerLicense)
+			if err != nil {
+				return errors.Wrap(err, "failed to get app public key for v1beta2 entitlement signature verification")
+			}
+
+			// Serialize the entitlement value using fmt.Sprint to match vandoor's signing format
+			valueBytes := []byte(fmt.Sprint(outerEntitlement.Value.Value()))
+
+			if err := VerifySHA256(valueBytes, outerEntitlement.Signature.V2, appPublicKey); err != nil {
+				return errors.Wrapf(err, "v1beta2 entitlement signature verification failed for field: %s", k)
+			}
 		}
 	}
 
@@ -285,6 +502,24 @@ func GetAppPublicKey(license *kotsv1beta1.License) ([]byte, error) {
 		if err := json.Unmarshal(outerSignature.InnerSignature, innerSignature); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal license inner signature")
 		}
+	}
+
+	return []byte(innerSignature.PublicKey), nil
+}
+
+func GetV2AppPublicKey(license *kotsv1beta2.License) ([]byte, error) {
+	if len(license.Spec.Signature) == 0 {
+		return nil, ErrSignatureMissing
+	}
+
+	outerSignature := &OuterSignature{}
+	if err := json.Unmarshal(license.Spec.Signature, outerSignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 license outer signature")
+	}
+
+	innerSignature := &InnerSignature{}
+	if err := json.Unmarshal(outerSignature.InnerSignature, innerSignature); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal v1beta2 license inner signature")
 	}
 
 	return []byte(innerSignature.PublicKey), nil
