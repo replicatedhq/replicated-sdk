@@ -326,6 +326,8 @@ github.com/redis/go-redis/v9 v9.7.3 h1:YpPyAayJV+XErNsatSElgRZZVCwXX9QzkKYNvO7x0
 github.com/redis/go-redis/v9 v9.7.3/go.mod h1:bGUrSggJ9X9GUmZpZNEOQKaANxSGgOEBRltRTZHSvrA=
 github.com/replicatedhq/kotskinds v0.0.0-20251023161058-b6489d3d51c5 h1:Dq55l1nuRT1B50KpQWkpDXaMxKBhcCBzqtBTLT02gao=
 github.com/replicatedhq/kotskinds v0.0.0-20251023161058-b6489d3d51c5/go.mod h1:+k4PHo2wukoU9kdiKrqqgi89Wmj+9AiwppYGVK11zig=
+github.com/replicatedhq/kotskinds v0.0.0-20251024162531-2174a5b85a4d h1:N8t9W5SYs1MKPsuAp4PA5Haje4cOyCyubAq65qB1wzE=
+github.com/replicatedhq/kotskinds v0.0.0-20251024162531-2174a5b85a4d/go.mod h1:+k4PHo2wukoU9kdiKrqqgi89Wmj+9AiwppYGVK11zig=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.4 h1:8TfxU8dW6PdqD27gjM8MVNuicgxIjxpm4K7x4jp8sis=
 github.com/rivo/uniseg v0.4.4/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
