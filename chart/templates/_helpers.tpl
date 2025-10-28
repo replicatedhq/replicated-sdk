@@ -364,3 +364,27 @@ Get daemonset names from status informers
 - {{ . }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Get HTTPS proxy value
+Checks local proxy.httpsProxy first, then falls back to global.replicated.httpsProxy
+*/}}
+{{- define "replicated.httpsProxy" -}}
+{{- if .Values.proxy.httpsProxy -}}
+  {{- .Values.proxy.httpsProxy -}}
+{{- else if and .Values.global .Values.global.replicated .Values.global.replicated.httpsProxy -}}
+  {{- .Values.global.replicated.httpsProxy -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get NO_PROXY value
+Checks local proxy.noProxy first, then falls back to global.replicated.noProxy
+*/}}
+{{- define "replicated.noProxy" -}}
+{{- if .Values.proxy.noProxy -}}
+  {{- .Values.proxy.noProxy -}}
+{{- else if and .Values.global .Values.global.replicated .Values.global.replicated.noProxy -}}
+  {{- .Values.global.replicated.noProxy -}}
+{{- end -}}
+{{- end -}}
