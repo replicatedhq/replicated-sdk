@@ -324,12 +324,8 @@ github.com/redis/go-redis/extra/redisotel/v9 v9.0.5 h1:EfpWLLCyXw8PSM2/XNJLjI3Pb
 github.com/redis/go-redis/extra/redisotel/v9 v9.0.5/go.mod h1:WZjPDy7VNzn77AAfnAfVjZNvfJTYfPetfZk5yoSTLaQ=
 github.com/redis/go-redis/v9 v9.7.3 h1:YpPyAayJV+XErNsatSElgRZZVCwXX9QzkKYNvO7x0wM=
 github.com/redis/go-redis/v9 v9.7.3/go.mod h1:bGUrSggJ9X9GUmZpZNEOQKaANxSGgOEBRltRTZHSvrA=
-github.com/replicatedhq/kotskinds v0.0.0-20251023161058-b6489d3d51c5 h1:Dq55l1nuRT1B50KpQWkpDXaMxKBhcCBzqtBTLT02gao=
-github.com/replicatedhq/kotskinds v0.0.0-20251023161058-b6489d3d51c5/go.mod h1:+k4PHo2wukoU9kdiKrqqgi89Wmj+9AiwppYGVK11zig=
-github.com/replicatedhq/kotskinds v0.0.0-20251024162531-2174a5b85a4d h1:N8t9W5SYs1MKPsuAp4PA5Haje4cOyCyubAq65qB1wzE=
-github.com/replicatedhq/kotskinds v0.0.0-20251024162531-2174a5b85a4d/go.mod h1:+k4PHo2wukoU9kdiKrqqgi89Wmj+9AiwppYGVK11zig=
-github.com/replicatedhq/kotskinds v0.0.0-20251024204505-044aa5d007d5 h1:634DzPO+Pc5esIggsOGU3CGsjomLtODduMYmYe8d++g=
-github.com/replicatedhq/kotskinds v0.0.0-20251024204505-044aa5d007d5/go.mod h1:+k4PHo2wukoU9kdiKrqqgi89Wmj+9AiwppYGVK11zig=
+github.com/replicatedhq/kotskinds v0.0.0-20251028211546-b7dd48f3cb2b h1:SRgZRQIFKwzQf1vSqd3xfDOP+tMtw0YLRHMpUi/+s4M=
+github.com/replicatedhq/kotskinds v0.0.0-20251028211546-b7dd48f3cb2b/go.mod h1:+k4PHo2wukoU9kdiKrqqgi89Wmj+9AiwppYGVK11zig=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.4 h1:8TfxU8dW6PdqD27gjM8MVNuicgxIjxpm4K7x4jp8sis=
 github.com/rivo/uniseg v0.4.4/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=

@@ -5,7 +5,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
-	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
@@ -56,7 +56,7 @@ func bootstrap(params APIServerParams) error {
 		}
 	}
 
-	var unverifiedWrapper licensetypes.LicenseWrapper
+	var unverifiedWrapper licensewrapper.LicenseWrapper
 	if len(params.LicenseBytes) > 0 {
 		wrapper, err := sdklicense.LoadLicenseFromBytes(params.LicenseBytes)
 		if err != nil {

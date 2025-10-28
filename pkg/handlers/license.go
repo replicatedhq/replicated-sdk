@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	kotsv1beta2 "github.com/replicatedhq/kotskinds/apis/kots/v1beta2"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -109,7 +110,7 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, licenseFields[fieldName])
 }
 
-func licenseInfoFromWrapper(wrapper sdklicensetypes.LicenseWrapper) LicenseInfo {
+func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
 	// Return native entitlements based on version - no conversion
 	var v1Entitlements *map[string]kotsv1beta1.EntitlementField
 	var v2Entitlements *map[string]kotsv1beta2.EntitlementField

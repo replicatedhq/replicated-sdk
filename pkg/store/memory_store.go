@@ -6,12 +6,13 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 )
 
 type InMemoryStore struct {
 	replicatedID          string
 	appID                 string
-	license               licensetypes.LicenseWrapper
+	license               licensewrapper.LicenseWrapper
 	licenseFields         licensetypes.LicenseFields
 	appSlug               string
 	appName               string
@@ -35,7 +36,7 @@ type InMemoryStore struct {
 type InitInMemoryStoreOptions struct {
 	ReplicatedID          string
 	AppID                 string
-	License               licensetypes.LicenseWrapper
+	License               licensewrapper.LicenseWrapper
 	LicenseFields         licensetypes.LicenseFields
 	AppName               string
 	ChannelID             string
@@ -81,18 +82,18 @@ func (s *InMemoryStore) GetAppID() string {
 	return s.appID
 }
 
-func (s *InMemoryStore) GetLicense() licensetypes.LicenseWrapper {
+func (s *InMemoryStore) GetLicense() licensewrapper.LicenseWrapper {
 	return s.license
 }
 
-func (s *InMemoryStore) SetLicense(license licensetypes.LicenseWrapper) {
+func (s *InMemoryStore) SetLicense(license licensewrapper.LicenseWrapper) {
 	// DeepCopy appropriate version
 	if license.V1 != nil {
-		s.license = licensetypes.LicenseWrapper{
+		s.license = licensewrapper.LicenseWrapper{
 			V1: license.V1.DeepCopy(),
 		}
 	} else if license.V2 != nil {
-		s.license = licensetypes.LicenseWrapper{
+		s.license = licensewrapper.LicenseWrapper{
 			V2: license.V2.DeepCopy(),
 		}
 	}

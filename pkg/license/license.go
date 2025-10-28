@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
@@ -19,10 +20,10 @@ const (
 
 type LicenseData struct {
 	LicenseBytes []byte
-	License      types.LicenseWrapper
+	License      licensewrapper.LicenseWrapper
 }
 
-func GetLicenseByID(licenseID string, endpoint string) (types.LicenseWrapper, error) {
+func GetLicenseByID(licenseID string, endpoint string) (licensewrapper.LicenseWrapper, error) {
 	if endpoint == "" {
 		endpoint = defaultReplicatedAppEndpoint
 	}
@@ -30,13 +31,13 @@ func GetLicenseByID(licenseID string, endpoint string) (types.LicenseWrapper, er
 
 	licenseData, err := getLicenseFromAPI(url, licenseID)
 	if err != nil {
-		return types.LicenseWrapper{}, errors.Wrap(err, "failed to get license from api")
+		return licensewrapper.LicenseWrapper{}, errors.Wrap(err, "failed to get license from api")
 	}
 
 	return licenseData.License, nil
 }
 
-func GetLatestLicense(wrapper types.LicenseWrapper, endpoint string) (*LicenseData, error) {
+func GetLatestLicense(wrapper licensewrapper.LicenseWrapper, endpoint string) (*LicenseData, error) {
 	if endpoint == "" {
 		endpoint = wrapper.GetEndpoint()
 	}
@@ -88,7 +89,7 @@ func getLicenseFromAPI(url string, licenseID string) (*LicenseData, error) {
 	return data, nil
 }
 
-func LicenseIsExpired(wrapper types.LicenseWrapper) (bool, error) {
+func LicenseIsExpired(wrapper licensewrapper.LicenseWrapper) (bool, error) {
 	// Extract expires_at entitlement value based on version - no conversion
 	var expiresAtValue string
 	var valueType string
@@ -125,7 +126,7 @@ func LicenseIsExpired(wrapper types.LicenseWrapper) (bool, error) {
 	return parsed.Before(time.Now()), nil
 }
 
-func GetLatestLicenseFields(wrapper types.LicenseWrapper, endpoint string) (types.LicenseFields, error) {
+func GetLatestLicenseFields(wrapper licensewrapper.LicenseWrapper, endpoint string) (types.LicenseFields, error) {
 	if endpoint == "" {
 		endpoint = wrapper.GetEndpoint()
 	}
@@ -164,7 +165,7 @@ func GetLatestLicenseFields(wrapper types.LicenseWrapper, endpoint string) (type
 	return licenseFields, nil
 }
 
-func GetLatestLicenseField(wrapper types.LicenseWrapper, endpoint string, fieldName string) (*types.LicenseField, error) {
+func GetLatestLicenseField(wrapper licensewrapper.LicenseWrapper, endpoint string, fieldName string) (*types.LicenseField, error) {
 	if endpoint == "" {
 		endpoint = wrapper.GetEndpoint()
 	}

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -90,7 +90,7 @@ func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, li
 	return nil
 }
 
-func SendOnlineInstanceData(wrapper licensetypes.LicenseWrapper, instanceData *types.InstanceData) error {
+func SendOnlineInstanceData(wrapper licensewrapper.LicenseWrapper, instanceData *types.InstanceData) error {
 	// build the request body
 	reqPayload := map[string]interface{}{}
 	if err := InjectInstanceDataPayload(reqPayload, instanceData); err != nil {

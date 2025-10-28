@@ -4,6 +4,7 @@ import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 )
 
 var (
@@ -15,8 +16,8 @@ var (
 type Store interface {
 	GetReplicatedID() string
 	GetAppID() string
-	GetLicense() licensetypes.LicenseWrapper
-	SetLicense(license licensetypes.LicenseWrapper)
+	GetLicense() licensewrapper.LicenseWrapper
+	SetLicense(license licensewrapper.LicenseWrapper)
 	GetLicenseFields() licensetypes.LicenseFields
 	SetLicenseFields(licenseFields licensetypes.LicenseFields)
 	IsDevLicense() bool

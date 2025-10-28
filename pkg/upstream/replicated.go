@@ -9,14 +9,14 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
-	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
-func GetUpdates(sdkStore store.Store, wrapper licensetypes.LicenseWrapper, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
+func GetUpdates(sdkStore store.Store, wrapper licensewrapper.LicenseWrapper, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
 		endpoint = wrapper.GetEndpoint()
