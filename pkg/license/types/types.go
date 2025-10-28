@@ -11,7 +11,8 @@ type LicenseField struct {
 }
 
 type LicenseFieldSignature struct {
-	V1 string `json:"v1,omitempty" yaml:"v1,omitempty"` // this is a base64 encoded string because yaml.Unmarshal doesn't automatically convert base64 to []byte like json.Unmarshal does
+	V1 string `json:"v1,omitempty" yaml:"v1,omitempty"` // v1beta1: base64 encoded MD5 signature
+	V2 string `json:"v2,omitempty" yaml:"v2,omitempty"` // v1beta2: base64 encoded SHA-256 signature
 }
 
 type LicenseFields map[string]LicenseField
