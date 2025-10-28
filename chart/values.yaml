@@ -305,3 +305,13 @@ minimalRBAC: false
 # When true, the SDK will report every image+digest in the cluster regardless of the releaseImages filter
 # When false (default), only images matching the releaseImages list will be reported
 reportAllImages: false
+
+# Proxy configuration for outbound connections
+# Configure HTTPS proxy settings for the Replicated SDK
+# These values can also be set via global.replicated.httpsProxy and global.replicated.noProxy
+# when used as a subchart. Local values take precedence over global values.
+# Configuring noProxy should not be required in normal usage, as the SDK will 
+# automatically bypass the proxy when making requests to cluster APIs.
+proxy:
+  httpsProxy: ""   # HTTPS proxy URL (e.g., "https://proxy.example.com:8080")
+  noProxy: ""      # Comma-separated list of hosts to bypass proxy (e.g., "localhost,127.0.0.1")
