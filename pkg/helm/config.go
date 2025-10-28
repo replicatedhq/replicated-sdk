@@ -15,7 +15,7 @@ func init() {
 	}
 
 	cfg = new(action.Configuration)
-	if err := cfg.Init(k8sutil.KubernetesConfigFlags, GetReleaseNamespace(), GetHelmDriver(), logger.Debugf); err != nil {
+	if err := cfg.Init(k8sutil.ProxyBypassRESTClientGetter(k8sutil.KubernetesConfigFlags), GetReleaseNamespace(), GetHelmDriver(), logger.Debugf); err != nil {
 		panic(errors.Wrap(err, "failed to init helm action config"))
 	}
 }
