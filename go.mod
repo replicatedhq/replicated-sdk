@@ -11,7 +11,7 @@ require (
 	github.com/pact-foundation/pact-go v1.10.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
-	github.com/replicatedhq/kotskinds v0.0.0-20251028211546-b7dd48f3cb2b
+	github.com/replicatedhq/kotskinds v0.0.0-20251029124314-174e89c93554
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
