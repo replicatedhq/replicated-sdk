@@ -111,14 +111,26 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 }
 
 func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
-	// Return native entitlements based on version - no conversion
 	var v1Entitlements *map[string]kotsv1beta1.EntitlementField
 	var v2Entitlements *map[string]kotsv1beta2.EntitlementField
 
-	if wrapper.V1 != nil {
-		v1Entitlements = &wrapper.V1.Spec.Entitlements
-	} else if wrapper.V2 != nil {
-		v2Entitlements = &wrapper.V2.Spec.Entitlements
+	// Use GetEntitlements() internally, but convert back to version-specific types
+	// for backward-compatible API responses
+	entitlements := wrapper.GetEntitlements()
+	if entitlements != nil {
+		if wrapper.IsV1() {
+			v1Map := make(map[string]kotsv1beta1.EntitlementField, len(entitlements))
+			for key, ent := range entitlements {
+				v1Map[key] = *ent.V1
+			}
+			v1Entitlements = &v1Map
+		} else if wrapper.IsV2() {
+			v2Map := make(map[string]kotsv1beta2.EntitlementField, len(entitlements))
+			for key, ent := range entitlements {
+				v2Map[key] = *ent.V2
+			}
+			v2Entitlements = &v2Map
+		}
 	}
 
 	return LicenseInfo{
