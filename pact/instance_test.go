@@ -11,7 +11,7 @@ import (
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
-	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -40,7 +40,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "successful instance data request",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLicense().Return(licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-0-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
@@ -92,7 +92,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "expired license should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLicense().Return(licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-2-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
@@ -144,7 +144,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "nonexistent license should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLicense().Return(licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-nonexistent-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),
@@ -196,7 +196,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "unauthenticated instance data request should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLicense().Return(licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-0-license",
 						Endpoint:  fmt.Sprintf("http://%s:%d", pact.Host, pact.Server.Port),

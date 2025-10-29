@@ -9,8 +9,8 @@ import (
 
 	"github.com/pact-foundation/pact-go/dsl"
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/license"
-	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 )
 
 func TestGetLatestLicense(t *testing.T) {
@@ -49,7 +49,7 @@ func TestGetLatestLicense(t *testing.T) {
 	// }
 
 	type args struct {
-		license  licensetypes.LicenseWrapper
+		license  licensewrapper.LicenseWrapper
 		endpoint string
 	}
 	tests := []struct {
@@ -97,7 +97,7 @@ func TestGetLatestLicense(t *testing.T) {
 		{
 			name: "no license found",
 			args: args{
-				license: licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "not-a-customer-license",
 						AppSlug:   "replicated-sdk-license-app",
@@ -127,7 +127,7 @@ func TestGetLatestLicense(t *testing.T) {
 		{
 			name: "no app found",
 			args: args{
-				license: licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-license-customer-0-license",
 						AppSlug:   "not-an-app",
@@ -157,7 +157,7 @@ func TestGetLatestLicense(t *testing.T) {
 		{
 			name: "license is not for this app",
 			args: args{
-				license: licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-license-customer-0-license",
 						AppSlug:   "replicated-sdk-instance-app",
@@ -188,7 +188,7 @@ func TestGetLatestLicense(t *testing.T) {
 		{
 			name: "license is archived",
 			args: args{
-				license: licensetypes.LicenseWrapper{V1: &v1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-license-customer-archived-license",
 						AppSlug:   "replicated-sdk-license-app",

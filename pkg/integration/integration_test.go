@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
-	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +17,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 	type args struct {
 		clientset kubernetes.Interface
 		namespace string
-		license   licensetypes.LicenseWrapper
+		license   licensewrapper.LicenseWrapper
 	}
 	tests := []struct {
 		name    string
@@ -52,7 +52,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: licensetypes.LicenseWrapper{V1: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},
@@ -79,7 +79,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: licensetypes.LicenseWrapper{V1: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "paid",
 					},
@@ -106,7 +106,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: licensetypes.LicenseWrapper{V1: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},
@@ -131,7 +131,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: licensetypes.LicenseWrapper{V1: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},
@@ -158,7 +158,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: licensetypes.LicenseWrapper{V1: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},

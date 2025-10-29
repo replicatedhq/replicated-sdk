@@ -5,7 +5,7 @@ import (
 
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
-	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	metatypes "github.com/replicatedhq/replicated-sdk/pkg/meta/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -207,7 +207,7 @@ func TestCanReport(t *testing.T) {
 				t.Setenv(k, v)
 			}
 
-			got, err := canReport(tt.clientset, tt.namespace, licensetypes.LicenseWrapper{})
+			got, err := canReport(tt.clientset, tt.namespace, licensewrapper.LicenseWrapper{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("canReport() error = %v, wantErr %v", err, tt.wantErr)
 			}
