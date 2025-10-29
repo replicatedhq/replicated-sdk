@@ -6,8 +6,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
-	kotsv1beta2 "github.com/replicatedhq/kotskinds/apis/kots/v1beta2"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
@@ -17,24 +15,23 @@ import (
 )
 
 type LicenseInfo struct {
-	LicenseID                      string                                   `json:"licenseID"`
-	AppSlug                        string                                   `json:"appSlug"`
-	ChannelName                    string                                   `json:"channelName"`
-	CustomerName                   string                                   `json:"customerName"`
-	CustomerEmail                  string                                   `json:"customerEmail"`
-	LicenseType                    string                                   `json:"licenseType"`
-	ChannelID                      string                                   `json:"channelID"`
-	LicenseSequence                int64                                    `json:"licenseSequence"`
-	IsAirgapSupported              bool                                     `json:"isAirgapSupported"`
-	IsGitOpsSupported              bool                                     `json:"isGitOpsSupported"`
-	IsIdentityServiceSupported     bool                                     `json:"isIdentityServiceSupported"`
-	IsGeoaxisSupported             bool                                     `json:"isGeoaxisSupported"`
-	IsSnapshotSupported            bool                                     `json:"isSnapshotSupported"`
-	IsSupportBundleUploadSupported bool                                     `json:"isSupportBundleUploadSupported"`
-	IsSemverRequired               bool                                     `json:"isSemverRequired"`
-	Endpoint                       string                                   `json:"endpoint"`
-	V1Entitlements                 *map[string]kotsv1beta1.EntitlementField `json:"v1Entitlements,omitempty"`
-	V2Entitlements                 *map[string]kotsv1beta2.EntitlementField `json:"v2Entitlements,omitempty"`
+	LicenseID                      string                                          `json:"licenseID"`
+	AppSlug                        string                                          `json:"appSlug"`
+	ChannelName                    string                                          `json:"channelName"`
+	CustomerName                   string                                          `json:"customerName"`
+	CustomerEmail                  string                                          `json:"customerEmail"`
+	LicenseType                    string                                          `json:"licenseType"`
+	ChannelID                      string                                          `json:"channelID"`
+	LicenseSequence                int64                                           `json:"licenseSequence"`
+	IsAirgapSupported              bool                                            `json:"isAirgapSupported"`
+	IsGitOpsSupported              bool                                            `json:"isGitOpsSupported"`
+	IsIdentityServiceSupported     bool                                            `json:"isIdentityServiceSupported"`
+	IsGeoaxisSupported             bool                                            `json:"isGeoaxisSupported"`
+	IsSnapshotSupported            bool                                            `json:"isSnapshotSupported"`
+	IsSupportBundleUploadSupported bool                                            `json:"isSupportBundleUploadSupported"`
+	IsSemverRequired               bool                                            `json:"isSemverRequired"`
+	Endpoint                       string                                          `json:"endpoint"`
+	Entitlements                   map[string]licensewrapper.EntitlementFieldWrapper `json:"entitlements,omitempty"`
 }
 
 func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
@@ -111,28 +108,6 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 }
 
 func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
-	var v1Entitlements *map[string]kotsv1beta1.EntitlementField
-	var v2Entitlements *map[string]kotsv1beta2.EntitlementField
-
-	// Use GetEntitlements() internally, but convert back to version-specific types
-	// for backward-compatible API responses
-	entitlements := wrapper.GetEntitlements()
-	if entitlements != nil {
-		if wrapper.IsV1() {
-			v1Map := make(map[string]kotsv1beta1.EntitlementField, len(entitlements))
-			for key, ent := range entitlements {
-				v1Map[key] = *ent.V1
-			}
-			v1Entitlements = &v1Map
-		} else if wrapper.IsV2() {
-			v2Map := make(map[string]kotsv1beta2.EntitlementField, len(entitlements))
-			for key, ent := range entitlements {
-				v2Map[key] = *ent.V2
-			}
-			v2Entitlements = &v2Map
-		}
-	}
-
 	return LicenseInfo{
 		LicenseID:                      wrapper.GetLicenseID(),
 		AppSlug:                        wrapper.GetAppSlug(),
@@ -150,7 +125,6 @@ func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
 		IsSupportBundleUploadSupported: wrapper.IsSupportBundleUploadSupported(),
 		IsSemverRequired:               wrapper.IsSemverRequired(),
 		Endpoint:                       wrapper.GetEndpoint(),
-		V1Entitlements:                 v1Entitlements,
-		V2Entitlements:                 v2Entitlements,
+		Entitlements:                   wrapper.GetEntitlements(),
 	}
 }
