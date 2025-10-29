@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
@@ -31,7 +32,7 @@ type LicenseInfo struct {
 	IsSupportBundleUploadSupported bool                                            `json:"isSupportBundleUploadSupported"`
 	IsSemverRequired               bool                                            `json:"isSemverRequired"`
 	Endpoint                       string                                          `json:"endpoint"`
-	Entitlements                   map[string]licensewrapper.EntitlementFieldWrapper `json:"entitlements,omitempty"`
+	Entitlements                   map[string]kotsv1beta1.EntitlementField `json:"entitlements,omitempty"`
 }
 
 func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +109,39 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 }
 
 func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
+	// Convert EntitlementFieldWrapper map to EntitlementField map for JSON serialization
+	var entitlements map[string]kotsv1beta1.EntitlementField
+	wrappedEntitlements := wrapper.GetEntitlements()
+	if wrappedEntitlements != nil {
+		entitlements = make(map[string]kotsv1beta1.EntitlementField, len(wrappedEntitlements))
+		for key, wrapped := range wrappedEntitlements {
+			// Both v1beta1 and v1beta2 EntitlementField have identical structure
+			// Use the unwrapped field directly (V1 or V2)
+			if wrapped.V1 != nil {
+				entitlements[key] = *wrapped.V1
+			} else if wrapped.V2 != nil {
+				// v1beta2 EntitlementField is structurally identical to v1beta1
+				// Safe to convert for JSON serialization
+				v2Field := *wrapped.V2
+				entitlements[key] = kotsv1beta1.EntitlementField{
+					Title:       v2Field.Title,
+					Description: v2Field.Description,
+					Value: kotsv1beta1.EntitlementValue{
+						Type:    kotsv1beta1.Type(v2Field.Value.Type),
+						IntVal:  v2Field.Value.IntVal,
+						StrVal:  v2Field.Value.StrVal,
+						BoolVal: v2Field.Value.BoolVal,
+					},
+					ValueType: v2Field.ValueType,
+					IsHidden:  v2Field.IsHidden,
+					Signature: kotsv1beta1.EntitlementFieldSignature{
+						V1: v2Field.Signature.V2, // Note: using V2 signature in V1 field for consistency
+					},
+				}
+			}
+		}
+	}
+
 	return LicenseInfo{
 		LicenseID:                      wrapper.GetLicenseID(),
 		AppSlug:                        wrapper.GetAppSlug(),
@@ -125,6 +159,6 @@ func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
 		IsSupportBundleUploadSupported: wrapper.IsSupportBundleUploadSupported(),
 		IsSemverRequired:               wrapper.IsSemverRequired(),
 		Endpoint:                       wrapper.GetEndpoint(),
-		Entitlements:                   wrapper.GetEntitlements(),
+		Entitlements:                   entitlements,
 	}
 }
