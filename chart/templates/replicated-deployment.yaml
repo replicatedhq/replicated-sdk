@@ -123,6 +123,16 @@ spec:
         {{- with .Values.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- $httpsProxy := include "replicated.httpsProxy" . }}
+        {{- if $httpsProxy }}
+        - name: HTTPS_PROXY
+          value: {{ $httpsProxy | quote }}
+        {{- end }}
+        {{- $noProxy := include "replicated.noProxy" . }}
+        {{- if $noProxy }}
+        - name: NO_PROXY
+          value: {{ $noProxy | quote }}
+        {{- end }}
         {{- if or .Values.privateCAConfigmap .Values.privateCASecret }}
         - name: SSL_CERT_DIR
           value: /certs

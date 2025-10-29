@@ -1,6 +1,8 @@
 package k8sutil
 
 import (
+	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 
@@ -59,6 +61,9 @@ func GetClusterConfig() (*rest.Config, error) {
 
 	cfg.QPS = DEFAULT_K8S_CLIENT_QPS
 	cfg.Burst = DEFAULT_K8S_CLIENT_BURST
+
+	// Never proxy Kubernetes API requests, regardless of environment
+	cfg.Proxy = func(*http.Request) (*url.URL, error) { return nil, nil }
 
 	return cfg, nil
 }
