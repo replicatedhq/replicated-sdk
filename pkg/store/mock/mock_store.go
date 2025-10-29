@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	types "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	types0 "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	types1 "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -148,10 +148,10 @@ func (mr *MockStoreMockRecorder) GetChannelSequence() *gomock.Call {
 }
 
 // GetLicense mocks base method.
-func (m *MockStore) GetLicense() *v1beta1.License {
+func (m *MockStore) GetLicense() licensewrapper.LicenseWrapper {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLicense")
-	ret0, _ := ret[0].(*v1beta1.License)
+	ret0, _ := ret[0].(licensewrapper.LicenseWrapper)
 	return ret0
 }
 
@@ -356,7 +356,7 @@ func (mr *MockStoreMockRecorder) SetAppStatus(status interface{}) *gomock.Call {
 }
 
 // SetLicense mocks base method.
-func (m *MockStore) SetLicense(license *v1beta1.License) {
+func (m *MockStore) SetLicense(license licensewrapper.LicenseWrapper) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetLicense", license)
 }

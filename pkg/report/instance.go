@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
@@ -24,9 +24,9 @@ import (
 var instanceDataMtx sync.Mutex
 
 func SendInstanceData(clientset kubernetes.Interface, sdkStore store.Store) error {
-	license := sdkStore.GetLicense()
+	wrapper := sdkStore.GetLicense()
 
-	canReport, err := canReport(clientset, sdkStore.GetNamespace(), license)
+	canReport, err := canReport(clientset, sdkStore.GetNamespace(), wrapper)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if can report")
 	}
@@ -44,10 +44,10 @@ func SendInstanceData(clientset kubernetes.Interface, sdkStore store.Store) erro
 	instanceData := GetInstanceData(sdkStore)
 
 	if util.IsAirgap() {
-		return SendAirgapInstanceData(clientset, sdkStore.GetNamespace(), license.Spec.LicenseID, instanceData)
+		return SendAirgapInstanceData(clientset, sdkStore.GetNamespace(), wrapper.GetLicenseID(), instanceData)
 	}
 
-	return SendOnlineInstanceData(license, instanceData)
+	return SendOnlineInstanceData(wrapper, instanceData)
 }
 
 func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, licenseID string, instanceData *types.InstanceData) error {
@@ -90,7 +90,7 @@ func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, li
 	return nil
 }
 
-func SendOnlineInstanceData(license *v1beta1.License, instanceData *types.InstanceData) error {
+func SendOnlineInstanceData(wrapper licensewrapper.LicenseWrapper, instanceData *types.InstanceData) error {
 	// build the request body
 	reqPayload := map[string]interface{}{}
 	if err := InjectInstanceDataPayload(reqPayload, instanceData); err != nil {
@@ -104,14 +104,14 @@ func SendOnlineInstanceData(license *v1beta1.License, instanceData *types.Instan
 	// Get endpoint from store if available, otherwise fall back to license endpoint
 	endpoint := store.GetStore().GetReplicatedAppEndpoint()
 	if endpoint == "" {
-		endpoint = license.Spec.Endpoint
+		endpoint = wrapper.GetEndpoint()
 	}
 
 	postReq, err := util.NewRequest("POST", fmt.Sprintf("%s/kots_metrics/license_instance/info", endpoint), bytes.NewBuffer(reqBody))
 	if err != nil {
 		return errors.Wrap(err, "failed to create http request")
 	}
-	postReq.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
+	postReq.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", wrapper.GetLicenseID(), wrapper.GetLicenseID())))))
 	postReq.Header.Set("Content-Type", "application/json")
 
 	InjectInstanceDataHeaders(postReq, instanceData)

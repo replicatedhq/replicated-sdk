@@ -9,17 +9,17 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	types "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
 
-func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
+func GetUpdates(sdkStore store.Store, wrapper licensewrapper.LicenseWrapper, currentCursor types.ReplicatedCursor) ([]types.ChannelRelease, error) {
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
-		endpoint = license.Spec.Endpoint
+		endpoint = wrapper.GetEndpoint()
 	}
 
 	u, err := url.Parse(endpoint)
@@ -34,18 +34,18 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 
 	// build the request url query params
 	channelSequenceStr := fmt.Sprintf("%d", currentCursor.ChannelSequence)
-	if currentCursor.ChannelID != license.Spec.ChannelID {
+	if currentCursor.ChannelID != wrapper.GetChannelID() {
 		// channel has changed, so we need to reset the channel sequence
 		channelSequenceStr = ""
 	}
 
 	urlValues := url.Values{}
 	urlValues.Set("channelSequence", channelSequenceStr)
-	urlValues.Add("licenseSequence", fmt.Sprintf("%d", license.Spec.LicenseSequence))
+	urlValues.Add("licenseSequence", fmt.Sprintf("%d", wrapper.GetLicenseSequence()))
 	urlValues.Add("isSemverSupported", "true")
 	urlValues.Add("sortOrder", "desc")
 
-	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, license.Spec.AppSlug, urlValues.Encode())
+	url := fmt.Sprintf("%s://%s/release/%s/pending?%s", u.Scheme, hostname, wrapper.GetAppSlug(), urlValues.Encode())
 
 	instanceData := report.GetInstanceData(sdkStore)
 
@@ -63,7 +63,7 @@ func GetUpdates(sdkStore store.Store, license *kotsv1beta1.License, currentCurso
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call newrequest")
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", license.Spec.LicenseID, license.Spec.LicenseID)))))
+	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", wrapper.GetLicenseID(), wrapper.GetLicenseID())))))
 	req.Header.Set("Content-Type", "application/json")
 
 	report.InjectInstanceDataHeaders(req, instanceData)

@@ -34,7 +34,7 @@ func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.S
 		Events: []CustomAppMetricsReportEvent{
 			{
 				ReportedAt: time.Now().UTC().UnixMilli(),
-				LicenseID:  sdkStore.GetLicense().Spec.LicenseID,
+				LicenseID:  sdkStore.GetLicense().GetLicenseID(),
 				InstanceID: sdkStore.GetAppID(),
 				Data:       data,
 			},
@@ -49,11 +49,11 @@ func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.S
 }
 
 func SendOnlineCustomAppMetrics(sdkStore store.Store, data map[string]interface{}) error {
-	license := sdkStore.GetLicense()
+	wrapper := sdkStore.GetLicense()
 
 	endpoint := sdkStore.GetReplicatedAppEndpoint()
 	if endpoint == "" {
-		endpoint = license.Spec.Endpoint
+		endpoint = wrapper.GetEndpoint()
 	}
 
 	u, err := url.Parse(endpoint)
@@ -84,7 +84,7 @@ func SendOnlineCustomAppMetrics(sdkStore store.Store, data map[string]interface{
 		return errors.Wrap(err, "call newrequest")
 	}
 
-	req.SetBasicAuth(license.Spec.LicenseID, license.Spec.LicenseID)
+	req.SetBasicAuth(wrapper.GetLicenseID(), wrapper.GetLicenseID())
 	req.Header.Set("Content-Type", "application/json")
 
 	instanceData := GetInstanceData(sdkStore)

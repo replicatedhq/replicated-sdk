@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -109,8 +109,8 @@ func GetInstanceDataHeaders(instanceData *types.InstanceData) map[string]string 
 	return headers
 }
 
-func canReport(clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
-	if util.IsDevEnv() && !util.IsDevLicense(license) {
+func canReport(clientset kubernetes.Interface, namespace string, wrapper licensewrapper.LicenseWrapper) (bool, error) {
+	if util.IsDevEnv() && wrapper.GetLicenseType() != "dev" {
 		// don't send reports from our dev env to our production services even if this is a production license
 		return false, nil
 	}

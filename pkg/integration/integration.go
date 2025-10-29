@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,8 +20,8 @@ const (
 
 var replicatedSecretLock = sync.Mutex{}
 
-func IsEnabled(ctx context.Context, clientset kubernetes.Interface, namespace string, license *kotsv1beta1.License) (bool, error) {
-	if license == nil || license.Spec.LicenseType != "dev" {
+func IsEnabled(ctx context.Context, clientset kubernetes.Interface, namespace string, wrapper licensewrapper.LicenseWrapper) (bool, error) {
+	if (wrapper.V1 == nil && wrapper.V2 == nil) || wrapper.GetLicenseType() != "dev" {
 		return false, nil
 	}
 

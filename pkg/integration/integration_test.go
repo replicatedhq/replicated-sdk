@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +17,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 	type args struct {
 		clientset kubernetes.Interface
 		namespace string
-		license   *kotsv1beta1.License
+		license   licensewrapper.LicenseWrapper
 	}
 	tests := []struct {
 		name    string
@@ -51,11 +52,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},
-				},
+				}},
 			},
 			want:    true,
 			wantErr: false,
@@ -78,11 +79,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "paid",
 					},
-				},
+				}},
 			},
 			want:    false,
 			wantErr: false,
@@ -105,11 +106,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},
-				},
+				}},
 			},
 			want:    false,
 			wantErr: false,
@@ -130,11 +131,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},
-				},
+				}},
 			},
 			want:    true,
 			wantErr: false,
@@ -157,11 +158,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					}},
 				}),
 				namespace: "default",
-				license: &kotsv1beta1.License{
+				license: licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{
 					Spec: kotsv1beta1.LicenseSpec{
 						LicenseType: "dev",
 					},
-				},
+				}},
 			},
 			want:    true,
 			wantErr: false,
