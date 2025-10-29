@@ -90,31 +90,22 @@ func getLicenseFromAPI(url string, licenseID string) (*LicenseData, error) {
 }
 
 func LicenseIsExpired(wrapper licensewrapper.LicenseWrapper) (bool, error) {
-	// Extract expires_at entitlement value based on version - no conversion
-	var expiresAtValue string
-	var valueType string
-
-	if wrapper.V1 != nil {
-		val, found := wrapper.V1.Spec.Entitlements["expires_at"]
-		if !found {
-			return false, nil
-		}
-		valueType = val.ValueType
-		expiresAtValue = val.Value.StrVal
-	} else if wrapper.V2 != nil {
-		val, found := wrapper.V2.Spec.Entitlements["expires_at"]
-		if !found {
-			return false, nil
-		}
-		valueType = val.ValueType
-		expiresAtValue = val.Value.StrVal
-	} else {
+	entitlements := wrapper.GetEntitlements()
+	if entitlements == nil {
 		return false, nil
 	}
 
+	ent, found := entitlements["expires_at"]
+	if !found {
+		return false, nil
+	}
+
+	valueType := ent.GetValueType()
 	if valueType != "" && valueType != "String" {
 		return false, errors.Errorf("expires_at must be type String: %s", valueType)
 	}
+
+	expiresAtValue := ent.GetValue().StrVal
 	if expiresAtValue == "" {
 		return false, nil
 	}
