@@ -5,6 +5,7 @@
 # Global settings shared across multiple charts
 global:
   imageRegistry: ""  # Optional registry override to use for all images
+  imagePullSecrets: [] # List of secrets containing docker registry credentials
 
 # Additional labels to add to all resources created by this chart
 # Useful for organizational or filtering purposes
