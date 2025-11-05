@@ -18,9 +18,11 @@ spec:
         {{- include "test-chart.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "test-chart.serviceAccountName" . }}
+      imagePullSecrets:
+        - name: enterprise-pull-secret
       containers:
         - name: second-{{ .Chart.Name }}
-          image: "docker.io/library/nginx:alpine"
+          image: "proxy.replicated.com/proxy/replicated-sdk-e2e/index.docker.io/library/nginx:alpine"
           ports:
             - name: http
               containerPort: 80
