@@ -501,7 +501,7 @@ spec:
 	}
 
 	// 2. Validate expected images (should only contain images from releaseImages list)
-	required := []string{"docker.io/library/nginx:latest", "docker.io/library/nginx:alpine", strings.TrimSpace(sdkImage)}
+	required := []string{"proxy.replicated.com/proxy/replicated-sdk-e2e/index.docker.io/library/nginx:latest", "docker.io/library/nginx:alpine", strings.TrimSpace(sdkImage)}
 	forbidden := []string{"docker.io/alpine/curl:latest"} // This is from replicated-ssl-test, should be filtered out
 	missing := []string{}
 	for _, img := range required {
