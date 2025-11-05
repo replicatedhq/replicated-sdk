@@ -18,9 +18,11 @@ spec:
         test-chart: "statefulset"
         {{- include "test-chart.selectorLabels" . | nindent 8 }}
     spec:
+      imagePullSecrets:
+        - name: enterprise-pull-secret
       containers:
       - name: test-container
-        image: docker.io/library/nginx:latest
+        image: proxy.replicated.com/proxy/replicated-sdk-e2e/index.docker.io/library/nginx:latest
         command: ["sleep", "500d"]
         volumeMounts:
         - name: test-pvc
