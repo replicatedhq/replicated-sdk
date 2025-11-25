@@ -105,7 +105,7 @@ func LicenseIsExpired(wrapper licensewrapper.LicenseWrapper) (bool, error) {
 		return false, errors.Errorf("expires_at must be type String: %s", valueType)
 	}
 
-	expiresAtValue := ent.GetValue().StrVal
+	expiresAtValue := ent.GetValue().(string)
 	if expiresAtValue == "" {
 		return false, nil
 	}
