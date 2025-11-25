@@ -17,20 +17,21 @@ import (
 )
 
 type LicenseInfo struct {
-	LicenseID                      string                                          `json:"licenseID"`
-	AppSlug                        string                                          `json:"appSlug"`
-	ChannelName                    string                                          `json:"channelName"`
-	CustomerName                   string                                          `json:"customerName"`
-	CustomerEmail                  string                                          `json:"customerEmail"`
-	LicenseType                    string                                          `json:"licenseType"`
-	ChannelID                      string                                          `json:"channelID"`
-	LicenseSequence                int64                                           `json:"licenseSequence"`
-	IsAirgapSupported              bool                                            `json:"isAirgapSupported"`
-	IsGitOpsSupported              bool                                            `json:"isGitOpsSupported"`
-	IsIdentityServiceSupported     bool                                            `json:"isIdentityServiceSupported"`
-	IsGeoaxisSupported             bool                                            `json:"isGeoaxisSupported"`
-	IsSnapshotSupported            bool                                            `json:"isSnapshotSupported"`
-	IsSupportBundleUploadSupported bool                                            `json:"isSupportBundleUploadSupported"`
+	LicenseID                      string      `json:"licenseID"`
+	AppSlug                        string      `json:"appSlug"`
+	ChannelName                    string      `json:"channelName"`
+	CustomerID                     string      `json:"customerID"`
+	CustomerName                   string      `json:"customerName"`
+	CustomerEmail                  string      `json:"customerEmail"`
+	LicenseType                    string      `json:"licenseType"`
+	ChannelID                      string      `json:"channelID"`
+	LicenseSequence                int64       `json:"licenseSequence"`
+	IsAirgapSupported              bool        `json:"isAirgapSupported"`
+	IsGitOpsSupported              bool        `json:"isGitOpsSupported"`
+	IsIdentityServiceSupported     bool        `json:"isIdentityServiceSupported"`
+	IsGeoaxisSupported             bool        `json:"isGeoaxisSupported"`
+	IsSnapshotSupported            bool        `json:"isSnapshotSupported"`
+	IsSupportBundleUploadSupported bool        `json:"isSupportBundleUploadSupported"`
 	IsSemverRequired               bool        `json:"isSemverRequired"`
 	Endpoint                       string      `json:"endpoint"`
 	Entitlements                   interface{} `json:"entitlements,omitempty"`
@@ -138,6 +139,7 @@ func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
 		LicenseID:                      wrapper.GetLicenseID(),
 		AppSlug:                        wrapper.GetAppSlug(),
 		ChannelName:                    wrapper.GetChannelName(),
+		CustomerID:                     wrapper.GetCustomerID(),
 		CustomerName:                   wrapper.GetCustomerName(),
 		CustomerEmail:                  wrapper.GetCustomerEmail(),
 		LicenseType:                    wrapper.GetLicenseType(),
