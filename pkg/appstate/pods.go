@@ -21,10 +21,10 @@ import (
 func runPodImageController(ctx context.Context, clientset kubernetes.Interface, targetNamespace string, _ []appstatetypes.StatusInformer, _ chan<- appstatetypes.ResourceState) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			return clientset.CoreV1().Pods(targetNamespace).List(context.TODO(), options)
+			return clientset.CoreV1().Pods(targetNamespace).List(ctx, options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			return clientset.CoreV1().Pods(targetNamespace).Watch(context.TODO(), options)
+			return clientset.CoreV1().Pods(targetNamespace).Watch(ctx, options)
 		},
 	}
 	informer := cache.NewSharedInformer(
