@@ -6,6 +6,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
+	licensewrappertypes "github.com/replicatedhq/kotskinds/pkg/licensewrapper/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/heartbeat"
@@ -74,10 +75,17 @@ func bootstrap(params APIServerParams) error {
 		unverifiedWrapper = wrapper
 	}
 
-	verifiedWrapper, err := sdklicense.VerifySignature(unverifiedWrapper)
+	err = unverifiedWrapper.VerifySignature()
 	if err != nil {
-		return backoff.Permanent(errors.Wrap(err, "failed to verify license signature"))
+		if licensewrappertypes.IsLicenseDataValidationError(err) {
+			// this is not a fatal error, it means that the license data outside of the signature was changed
+			// however, the data inside the signature was still valid, and so the license has been updated to use that data instead
+			log.Println(err.Error())
+		} else {
+			return backoff.Permanent(errors.Wrap(err, "failed to verify license signature"))
+		}
 	}
+	verifiedWrapper := unverifiedWrapper
 
 	if !util.IsAirgap() {
 		// sync license
