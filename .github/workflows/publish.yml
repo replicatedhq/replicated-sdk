@@ -21,7 +21,7 @@ jobs:
       previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Get tags
         id: get-tags
@@ -47,7 +47,7 @@ jobs:
     if: github.ref_type != 'branch'
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Generate Release Notes PR
       env:
@@ -65,7 +65,7 @@ jobs:
     outputs:
       digest: ${{ steps.dagger-publish.outputs.stdout }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -89,7 +89,7 @@ jobs:
     outputs:
       digest: ${{ steps.dagger-publish.outputs.stdout }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
