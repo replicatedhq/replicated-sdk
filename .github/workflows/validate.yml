@@ -229,7 +229,7 @@ jobs:
           docker run --rm \
             -e REPLICATED_API_TOKEN \
             replicated/vendor-cli:latest \
-            /replicated channel create \
+            replicated channel create \
               --app ${APP_SLUG} \
               --name "${CHANNEL_NAME}"
 
@@ -238,7 +238,7 @@ jobs:
             -e REPLICATED_API_TOKEN \
             -v /tmp:/chart \
             replicated/vendor-cli:latest \
-            /replicated release create \
+            replicated release create \
               --app ${APP_SLUG} \
               --version 0.1.0 \
               --promote "${CHANNEL_NAME}" \
@@ -269,7 +269,7 @@ jobs:
           APP_LIST=$(docker run --rm \
             -e REPLICATED_API_TOKEN \
             replicated/vendor-cli:latest \
-            /replicated app ls)
+            replicated app ls)
 
           APP_ID=$(echo "${APP_LIST}" | awk -v slug="${APP_SLUG}" '
             $0 !~ /^ID/ && $0 !~ /^--/ && NF >= 3 {
@@ -293,7 +293,7 @@ jobs:
           CUSTOMER_JSON=$(docker run --rm \
             -e REPLICATED_API_TOKEN \
             replicated/vendor-cli:latest \
-            /replicated customer create \
+            replicated customer create \
               --app ${APP_SLUG} \
               --kots-install=false \
               --name test-customer \
@@ -328,7 +328,7 @@ jobs:
           VERSIONS_JSON=$(docker run --rm \
             -e REPLICATED_API_TOKEN \
             replicated/vendor-cli:latest \
-            /replicated cluster versions --output json)
+            replicated cluster versions --output json)
 
           # Extract distributions and their latest versions
           MATRIX=$(echo "${VERSIONS_JSON}" | jq -c '[
@@ -539,7 +539,7 @@ jobs:
           docker run --rm \
             -e REPLICATED_API_TOKEN \
             replicated/vendor-cli:latest \
-            /replicated customer archive --customer "${CUSTOMER_ID}" || true
+            replicated customer archive --customer "${CUSTOMER_ID}" || true
 
       - name: Archive channel
         if: needs.create-release.outputs.channel-slug
@@ -549,4 +549,4 @@ jobs:
           docker run --rm \
             -e REPLICATED_API_TOKEN \
             replicated/vendor-cli:latest \
-            /replicated channel rm --channel "${CHANNEL_SLUG}" --app ${APP_SLUG} || true
+            replicated channel rm --channel "${CHANNEL_SLUG}" --app ${APP_SLUG} || true
