@@ -77,7 +77,6 @@ jobs:
 
   build-image:
     runs-on: ubuntu-22.04
-    needs: [test-unit, test-pact]
     outputs:
       image-registry: ${{ steps.build.outputs.registry }}
       image-repository: ${{ steps.build.outputs.repository }}
@@ -367,7 +366,7 @@ jobs:
 
   integration-test:
     runs-on: ubuntu-22.04
-    needs: [build-image, create-release, create-customer, get-distributions]
+    needs: [test-unit, test-pact, build-image, create-release, create-customer, get-distributions]
     strategy:
       fail-fast: false
       matrix:
