@@ -168,6 +168,9 @@ jobs:
     needs: build-chart
     outputs:
       channel-slug: ${{ steps.release.outputs.channel }}
+      customer-id: ${{ steps.customer.outputs.id }}
+      license-id: ${{ steps.customer.outputs.license }}
+      app-id: ${{ steps.customer.outputs.app-id }}
     steps:
       - uses: actions/checkout@v6
 
@@ -196,7 +199,8 @@ jobs:
 
           helm dep update
           helm package .
-          mv test-chart-0.1.0.tgz /tmp/
+          mkdir -p ../release-files
+          mv test-chart-0.1.0.tgz ../release-files/
 
       - name: Get Replicated token from 1Password
         uses: 1password/load-secrets-action@v2
@@ -213,7 +217,7 @@ jobs:
           CHANNEL_NAME="automated-${TIMESTAMP}"
 
           # Create KOTS application files
-          cat > /tmp/app.yaml << 'EOF'
+          cat > release-files/app.yaml << 'EOF'
           apiVersion: kots.io/v1beta1
           kind: Application
           metadata:
@@ -223,7 +227,7 @@ jobs:
             icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.png
           EOF
 
-          cat > /tmp/config.yaml << 'EOF'
+          cat > release-files/config.yaml << 'EOF'
           apiVersion: kots.io/v1beta1
           kind: Config
           metadata:
@@ -239,7 +243,7 @@ jobs:
                     default: "0"
           EOF
 
-          cat > /tmp/helm.yaml << 'EOF'
+          cat > release-files/helm.yaml << 'EOF'
           apiVersion: kots.io/v1beta2
           kind: HelmChart
           metadata:
@@ -269,41 +273,15 @@ jobs:
             --app ${APP_SLUG} \
             --version 0.1.0 \
             --promote "${CHANNEL_NAME}" \
-            --yaml-dir /tmp
+            --yaml-dir release-files
 
           echo "channel=${CHANNEL_NAME}" >> $GITHUB_OUTPUT
           echo "Created channel: ${CHANNEL_NAME}"
 
-  create-customer:
-    runs-on: ubuntu-22.04
-    needs: create-release
-    outputs:
-      customer-id: ${{ steps.customer.outputs.id }}
-      license-id: ${{ steps.customer.outputs.license }}
-      app-id: ${{ steps.app.outputs.id }}
-    steps:
-      - name: Install Replicated CLI
+      - name: Get app ID and create customer
+        id: customer
         run: |
-          VERSION=$(curl -fsSL https://api.github.com/repos/replicatedhq/replicated/releases/latest | grep -Po '"tag_name": "v\K[^"]+')
-          echo "Installing Replicated CLI version ${VERSION}"
-          curl -fsSL "https://github.com/replicatedhq/replicated/releases/download/v${VERSION}/replicated_${VERSION}_linux_amd64.tar.gz" -o replicated.tar.gz
-          tar xf replicated.tar.gz replicated
-          sudo mv replicated /usr/local/bin/replicated
-          sudo chmod +x /usr/local/bin/replicated
-          rm replicated.tar.gz
-          replicated version
-
-      - name: Get Replicated token from 1Password
-        uses: 1password/load-secrets-action@v2
-        with:
-          export-env: true
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT }}
-          REPLICATED_API_TOKEN: op://Developer Automation/Replicated/service_account
-
-      - name: Get app ID
-        id: app
-        run: |
+          # Get app ID
           APP_LIST=$(replicated app ls)
 
           APP_ID=$(echo "${APP_LIST}" | awk -v slug="${APP_SLUG}" '
@@ -317,19 +295,16 @@ jobs:
             }
           ')
 
-          echo "id=${APP_ID}" >> $GITHUB_OUTPUT
+          echo "app-id=${APP_ID}" >> $GITHUB_OUTPUT
           echo "App ID: ${APP_ID}"
 
-      - name: Create customer
-        id: customer
-        env:
-          CHANNEL_SLUG: ${{ needs.create-release.outputs.channel-slug }}
-        run: |
+          # Create customer
+          CHANNEL_NAME="${{ steps.release.outputs.channel }}"
           CUSTOMER_JSON=$(replicated customer create \
             --app ${APP_SLUG} \
             --kots-install=false \
             --name test-customer \
-            --channel "${CHANNEL_SLUG}" \
+            --channel "${CHANNEL_NAME}" \
             --email test-customer@replicated.com \
             --output json)
 
@@ -385,7 +360,7 @@ jobs:
 
   integration-test:
     runs-on: ubuntu-22.04
-    needs: [test-unit, test-pact, build-image, create-release, create-customer, get-distributions]
+    needs: [test-unit, test-pact, build-image, create-release, get-distributions]
     strategy:
       fail-fast: false
       matrix:
@@ -427,7 +402,7 @@ jobs:
 
       - name: Install test chart
         env:
-          LICENSE_ID: ${{ needs.create-customer.outputs.license-id }}
+          LICENSE_ID: ${{ needs.create-release.outputs.license-id }}
           CHANNEL_SLUG: ${{ needs.create-release.outputs.channel-slug }}
         run: |
           helm registry login registry.replicated.com \
@@ -447,9 +422,9 @@ jobs:
 
       - name: Run e2e tests
         env:
-          APP_ID: ${{ needs.create-customer.outputs.app-id }}
-          CUSTOMER_ID: ${{ needs.create-customer.outputs.customer-id }}
-          LICENSE_ID: ${{ needs.create-customer.outputs.license-id }}
+          APP_ID: ${{ needs.create-release.outputs.app-id }}
+          CUSTOMER_ID: ${{ needs.create-release.outputs.customer-id }}
+          LICENSE_ID: ${{ needs.create-release.outputs.license-id }}
           CHANNEL_SLUG: ${{ needs.create-release.outputs.channel-slug }}
           SDK_IMAGE: ${{ needs.build-image.outputs.image-ref }}
         run: |
@@ -515,7 +490,7 @@ jobs:
 
       - name: Test minimal RBAC
         env:
-          LICENSE_ID: ${{ needs.create-customer.outputs.license-id }}
+          LICENSE_ID: ${{ needs.create-release.outputs.license-id }}
           CHANNEL_SLUG: ${{ needs.create-release.outputs.channel-slug }}
         run: |
           # Upgrade with minimal RBAC
@@ -560,10 +535,10 @@ jobs:
   cleanup:
     runs-on: ubuntu-22.04
     if: always()
-    needs: [create-release, create-customer, integration-test]
+    needs: [create-release, integration-test]
     steps:
       - name: Install Replicated CLI
-        if: needs.create-customer.outputs.customer-id || needs.create-release.outputs.channel-slug
+        if: needs.create-release.outputs.customer-id || needs.create-release.outputs.channel-slug
         run: |
           VERSION=$(curl -fsSL https://api.github.com/repos/replicatedhq/replicated/releases/latest | grep -Po '"tag_name": "v\K[^"]+')
           echo "Installing Replicated CLI version ${VERSION}"
@@ -575,7 +550,7 @@ jobs:
           replicated version
 
       - name: Get Replicated token from 1Password
-        if: needs.create-customer.outputs.customer-id || needs.create-release.outputs.channel-slug
+        if: needs.create-release.outputs.customer-id || needs.create-release.outputs.channel-slug
         uses: 1password/load-secrets-action@v2
         with:
           export-env: true
@@ -584,9 +559,9 @@ jobs:
           REPLICATED_API_TOKEN: op://Developer Automation/Replicated/service_account
 
       - name: Archive customer
-        if: needs.create-customer.outputs.customer-id
+        if: needs.create-release.outputs.customer-id
         env:
-          CUSTOMER_ID: ${{ needs.create-customer.outputs.customer-id }}
+          CUSTOMER_ID: ${{ needs.create-release.outputs.customer-id }}
         run: |
           replicated customer archive --customer "${CUSTOMER_ID}" || true
 
