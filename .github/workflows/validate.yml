@@ -360,7 +360,7 @@ jobs:
 
   integration-test:
     runs-on: ubuntu-22.04
-    needs: [test-unit, test-pact, build-image, create-release, get-distributions]
+    needs: [test-unit, build-image, create-release, get-distributions]
     strategy:
       fail-fast: false
       matrix:
