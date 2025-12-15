@@ -42,22 +42,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ruby ruby-dev build-essential
           sudo gem install pact-mock_service -v '>=3.5.0'
-          sudo gem install pact-provider-verifier -v '>=1.36.1'
+          sudo gem install pact-provider-verifier -v '>=1.36.1' --force
           sudo gem install pact_broker-client -v '>=1.22.3'
 
       - name: Install pact-cli binaries
         run: |
+          sudo mkdir -p /tmp/pact-bin
           docker create --name pact-cli pactfoundation/pact-cli:latest
-          docker cp pact-cli:/usr/bin/pact /usr/local/bin/pact
-          docker cp pact-cli:/usr/bin/pact-mock-service /usr/local/bin/pact-mock-service
-          docker cp pact-cli:/usr/bin/pact-stub-service /usr/local/bin/pact-stub-service
-          docker cp pact-cli:/usr/bin/pact-broker /usr/local/bin/pact-broker
-          docker cp pact-cli:/usr/bin/pact-provider-verifier /usr/local/bin/pact-provider-verifier
-          docker cp pact-cli:/usr/bin/pactflow /usr/local/bin/pactflow
-          docker cp pact-cli:/usr/bin/pact-message /usr/local/bin/pact-message
+          docker cp pact-cli:/usr/bin/pact /tmp/pact-bin/pact
+          docker cp pact-cli:/usr/bin/pact-mock-service /tmp/pact-bin/pact-mock-service
+          docker cp pact-cli:/usr/bin/pact-stub-service /tmp/pact-bin/pact-stub-service
+          docker cp pact-cli:/usr/bin/pact-broker /tmp/pact-bin/pact-broker
+          docker cp pact-cli:/usr/bin/pact-provider-verifier /tmp/pact-bin/pact-provider-verifier
+          docker cp pact-cli:/usr/bin/pactflow /tmp/pact-bin/pactflow
+          docker cp pact-cli:/usr/bin/pact-message /tmp/pact-bin/pact-message
           docker rm pact-cli
-          chmod +x /usr/local/bin/pact*
-          ln -sf /usr/local/bin/pact-broker-client /usr/local/bin/pact-broker
+          sudo mv /tmp/pact-bin/* /usr/local/bin/
+          sudo chmod +x /usr/local/bin/pact*
+          sudo ln -sf /usr/local/bin/pact-broker /usr/local/bin/pact-broker-client
 
       - name: Get Pact token from 1Password
         uses: 1password/load-secrets-action@v2
