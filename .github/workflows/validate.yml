@@ -47,17 +47,17 @@ jobs:
 
       - name: Install pact-cli binaries
         run: |
-          sudo mkdir -p /tmp/pact-bin
+          mkdir -p /tmp/pact-bin
           docker create --name pact-cli pactfoundation/pact-cli:latest
-          docker cp pact-cli:/usr/bin/pact /tmp/pact-bin/pact
-          docker cp pact-cli:/usr/bin/pact-mock-service /tmp/pact-bin/pact-mock-service
-          docker cp pact-cli:/usr/bin/pact-stub-service /tmp/pact-bin/pact-stub-service
-          docker cp pact-cli:/usr/bin/pact-broker /tmp/pact-bin/pact-broker
-          docker cp pact-cli:/usr/bin/pact-provider-verifier /tmp/pact-bin/pact-provider-verifier
-          docker cp pact-cli:/usr/bin/pactflow /tmp/pact-bin/pactflow
-          docker cp pact-cli:/usr/bin/pact-message /tmp/pact-bin/pact-message
+          docker cp pact-cli:/usr/bin/pact /tmp/pact-bin/
+          docker cp pact-cli:/usr/bin/pact-mock-service /tmp/pact-bin/
+          docker cp pact-cli:/usr/bin/pact-stub-service /tmp/pact-bin/
+          docker cp pact-cli:/usr/bin/pact-broker /tmp/pact-bin/
+          docker cp pact-cli:/usr/bin/pact-provider-verifier /tmp/pact-bin/
+          docker cp pact-cli:/usr/bin/pactflow /tmp/pact-bin/
+          docker cp pact-cli:/usr/bin/pact-message /tmp/pact-bin/
           docker rm pact-cli
-          sudo mv /tmp/pact-bin/* /usr/local/bin/
+          sudo cp /tmp/pact-bin/* /usr/local/bin/
           sudo chmod +x /usr/local/bin/pact*
           sudo ln -sf /usr/local/bin/pact-broker /usr/local/bin/pact-broker-client
 
