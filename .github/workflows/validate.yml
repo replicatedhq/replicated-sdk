@@ -565,15 +565,14 @@ jobs:
       - name: Install Replicated CLI
         if: needs.create-customer.outputs.customer-id || needs.create-release.outputs.channel-slug
         run: |
-          curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
-            | grep "browser_download_url.*linux_amd64.tar.gz" \
-            | cut -d : -f 2,3 \
-            | tr -d \" \
-            | wget -qi -
-          tar xf replicated_*_linux_amd64.tar.gz replicated
+          VERSION=$(curl -fsSL https://api.github.com/repos/replicatedhq/replicated/releases/latest | grep -Po '"tag_name": "v\K[^"]+')
+          echo "Installing Replicated CLI version ${VERSION}"
+          curl -fsSL "https://github.com/replicatedhq/replicated/releases/download/v${VERSION}/replicated_${VERSION}_linux_amd64.tar.gz" -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated
           sudo mv replicated /usr/local/bin/replicated
           sudo chmod +x /usr/local/bin/replicated
-          rm replicated_*_linux_amd64.tar.gz
+          rm replicated.tar.gz
+          replicated version
 
       - name: Get Replicated token from 1Password
         if: needs.create-customer.outputs.customer-id || needs.create-release.outputs.channel-slug
