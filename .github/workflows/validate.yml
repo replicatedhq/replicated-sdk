@@ -61,6 +61,21 @@ jobs:
           sudo chmod +x /usr/local/bin/pact*
           sudo ln -sf /usr/local/bin/pact-broker /usr/local/bin/pact-broker-client
 
+      - name: Verify pact installation
+        run: |
+          echo "Checking pact-mock-service..."
+          which pact-mock-service
+          pact-mock-service version || true
+
+          echo "Checking Ruby gems..."
+          gem list | grep pact || true
+
+          echo "Listing /usr/local/bin/pact*..."
+          ls -la /usr/local/bin/pact* || true
+
+          echo "Testing pact-mock-service execution..."
+          pact-mock-service help || echo "Failed to run pact-mock-service"
+
       - name: Get Pact token from 1Password
         uses: 1password/load-secrets-action@v2
         with:
@@ -73,7 +88,14 @@ jobs:
         env:
           PACT_VERSION: ${{ github.sha }}
           PACT_BROKER_BASE_URL: https://replicated.pactflow.io
-        run: make test-pact
+        run: |
+          set -o pipefail
+          make test-pact || {
+            echo "=== Pact test failed ==="
+            echo "Checking for log files..."
+            find . -name "*.log" -type f -exec echo "Found: {}" \; -exec cat {} \; || true
+            exit 1
+          }
 
   build-image:
     runs-on: ubuntu-22.04
