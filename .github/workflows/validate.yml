@@ -563,11 +563,11 @@ jobs:
         env:
           CUSTOMER_ID: ${{ needs.create-release.outputs.customer-id }}
         run: |
-          replicated customer archive --customer "${CUSTOMER_ID}" || true
+          replicated customer archive --customer "${CUSTOMER_ID}" --app ${APP_SLUG} || true
 
       - name: Archive channel
         if: needs.create-release.outputs.channel-slug
         env:
           CHANNEL_SLUG: ${{ needs.create-release.outputs.channel-slug }}
         run: |
-          replicated channel rm --channel "${CHANNEL_SLUG}" --app ${APP_SLUG} || true
+          replicated channel rm "${CHANNEL_SLUG}" --app ${APP_SLUG} || true
