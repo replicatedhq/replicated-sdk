@@ -2,6 +2,7 @@
 This is a legacy/deprecated configmap.
 The replicated API will use the deployment uid if the configmap does not exist.
 */}}
+{{- $values := include "replicated.values" . | fromYaml -}}
 {{- $data := (lookup "v1" "ConfigMap" .Release.Namespace "replicated-sdk").data }}
 {{- if $data }}
 apiVersion: v1
@@ -9,9 +10,9 @@ kind: ConfigMap
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
-  {{- if .Values.commonAnnotations }}
+  {{- if $values.commonAnnotations }}
   annotations:
-    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- toYaml $values.commonAnnotations | nindent 4 }}
   {{- end }}
   name: replicated-sdk
   namespace: {{ include "replicated.namespace" . | quote }}

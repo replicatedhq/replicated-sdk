@@ -1,19 +1,20 @@
+{{- $values := include "replicated.values" . | fromYaml -}}
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
-  {{- if .Values.commonAnnotations }}
+  {{- if $values.commonAnnotations }}
   annotations:
-    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- toYaml $values.commonAnnotations | nindent 4 }}
   {{- end }}
   name: {{ include "replicated.serviceName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 spec:
   ports:
   - name: http
-    port: {{ .Values.service.port }}
+    port: {{ $values.service.port }}
     targetPort: 3000
   selector:
     {{- include "replicated.selectorLabels" . | nindent 4 }}
-  type: {{ .Values.service.type }}
+  type: {{ $values.service.type }}

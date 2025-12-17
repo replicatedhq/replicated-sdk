@@ -1,6 +1,7 @@
 {{/*
-Renders the Support Bundle secret to be used by replicated 
+Renders the Support Bundle secret to be used by replicated
 */}}
+{{- $values := include "replicated.values" . | fromYaml -}}
 ---
 apiVersion: v1
 kind: Secret
@@ -10,9 +11,9 @@ metadata:
     troubleshoot.sh/kind: support-bundle
   name: {{ include "replicated.supportBundleName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
-  {{- if .Values.commonAnnotations }}
+  {{- if $values.commonAnnotations }}
   annotations:
-    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- toYaml $values.commonAnnotations | nindent 4 }}
   {{- end }}
 stringData:
   support-bundle-spec: |-
@@ -88,7 +89,7 @@ stringData:
             namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated-meta-data
             includeValue: true
-            key: instance-tag-data 
+            key: instance-tag-data
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status

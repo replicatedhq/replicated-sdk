@@ -1,11 +1,12 @@
+{{- $values := include "replicated.values" . | fromYaml -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
-  {{- if .Values.commonAnnotations }}
+  {{- if $values.commonAnnotations }}
   annotations:
-    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- toYaml $values.commonAnnotations | nindent 4 }}
   {{- end }}
   name: {{ include "replicated.deploymentName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
@@ -17,56 +18,56 @@ spec:
     metadata:
       annotations:
         checksum/replicated-secret: {{ include (print $.Template.BasePath "/replicated-secret.yaml") . | sha256sum }}
-        {{- if .Values.commonAnnotations }}
-        {{- toYaml .Values.commonAnnotations | nindent 8 }}
+        {{- if $values.commonAnnotations }}
+        {{- toYaml $values.commonAnnotations | nindent 8 }}
         {{- end }}
       labels:
         {{- include "replicated.labels" . | nindent 8 }}
-        {{- if .Values.podLabels }}
+        {{- if $values.podLabels }}
         {{- include "replicated.podLabels" . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets | default .Values.global.imagePullSecrets }}
+      {{- with $values.imagePullSecrets | default $values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.automountServiceAccountToken }}
-      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- if $values.automountServiceAccountToken }}
+      automountServiceAccountToken: {{ $values.automountServiceAccountToken }}
       {{- end }}
-      {{- if .Values.hostAliases }}
-      hostAliases: {{- toYaml .Values.hostAliases | nindent 8 }}
+      {{- if $values.hostAliases }}
+      hostAliases: {{- toYaml $values.hostAliases | nindent 8 }}
       {{- end }}
-      {{- if .Values.topologySpreadConstraints }}
-      topologySpreadConstraints: {{- toYaml .Values.topologySpreadConstraints | nindent 8 }}
+      {{- if $values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- toYaml $values.topologySpreadConstraints | nindent 8 }}
       {{- end }}
-      {{- if .Values.priorityClassName }}
-      priorityClassName: {{ .Values.priorityClassName }}
+      {{- if $values.priorityClassName }}
+      priorityClassName: {{ $values.priorityClassName }}
       {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName }}
+      {{- if $values.schedulerName }}
+      schedulerName: {{ $values.schedulerName }}
       {{- end }}
-      {{- if .Values.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if $values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $values.terminationGracePeriodSeconds }}
       {{- end }}
-      {{- if .Values.hostNetwork }}
-      hostNetwork: {{ .Values.hostNetwork }}
+      {{- if $values.hostNetwork }}
+      hostNetwork: {{ $values.hostNetwork }}
       {{- end }}
-      {{- if .Values.hostIPC }}
-      hostIPC: {{ .Values.hostIPC }}
+      {{- if $values.hostIPC }}
+      hostIPC: {{ $values.hostIPC }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- with $values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.podSecurityContext }}
+      {{- if $values.podSecurityContext }}
       securityContext:
         {{- include "replicated.podSecurityContext" . | nindent 8 }}
       {{- end }}
@@ -74,32 +75,32 @@ spec:
       - name: replicated
         secret:
           secretName: {{ include "replicated.secretName" . }}
-      {{- if .Values.privateCAConfigmap }}
+      {{- if $values.privateCAConfigmap }}
       - name: additional-certs
         configMap:
           defaultMode: 420
-          name: {{ .Values.privateCAConfigmap }}
-      {{- else if .Values.privateCASecret }}
+          name: {{ $values.privateCAConfigmap }}
+      {{- else if $values.privateCASecret }}
       - name: additional-certs
         secret:
           defaultMode: 420
-          secretName: {{ .Values.privateCASecret.name }}
+          secretName: {{ $values.privateCASecret.name }}
           items:
-          - key: {{ .Values.privateCASecret.key }}
+          - key: {{ $values.privateCASecret.key }}
             path: ca.crt
       {{- end }}
-      {{- if .Values.extraVolumes }}
-      {{- toYaml .Values.extraVolumes | nindent 6 }}
+      {{- if $values.extraVolumes }}
+      {{- toYaml $values.extraVolumes | nindent 6 }}
       {{- end }}
-      {{- if .Values.initContainers }}
+      {{- if $values.initContainers }}
       initContainers:
-      {{- toYaml .Values.initContainers | nindent 6 }}
+      {{- toYaml $values.initContainers | nindent 6 }}
       {{- end }}
       containers:
       - name: replicated
         image: {{ include "replicated.containerImage" . }}
         imagePullPolicy: {{ include "replicated.imagePullPolicy" . }}
-        {{- if .Values.containerSecurityContext }}
+        {{- if $values.containerSecurityContext }}
         securityContext:
           {{- include "replicated.containerSecurityContext" . | nindent 12 }}
         {{- end }}
@@ -108,19 +109,19 @@ spec:
           mountPath: /etc/replicated/config.yaml
           readOnly: true
           subPath: config.yaml
-        {{- if .Values.privateCAConfigmap }}
+        {{- if $values.privateCAConfigmap }}
         - mountPath: /certs
           name: additional-certs
-        {{- else if .Values.privateCASecret }}
+        {{- else if $values.privateCASecret }}
         - mountPath: /certs/ca.crt
           subPath: ca.crt
           name: additional-certs
         {{- end }}
-        {{- if .Values.extraVolumeMounts }}
-        {{- toYaml .Values.extraVolumeMounts | nindent 8 }}
+        {{- if $values.extraVolumeMounts }}
+        {{- toYaml $values.extraVolumeMounts | nindent 8 }}
         {{- end }}
         env:
-        {{- with .Values.extraEnv }}
+        {{- with $values.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
         {{- $httpsProxy := include "replicated.httpsProxy" . }}
@@ -133,7 +134,7 @@ spec:
         - name: NO_PROXY
           value: {{ $noProxy | quote }}
         {{- end }}
-        {{- if or .Values.privateCAConfigmap .Values.privateCASecret }}
+        {{- if or $values.privateCAConfigmap $values.privateCASecret }}
         - name: SSL_CERT_DIR
           value: /certs
         {{- end }}
@@ -145,9 +146,9 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        {{- if .Values.isAirgap }}
+        {{- if $values.isAirgap }}
         - name: DISABLE_OUTBOUND_CONNECTIONS
-          value: {{ .Values.isAirgap | quote }}
+          value: {{ $values.isAirgap | quote }}
         {{- end }}
         - name: IS_HELM_MANAGED
           value: "true"
@@ -155,9 +156,9 @@ spec:
           value: {{ .Release.Name }}
         - name: HELM_RELEASE_NAMESPACE
           value: {{ .Release.Namespace }}
-        {{- if .Values.parentChartURL }}
+        {{- if $values.parentChartURL }}
         - name: HELM_PARENT_CHART_URL
-          value: {{ .Values.parentChartURL | quote }}
+          value: {{ $values.parentChartURL | quote }}
         {{- end }}
         - name: HELM_DRIVER
           value: secret # TODO: support other drivers
@@ -167,7 +168,7 @@ spec:
           value: {{ include "replicated.deploymentName" . }}
         - name: REPLICATED_CONFIG_FILE
           value: /etc/replicated/config.yaml
-        {{- if (.Values.integration).licenseID }}
+        {{- if ($values.integration).licenseID }}
         - name: REPLICATED_INTEGRATION_LICENSE_ID
           valueFrom:
             secretKeyRef:
@@ -177,26 +178,26 @@ spec:
         ports:
         - containerPort: 3000
           name: http
-        {{- if .Values.resources }}
-        resources: {{- toYaml .Values.resources | nindent 10 }}
+        {{- if $values.resources }}
+        resources: {{- toYaml $values.resources | nindent 10 }}
         {{- end }}
-        {{- if .Values.readinessProbe }}
+        {{- if $values.readinessProbe }}
         readinessProbe:
-          {{- $readinessProbe := .Values.readinessProbe | deepCopy }}
-          {{- if and .Values.tlsCertSecretName $readinessProbe.httpGet }}
+          {{- $readinessProbe := $values.readinessProbe | deepCopy }}
+          {{- if and $values.tlsCertSecretName $readinessProbe.httpGet }}
             {{- $_ := set $readinessProbe.httpGet "scheme" "HTTPS" }}
           {{- end }}
           {{- toYaml $readinessProbe | nindent 10 }}
         {{- end }}
-        {{- if .Values.livenessProbe }}
+        {{- if $values.livenessProbe }}
         livenessProbe:
-          {{- $livenessProbe := .Values.livenessProbe | deepCopy }}
-          {{- if and .Values.tlsCertSecretName $livenessProbe.httpGet }}
+          {{- $livenessProbe := $values.livenessProbe | deepCopy }}
+          {{- if and $values.tlsCertSecretName $livenessProbe.httpGet }}
             {{- $_ := set $livenessProbe.httpGet "scheme" "HTTPS" }}
           {{- end }}
           {{- toYaml $livenessProbe | nindent 10 }}
         {{- end }}
-      {{- if .Values.restartPolicy }}
-      restartPolicy: {{ .Values.restartPolicy }}
+      {{- if $values.restartPolicy }}
+      restartPolicy: {{ $values.restartPolicy }}
       {{- end }}
       serviceAccountName: {{ include "replicated.serviceAccountName" . }}

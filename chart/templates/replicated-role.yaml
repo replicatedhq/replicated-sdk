@@ -1,17 +1,18 @@
-{{ if and (not .Values.serviceAccountName) (not .Values.clusterRole) }}
+{{- $values := include "replicated.values" . | fromYaml -}}
+{{ if and (not $values.serviceAccountName) (not $values.clusterRole) }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
     {{- include "replicated.labels" . | nindent 4 }}
-  {{- if .Values.commonAnnotations }}
+  {{- if $values.commonAnnotations }}
   annotations:
-    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- toYaml $values.commonAnnotations | nindent 4 }}
   {{- end }}
   name: {{ include "replicated.roleName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 rules:
-{{ if not .Values.minimalRBAC }}
+{{ if not $values.minimalRBAC }}
 - apiGroups:
   - '*'
   resources:
@@ -38,7 +39,7 @@ rules:
   - replicated-instance-report
   - replicated-custom-app-metrics-report
   - replicated-meta-data
-{{ if .Values.tlsCertSecretName }}
+{{ if $values.tlsCertSecretName }}
 - apiGroups:
   - ""
   resources:
@@ -46,10 +47,10 @@ rules:
   verbs:
   - "get"
   resourceNames:
-  - {{ .Values.tlsCertSecretName }}
+  - {{ $values.tlsCertSecretName }}
 {{ end }}
 
-{{ if .Values.minimalRBAC }}
+{{ if $values.minimalRBAC }}
 # the SDK deployment, replicaset, and pod are required by default (to determine if there is a newer version running)
 - apiGroups:
   - "apps"
@@ -92,7 +93,7 @@ rules:
   resourceNames:
     - 'replicated-sdk'
 
-{{ if not .Values.statusInformers }}
+{{ if not $values.statusInformers }}
 # the SDK needs to get the helm chart secret to determine what resources to report
 - apiGroups:
   - ""

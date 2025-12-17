@@ -154,6 +154,13 @@ existingSecret:
   # Name of the existing secret to use
   name: ""
 
+# Populate values from an existing secret using Helm lookup
+# When set, values from this secret override values.yaml defaults
+# Note: Lookup only works during install/upgrade (not during helm template)
+valuesFrom:
+  # Name of the secret to look up values from
+  secretName: ""
+
 # Name of the service account to use
 # If not set and serviceAccount.create is true, a name is generated
 serviceAccountName: ""
