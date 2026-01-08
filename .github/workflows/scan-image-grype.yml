@@ -168,6 +168,22 @@ jobs:
               }' results.sarif > enriched-results.sarif
 
           mv enriched-results.sarif results.sarif
+
+          # Add version-agnostic fingerprints to prevent duplicate alerts
+          jq '.runs[0].results = [
+            .runs[0].results[] |
+            . + {
+              "fingerprints": {
+                "0": (
+                  .ruleId + ":" +
+                  (.locations[0].physicalLocation.artifactLocation.uri | split("//")[0]) + ":" +
+                  (.locations[0].physicalLocation.artifactLocation.uri | split("//")[1])
+                )
+              }
+            }
+          ]' results.sarif > fingerprinted-results.sarif
+
+          mv fingerprinted-results.sarif results.sarif
       
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v4
