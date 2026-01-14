@@ -24,7 +24,7 @@ jobs:
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
         with:
-          version: "0.18.14"
+          version: "0.19.9"
           verb: call
           args: validate --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
