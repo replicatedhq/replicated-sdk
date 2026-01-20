@@ -53,6 +53,10 @@ func Start(params APIServerParams) error {
 	} else if ctx.Done() == nil {
 		panic("context is not cancellable")
 	}
+	// Use a derived context so we can cancel all long-running background components if the HTTP server exits early.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	params.Context = ctx
 
 	backoffDuration := 10 * time.Second
 	bootstrapFn := func() error {
@@ -118,10 +122,16 @@ func Start(params APIServerParams) error {
 		srv.TLSConfig = tlsConfig
 
 		logger.Infof("Starting Replicated API on port %d with TLS...", 3000)
-		return serveWithShutdown(ctx, srv, func() error { return srv.ListenAndServeTLS("", "") })
+		err = serveWithShutdown(ctx, srv, func() error { return srv.ListenAndServeTLS("", "") })
+		cancel()
+		waitForLeaderElectionStop(10 * time.Second)
+		return err
 	} else {
 		logger.Infof("Starting Replicated API on port %d...", 3000)
-		return serveWithShutdown(ctx, srv, srv.ListenAndServe)
+		err = serveWithShutdown(ctx, srv, srv.ListenAndServe)
+		cancel()
+		waitForLeaderElectionStop(10 * time.Second)
+		return err
 	}
 }
 
@@ -137,14 +147,15 @@ func serveWithShutdown(ctx context.Context, srv *http.Server, serveFn func() err
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
-		// If serveFn already returned, prefer that error; otherwise treat shutdown as clean.
+
+		// Prefer the server's return value, but don't wait longer than shutdown timeout.
 		select {
 		case err := <-errCh:
 			if errors.Is(err, http.ErrServerClosed) {
 				return nil
 			}
 			return err
-		default:
+		case <-shutdownCtx.Done():
 			return nil
 		}
 	case err := <-errCh:

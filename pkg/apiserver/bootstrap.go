@@ -189,12 +189,8 @@ func bootstrap(params APIServerParams) error {
 
 		store.GetStore().SetLeaderElector(leaderElector)
 
-		// Start leader election in background
-		go func() {
-			if err := leaderElector.Start(params.Context); err != nil {
-				logger.Error(errors.Wrap(err, "leader election stopped"))
-			}
-		}()
+		// Start leader election in background (tracked so we can wait on shutdown).
+		startLeaderElectionAsync(params.Context, leaderElector)
 	}
 
 	if err := heartbeat.Start(); err != nil {
