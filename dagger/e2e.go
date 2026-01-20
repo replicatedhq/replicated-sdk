@@ -753,7 +753,7 @@ spec:
 
 	// Count the number of running pods
 	podCount := 0
-	lines := strings.Split(out, "\n")
+	lines = strings.Split(out, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "Running") {
 			podCount++
