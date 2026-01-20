@@ -48,6 +48,7 @@ rules:
   resourceNames:
   - {{ .Values.tlsCertSecretName }}
 {{ end }}
+{{ if gt (.Values.replicaCount | int) 1 }}
 # Leader election lease permissions (HA mode)
 - apiGroups:
   - "coordination.k8s.io"
@@ -57,6 +58,7 @@ rules:
   - "get"
   - "create"
   - "update"
+{{ end }}
 
 {{ if .Values.minimalRBAC }}
 # the SDK deployment, replicaset, and pod are required by default (to determine if there is a newer version running)
