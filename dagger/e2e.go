@@ -839,8 +839,48 @@ spec:
 	}
 	fmt.Printf("✓ Resources are being reported correctly with HA enabled\n")
 
-	// Test leader failover by deleting the current leader pod
-	fmt.Printf("Testing leader failover by deleting leader pod: %s\n", currentLeader)
+	// Test leader failover by deleting the leader pod
+	// First, get all current pods for debugging
+	fmt.Println("Getting current pods before leader failover test...")
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods", "-l", "app.kubernetes.io/name=replicated", "-o", "wide",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pods before failover test: %w", err)
+	}
+	fmt.Println("Pods before leader deletion:")
+	fmt.Println(out)
+
+	// Now check the lease to see who the leader is
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "lease", "replicated-sdk-leader", "-o", "yaml",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get leader lease before failover: %w", err)
+	}
+	fmt.Println("Leader Lease before deletion:")
+	fmt.Println(out)
+
+	// Re-extract the current leader from the latest lease
+	if match := leaseRegex.FindStringSubmatch(out); match != nil {
+		currentLeader = match[1]
+		fmt.Printf("Current leader to delete: %s\n", currentLeader)
+	} else {
+		return fmt.Errorf("could not find holderIdentity in lease before failover")
+	}
+
+	// Delete the leader pod
+	fmt.Printf("Deleting leader pod: %s\n", currentLeader)
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", kubeconfigPath).
@@ -850,13 +890,14 @@ spec:
 			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to delete leader pod: %w", err)
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to delete leader pod %s: %w\n\nStderr: %s\n\nStdout: %s", currentLeader, err, stderr, out)
 	}
 	fmt.Println(out)
 
 	// Wait for the deployment to recover
 	fmt.Println("Waiting for deployment to recover after leader deletion...")
-	time.Sleep(5 * time.Second) // Give time for leader election to occur
+	time.Sleep(10 * time.Second) // Give time for pod to recreate and leader election to occur
 
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
