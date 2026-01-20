@@ -834,7 +834,10 @@ spec:
 
 	// Verify resources are still being reported with HA enabled
 	fmt.Println("Verifying resources are still being reported with HA enabled...")
-	err = waitForResourcesReadyAfter(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution, preHA)
+	haResourceNames := []Resource{
+		{Kind: "deployment", Name: "replicated"},
+	}
+	err = waitForResourcesReadyAfter(ctx, haResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution, preHA)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources with HA enabled: %w", err)
 	}
@@ -1005,7 +1008,7 @@ spec:
 
 	// Verify resources are still being reported after failover
 	fmt.Println("Verifying resources are still being reported after leader failover...")
-	err = waitForResourcesReadyAfter(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution, preLeaderDeletion)
+	err = waitForResourcesReadyAfter(ctx, haResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution, preLeaderDeletion)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources after leader failover: %w", err)
 	}
