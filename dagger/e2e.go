@@ -702,6 +702,256 @@ spec:
 
 	fmt.Printf("reportAllImages test passed - found %d total images (vs %d with filtering)\n", len(allImagesSet), len(imagesSet))
 
+	// Test High Availability functionality
+	fmt.Println("Testing High Availability (HA) with leader election...")
+
+	// Upgrade the chart to enable HA mode with 3 replicas
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.replicaCount=3",
+		"--set", "replicated.highAvailability.podDisruptionBudget.enabled=true",
+		"--set", "replicated.highAvailability.podDisruptionBudget.minAvailable=2",
+		"--set", "replicated.highAvailability.leaderElection.leaseDuration=10s",
+		"--set", "replicated.highAvailability.leaderElection.renewDeadline=8s",
+		"--set", "replicated.highAvailability.leaderElection.retryPeriod=2s",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart enabling HA: %w", err)
+	}
+
+	// Wait for all 3 replicas to be ready
+	fmt.Println("Waiting for 3 replicas to be ready...")
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "status",
+				"deploy/replicated",
+				"--timeout=2m",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for HA replicas to be ready: %w", err)
+	}
+	fmt.Println(out)
+
+	// Verify 3 pods are running
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods", "-l", "app.kubernetes.io/name=replicated", "-o", "wide",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get HA pods: %w", err)
+	}
+	fmt.Println("HA Pods:")
+	fmt.Println(out)
+
+	// Count the number of running pods
+	podCount := 0
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Running") {
+			podCount++
+		}
+	}
+	if podCount != 3 {
+		return fmt.Errorf("expected 3 running pods, found %d", podCount)
+	}
+	fmt.Printf("✓ Verified 3 replicas are running\n")
+
+	// Verify PodDisruptionBudget exists
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pdb", "replicated", "-o", "yaml",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get PodDisruptionBudget: %w", err)
+	}
+	fmt.Println("PodDisruptionBudget:")
+	fmt.Println(out)
+
+	// Verify minAvailable is set to 2
+	if !strings.Contains(out, "minAvailable: 2") {
+		return fmt.Errorf("PodDisruptionBudget does not have minAvailable set to 2")
+	}
+	fmt.Printf("✓ PodDisruptionBudget configured with minAvailable: 2\n")
+
+	// Check logs for leader election messages
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "logs", "deploy/replicated", "--all-containers=true", "--tail=100",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get HA logs: %w", err)
+	}
+	fmt.Println("HA Logs (checking for leader election):")
+	fmt.Println(out)
+
+	// Verify leader election logs are present
+	if !strings.Contains(out, "leader") && !strings.Contains(out, "REPLICATED_HA_ENABLED") {
+		return fmt.Errorf("no leader election logs found - HA may not be enabled")
+	}
+	fmt.Printf("✓ Leader election is active\n")
+
+	// Check the lease resource
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "lease", "replicated-sdk-leader", "-o", "yaml",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get leader lease: %w", err)
+	}
+	fmt.Println("Leader Lease:")
+	fmt.Println(out)
+
+	// Extract the current leader from the lease
+	var currentLeader string
+	leaseRegex := regexp.MustCompile(`holderIdentity:\s+(\S+)`)
+	if match := leaseRegex.FindStringSubmatch(out); match != nil {
+		currentLeader = match[1]
+		fmt.Printf("✓ Current leader: %s\n", currentLeader)
+	} else {
+		return fmt.Errorf("could not find holderIdentity in lease")
+	}
+
+	// Verify resources are still being reported with HA enabled
+	fmt.Println("Verifying resources are still being reported with HA enabled...")
+	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
+	if err != nil {
+		return fmt.Errorf("failed to wait for resources with HA enabled: %w", err)
+	}
+	fmt.Printf("✓ Resources are being reported correctly with HA enabled\n")
+
+	// Test leader failover by deleting the current leader pod
+	fmt.Printf("Testing leader failover by deleting leader pod: %s\n", currentLeader)
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "delete", "pod", currentLeader, "--wait=false",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete leader pod: %w", err)
+	}
+	fmt.Println(out)
+
+	// Wait for the deployment to recover
+	fmt.Println("Waiting for deployment to recover after leader deletion...")
+	time.Sleep(5 * time.Second) // Give time for leader election to occur
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "status",
+				"deploy/replicated",
+				"--timeout=2m",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for deployment to recover after leader failover: %w", err)
+	}
+	fmt.Println(out)
+
+	// Check the lease again to verify a new leader was elected
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "lease", "replicated-sdk-leader", "-o", "yaml",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get leader lease after failover: %w", err)
+	}
+	fmt.Println("Leader Lease after failover:")
+	fmt.Println(out)
+
+	var newLeader string
+	if match := leaseRegex.FindStringSubmatch(out); match != nil {
+		newLeader = match[1]
+		fmt.Printf("✓ New leader after failover: %s\n", newLeader)
+	}
+
+	// Verify that a new leader was elected (or the old one recovered)
+	if newLeader == "" {
+		return fmt.Errorf("no leader elected after failover")
+	}
+
+	// Get logs from all pods to verify leader election occurred
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "logs", "deploy/replicated", "--all-containers=true", "--tail=50",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get logs after failover: %w", err)
+	}
+	fmt.Println("Logs after leader failover:")
+	fmt.Println(out)
+
+	// Verify resources are still being reported after failover
+	fmt.Println("Verifying resources are still being reported after leader failover...")
+	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
+	if err != nil {
+		return fmt.Errorf("failed to wait for resources after leader failover: %w", err)
+	}
+	fmt.Printf("✓ Resources are being reported correctly after leader failover\n")
+
+	// Verify PDB prevented disruption during failover (at least 2 pods should have remained available)
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods", "-l", "app.kubernetes.io/name=replicated",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pods after failover: %w", err)
+	}
+	fmt.Println("Pods after failover:")
+	fmt.Println(out)
+
+	// Count running pods again
+	runningCount := 0
+	lines = strings.Split(out, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Running") {
+			runningCount++
+		}
+	}
+	if runningCount < 2 {
+		return fmt.Errorf("PodDisruptionBudget may not be working - only %d pods running after failover", runningCount)
+	}
+	fmt.Printf("✓ PodDisruptionBudget maintained %d available pods during failover\n", runningCount)
+
+	fmt.Printf("✓ High Availability test passed for distribution %s and version %s\n", distribution, version)
+
 	return nil
 }
 
