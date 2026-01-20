@@ -705,6 +705,7 @@ spec:
 	// Test High Availability functionality
 	fmt.Println("Testing High Availability (HA) with leader election...")
 
+	preHA := time.Now()
 	// Upgrade the chart to enable HA mode with 3 replicas
 	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
 		"--set", "replicated.tlsCertSecretName=test-tls",
@@ -833,7 +834,7 @@ spec:
 
 	// Verify resources are still being reported with HA enabled
 	fmt.Println("Verifying resources are still being reported with HA enabled...")
-	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
+	err = waitForResourcesReadyAfter(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution, preHA)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources with HA enabled: %w", err)
 	}
@@ -926,6 +927,7 @@ spec:
 	}
 
 	// Delete the leader pod
+	preLeaderDeletion := time.Now()
 	fmt.Printf("Deleting leader pod: %s\n", currentLeader)
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
@@ -1003,7 +1005,7 @@ spec:
 
 	// Verify resources are still being reported after failover
 	fmt.Println("Verifying resources are still being reported after leader failover...")
-	err = waitForResourcesReady(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution)
+	err = waitForResourcesReadyAfter(ctx, newResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution, preLeaderDeletion)
 	if err != nil {
 		return fmt.Errorf("failed to wait for resources after leader failover: %w", err)
 	}
@@ -1056,6 +1058,14 @@ type Event struct {
 			Namespace string `json:"namespace"`
 		} `json:"resourceStates"`
 	} `json:"meta"`
+}
+
+func parseReportedAt(s string) (time.Time, error) {
+	// Replicated APIs generally use RFC3339 timestamps, sometimes with fractional seconds.
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t, nil
+	}
+	return time.Parse(time.RFC3339, s)
 }
 
 func getEvents(ctx context.Context, authToken string, instanceAppID string) ([]Event, error) {
@@ -1124,6 +1134,47 @@ func checkResourceUpdatingOrReady(events []Event, kind string, name string) bool
 	return false
 }
 
+func checkResourceUpdatingOrReadyAfter(events []Event, kind string, name string, after time.Time) bool {
+	foundFalse := false
+	foundAfter := false
+
+	for _, event := range events {
+		if event.FieldName != "appStatus" {
+			continue
+		}
+
+		t, err := parseReportedAt(event.ReportedAt)
+		if err != nil {
+			continue
+		}
+		if !t.After(after) {
+			continue
+		}
+		foundAfter = true
+
+		for _, resourceState := range event.Meta.ResourceStates {
+			if resourceState.Kind == kind && resourceState.Name == name {
+				fmt.Printf("%s resourceState for %s %s: %s (after %s)\n", event.ReportedAt, kind, name, resourceState.State, after.Format(time.RFC3339Nano))
+				if resourceState.State == "ready" || resourceState.State == "updating" {
+					return true
+				}
+				foundFalse = true
+			}
+		}
+	}
+
+	if !foundAfter {
+		fmt.Printf("did not find any appStatus events after %s\n", after.Format(time.RFC3339Nano))
+		return false
+	}
+	if foundFalse {
+		fmt.Printf("only found not ready states for %s %s after %s\n", kind, name, after.Format(time.RFC3339Nano))
+	} else {
+		fmt.Printf("did not find %s %s in any appStatus events after %s\n", kind, name, after.Format(time.RFC3339Nano))
+	}
+	return false
+}
+
 type Resource struct {
 	Kind string
 	Name string
@@ -1166,6 +1217,50 @@ func waitForResourcesReady(ctx context.Context, resources []Resource, maxRetries
 			}
 			fmt.Printf("%s events: %s\n", distribution, string(eventJson))
 			return fmt.Errorf("not all resources are ready after %d attempts", maxRetries)
+		}
+
+		fmt.Printf("Waiting %s before next attempt...\n", retryInterval)
+		time.Sleep(retryInterval)
+	}
+	return fmt.Errorf("unreachable code")
+}
+
+func waitForResourcesReadyAfter(ctx context.Context, resources []Resource, maxRetries int, retryInterval time.Duration, authToken string, instanceAppID string, distribution string, after time.Time) error {
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("Attempt %d/%d: Checking resource states after %s...\n", attempt, maxRetries, after.Format(time.RFC3339Nano))
+
+		events, err := getEvents(ctx, authToken, instanceAppID)
+		if err != nil {
+			if attempt == maxRetries {
+				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)
+			}
+			fmt.Printf("Failed to get events on attempt %d: %v\n", attempt, err)
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		allResourcesReady := true
+		for _, resourceName := range resources {
+			if !checkResourceUpdatingOrReadyAfter(events, resourceName.Kind, resourceName.Name, after) {
+				fmt.Printf("%s Resource %s %s is not ready after %s on attempt %d\n", distribution, resourceName.Kind, resourceName.Name, after.Format(time.RFC3339Nano), attempt)
+				allResourcesReady = false
+			} else {
+				fmt.Printf("%s Resource %s %s is ready after %s\n", distribution, resourceName.Kind, resourceName.Name, after.Format(time.RFC3339Nano))
+			}
+		}
+
+		if allResourcesReady {
+			fmt.Printf("%s All resources are ready after %s after %d attempt(s)\n", distribution, after.Format(time.RFC3339Nano), attempt)
+			return nil
+		}
+
+		if attempt == maxRetries {
+			eventJson, err := json.Marshal(events)
+			if err != nil {
+				return fmt.Errorf("failed to marshal events: %w", err)
+			}
+			fmt.Printf("%s events: %s\n", distribution, string(eventJson))
+			return fmt.Errorf("not all resources are ready after %s after %d attempts", after.Format(time.RFC3339Nano), maxRetries)
 		}
 
 		fmt.Printf("Waiting %s before next attempt...\n", retryInterval)
