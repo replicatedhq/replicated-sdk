@@ -25,6 +25,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
+	"k8s.io/client-go/kubernetes"
 )
 
 func bootstrap(params APIServerParams) error {
@@ -180,7 +181,7 @@ func bootstrap(params APIServerParams) error {
 
 	// Initialize and start leader election if HA mode is enabled
 	if os.Getenv("REPLICATED_HA_ENABLED") == "true" {
-		leaderConfig := createLeaderElectionConfig(params)
+		leaderConfig := createLeaderElectionConfig(params, clientset)
 		leaderElector, err := leader.NewLeaderElector(clientset, leaderConfig)
 		if err != nil {
 			return errors.Wrap(err, "failed to create leader elector")
@@ -194,20 +195,6 @@ func bootstrap(params APIServerParams) error {
 				logger.Error(errors.Wrap(err, "leader election stopped"))
 			}
 		}()
-
-		// Wait for a valid leader to be elected before starting heartbeat/reporting
-		// This ensures that after rollouts or restarts, we don't skip reporting while
-		// waiting for the old lease holder (non-existent pod) to expire
-		logger.Infof("Waiting for leader election to complete...")
-		isLeader, err := leaderElector.WaitForLeader(params.Context)
-		if err != nil {
-			logger.Errorf("Context cancelled while waiting for leader election: %v", err)
-			return errors.Wrap(err, "context cancelled while waiting for leader election")
-		} else if isLeader {
-			logger.Infof("This instance (%s) is the leader", leaderElector.GetIdentity())
-		} else {
-			logger.Infof("Another instance is the leader. This instance will serve read requests only.")
-		}
 	}
 
 	if err := heartbeat.Start(); err != nil {
@@ -227,7 +214,7 @@ func bootstrap(params APIServerParams) error {
 }
 
 // createLeaderElectionConfig creates a leader election config from environment variables and params
-func createLeaderElectionConfig(params APIServerParams) leader.Config {
+func createLeaderElectionConfig(params APIServerParams, clientset kubernetes.Interface) leader.Config {
 	leaseDuration := 15 * time.Second
 	renewDeadline := 10 * time.Second
 	retryPeriod := 2 * time.Second
@@ -257,6 +244,15 @@ func createLeaderElectionConfig(params APIServerParams) leader.Config {
 		RetryPeriod:    retryPeriod,
 		OnStartedLeading: func(ctx context.Context) {
 			logger.Infof("This instance became the leader")
+			// Immediately send instance data when we become the leader
+			// This ensures no reporting gaps after rollouts or failovers
+			go func() {
+				if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
+					logger.Errorf("Failed to send instance data after becoming leader: %v", err)
+				} else {
+					logger.Debugf("Successfully sent instance data after becoming leader")
+				}
+			}()
 		},
 		OnStoppedLeading: func() {
 			logger.Infof("This instance lost leadership")
