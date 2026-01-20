@@ -879,6 +879,52 @@ spec:
 		return fmt.Errorf("could not find holderIdentity in lease before failover")
 	}
 
+	// Wait for the lease holder to be a valid running pod
+	// After rollouts, the lease may temporarily reference a non-existent pod
+	fmt.Println("Waiting for lease holder to be a valid running pod...")
+	validLeaderFound := false
+	for i := 0; i < 30; i++ { // Wait up to 30 seconds
+		// Check if the lease holder pod exists
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", kubeconfigPath).
+			With(CacheBustingExec(
+				[]string{
+					"kubectl", "get", "pod", currentLeader, "-o", "name",
+				}))
+		_, err = ctr.Stdout(ctx)
+		if err == nil {
+			// Pod exists
+			validLeaderFound = true
+			fmt.Printf("✓ Lease holder %s is a valid running pod\n", currentLeader)
+			break
+		}
+
+		// Lease holder doesn't exist, wait and check again
+		time.Sleep(1 * time.Second)
+
+		// Re-fetch the lease to see if a new leader was elected
+		ctr = dag.Container().From("bitnami/kubectl:latest").
+			WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+			WithEnvVariable("KUBECONFIG", kubeconfigPath).
+			With(CacheBustingExec(
+				[]string{
+					"kubectl", "get", "lease", "replicated-sdk-leader", "-o", "yaml",
+				}))
+		out, err = ctr.Stdout(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get lease while waiting for valid holder: %w", err)
+		}
+
+		if match := leaseRegex.FindStringSubmatch(out); match != nil {
+			currentLeader = match[1]
+		}
+	}
+
+	if !validLeaderFound {
+		return fmt.Errorf("timed out waiting for lease holder to be a valid running pod")
+	}
+
 	// Delete the leader pod
 	fmt.Printf("Deleting leader pod: %s\n", currentLeader)
 	ctr = dag.Container().From("bitnami/kubectl:latest").
