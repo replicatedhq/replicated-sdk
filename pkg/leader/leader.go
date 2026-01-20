@@ -72,6 +72,9 @@ func NewLeaderElector(clientset kubernetes.Interface, config Config) (LeaderElec
 		LeaseDuration: config.LeaseDuration,
 		RenewDeadline: config.RenewDeadline,
 		RetryPeriod:   config.RetryPeriod,
+		// Ensure that when the leader pod is terminated (context canceled), it proactively releases the lease.
+		// Without this, other candidates must wait up to LeaseDuration to acquire leadership after rollouts.
+		ReleaseOnCancel: true,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				kle.setLeader(true)
