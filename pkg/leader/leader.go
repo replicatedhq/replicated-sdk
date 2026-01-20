@@ -16,11 +16,12 @@ import (
 
 // kubernetesLeaderElector implements the LeaderElector interface using Kubernetes leases
 type kubernetesLeaderElector struct {
-	identity       string
-	isLeader       bool
-	mu             sync.RWMutex
-	config         Config
-	leaderElector  *leaderelection.LeaderElector
+	identity        string
+	isLeader        bool
+	leaderElected   chan struct{} // closed when a leader is first elected
+	mu              sync.RWMutex
+	config          Config
+	leaderElector   *leaderelection.LeaderElector
 }
 
 // NewLeaderElector creates a new leader elector using Kubernetes leases
@@ -49,9 +50,10 @@ func NewLeaderElector(clientset kubernetes.Interface, config Config) (LeaderElec
 	}
 
 	kle := &kubernetesLeaderElector{
-		identity: identity,
-		isLeader: false,
-		config:   config,
+		identity:      identity,
+		isLeader:      false,
+		leaderElected: make(chan struct{}),
+		config:        config,
 	}
 
 	// Create lease lock
@@ -90,6 +92,13 @@ func NewLeaderElector(clientset kubernetes.Interface, config Config) (LeaderElec
 					kle.setLeader(true)
 				} else {
 					kle.setLeader(false)
+				}
+				// Signal that a leader has been elected
+				select {
+				case <-kle.leaderElected:
+					// Channel already closed, do nothing
+				default:
+					close(kle.leaderElected)
 				}
 				if config.OnNewLeader != nil {
 					config.OnNewLeader(identity)
@@ -142,4 +151,17 @@ func (k *kubernetesLeaderElector) String() string {
 	k.mu.RLock()
 	defer k.mu.RUnlock()
 	return fmt.Sprintf("LeaderElector{identity=%s, isLeader=%v}", k.identity, k.isLeader)
+}
+
+// WaitForLeader blocks until a leader is elected (either this instance or another)
+// Returns true if this instance is the leader, false if another instance is the leader
+// Returns an error if the context is cancelled before a leader is elected
+func (k *kubernetesLeaderElector) WaitForLeader(ctx context.Context) (bool, error) {
+	select {
+	case <-k.leaderElected:
+		// Leader has been elected, return whether this instance is the leader
+		return k.IsLeader(), nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
 }

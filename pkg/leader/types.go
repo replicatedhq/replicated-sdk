@@ -13,6 +13,9 @@ type LeaderElector interface {
 	GetIdentity() string
 	// Start begins the leader election process and blocks until context is cancelled
 	Start(ctx context.Context) error
+	// WaitForLeader blocks until a leader is elected (either this instance or another)
+	// Returns true if this instance is the leader, false if another instance is the leader
+	WaitForLeader(ctx context.Context) (bool, error)
 }
 
 // Config contains the configuration for leader election

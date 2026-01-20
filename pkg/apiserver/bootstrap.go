@@ -195,8 +195,19 @@ func bootstrap(params APIServerParams) error {
 			}
 		}()
 
-		// Wait briefly for initial election (non-blocking with timeout)
-		time.Sleep(100 * time.Millisecond)
+		// Wait for a valid leader to be elected before starting heartbeat/reporting
+		// This ensures that after rollouts or restarts, we don't skip reporting while
+		// waiting for the old lease holder (non-existent pod) to expire
+		logger.Infof("Waiting for leader election to complete...")
+		isLeader, err := leaderElector.WaitForLeader(params.Context)
+		if err != nil {
+			logger.Errorf("Context cancelled while waiting for leader election: %v", err)
+			return errors.Wrap(err, "context cancelled while waiting for leader election")
+		} else if isLeader {
+			logger.Infof("This instance (%s) is the leader", leaderElector.GetIdentity())
+		} else {
+			logger.Infof("Another instance is the leader. This instance will serve read requests only.")
+		}
 	}
 
 	if err := heartbeat.Start(); err != nil {

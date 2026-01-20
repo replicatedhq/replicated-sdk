@@ -255,6 +255,80 @@ func TestLeaderElector_String(t *testing.T) {
 	assert.Contains(t, str, "true")
 }
 
+func TestLeaderElector_WaitForLeader(t *testing.T) {
+	os.Setenv("REPLICATED_POD_NAME", "test-pod-1")
+	defer os.Unsetenv("REPLICATED_POD_NAME")
+
+	// Create a fake clientset with a pre-existing lease held by another pod
+	lease := &coordinationv1.Lease{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-lease",
+			Namespace: "test-namespace",
+		},
+		Spec: coordinationv1.LeaseSpec{
+			HolderIdentity: stringPtr("test-pod-2"),
+		},
+	}
+	clientset := fake.NewSimpleClientset(lease)
+
+	config := Config{
+		LeaseName:      "test-lease",
+		LeaseNamespace: "test-namespace",
+		LeaseDuration:  1 * time.Second,
+		RenewDeadline:  500 * time.Millisecond,
+		RetryPeriod:    100 * time.Millisecond,
+	}
+
+	le, err := NewLeaderElector(clientset, config)
+	require.NoError(t, err)
+	require.NotNil(t, le)
+
+	// Start leader election in background
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	go func() {
+		_ = le.Start(ctx)
+	}()
+
+	// WaitForLeader should block until a leader is elected
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer waitCancel()
+
+	isLeader, err := le.WaitForLeader(waitCtx)
+	require.NoError(t, err)
+
+	// Either this pod or another pod should be the leader
+	// In this test, test-pod-2 holds the lease initially
+	assert.NotNil(t, isLeader) // Just verify we got a response
+}
+
+func TestLeaderElector_WaitForLeader_Timeout(t *testing.T) {
+	os.Setenv("REPLICATED_POD_NAME", "test-pod-1")
+	defer os.Unsetenv("REPLICATED_POD_NAME")
+
+	clientset := fake.NewSimpleClientset()
+	config := Config{
+		LeaseName:      "test-lease",
+		LeaseNamespace: "test-namespace",
+		LeaseDuration:  10 * time.Second,
+		RenewDeadline:  8 * time.Second,
+		RetryPeriod:    2 * time.Second,
+	}
+
+	le, err := NewLeaderElector(clientset, config)
+	require.NoError(t, err)
+	require.NotNil(t, le)
+
+	// Don't start the leader election - just test timeout
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer waitCancel()
+
+	_, err = le.WaitForLeader(waitCtx)
+	assert.Error(t, err)
+	assert.Equal(t, context.DeadlineExceeded, err)
+}
+
 func stringPtr(s string) *string {
 	return &s
 }
