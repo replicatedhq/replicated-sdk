@@ -2,6 +2,7 @@ package store
 
 import (
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/leader"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
@@ -42,6 +43,9 @@ type Store interface {
 	GetUpdates() []upstreamtypes.ChannelRelease
 	SetUpdates(updates []upstreamtypes.ChannelRelease)
 	GetReportAllImages() bool
+	// Leader election
+	GetLeaderElector() leader.LeaderElector
+	SetLeaderElector(elector leader.LeaderElector)
 }
 
 func SetStore(s Store) {

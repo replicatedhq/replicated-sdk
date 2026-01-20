@@ -1,7 +1,10 @@
 package apiserver
 
 import (
+	"context"
 	"log"
+	"os"
+	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
@@ -13,6 +16,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
+	"github.com/replicatedhq/replicated-sdk/pkg/leader"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
@@ -174,6 +178,27 @@ func bootstrap(params APIServerParams) error {
 		Informers: informers,
 	})
 
+	// Initialize and start leader election if HA mode is enabled
+	if os.Getenv("REPLICATED_HA_ENABLED") == "true" {
+		leaderConfig := createLeaderElectionConfig(params)
+		leaderElector, err := leader.NewLeaderElector(clientset, leaderConfig)
+		if err != nil {
+			return errors.Wrap(err, "failed to create leader elector")
+		}
+
+		store.GetStore().SetLeaderElector(leaderElector)
+
+		// Start leader election in background
+		go func() {
+			if err := leaderElector.Start(params.Context); err != nil {
+				logger.Error(errors.Wrap(err, "leader election stopped"))
+			}
+		}()
+
+		// Wait briefly for initial election (non-blocking with timeout)
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	if err := heartbeat.Start(); err != nil {
 		return errors.Wrap(err, "failed to start heartbeat")
 	}
@@ -188,4 +213,45 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	return nil
+}
+
+// createLeaderElectionConfig creates a leader election config from environment variables and params
+func createLeaderElectionConfig(params APIServerParams) leader.Config {
+	leaseDuration := 15 * time.Second
+	renewDeadline := 10 * time.Second
+	retryPeriod := 2 * time.Second
+
+	// Parse from environment if provided
+	if dur := os.Getenv("REPLICATED_LEASE_DURATION"); dur != "" {
+		if parsed, err := time.ParseDuration(dur); err == nil {
+			leaseDuration = parsed
+		}
+	}
+	if dur := os.Getenv("REPLICATED_LEASE_RENEW_DEADLINE"); dur != "" {
+		if parsed, err := time.ParseDuration(dur); err == nil {
+			renewDeadline = parsed
+		}
+	}
+	if dur := os.Getenv("REPLICATED_LEASE_RETRY_PERIOD"); dur != "" {
+		if parsed, err := time.ParseDuration(dur); err == nil {
+			retryPeriod = parsed
+		}
+	}
+
+	return leader.Config{
+		LeaseName:      "replicated-sdk-leader",
+		LeaseNamespace: params.Namespace,
+		LeaseDuration:  leaseDuration,
+		RenewDeadline:  renewDeadline,
+		RetryPeriod:    retryPeriod,
+		OnStartedLeading: func(ctx context.Context) {
+			logger.Infof("This instance became the leader")
+		},
+		OnStoppedLeading: func() {
+			logger.Infof("This instance lost leadership")
+		},
+		OnNewLeader: func(identity string) {
+			logger.Infof("New leader elected: %s", identity)
+		},
+	}
 }

@@ -10,6 +10,7 @@ metadata:
   name: {{ include "replicated.deploymentName" . }}
   namespace: {{ include "replicated.namespace" . | quote }}
 spec:
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       {{- include "replicated.selectorLabels" . | nindent 6 }}
@@ -61,6 +62,27 @@ spec:
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if and (gt (.Values.replicaCount | int) 1) (ne .Values.highAvailability.podAntiAffinityPreset "disabled") }}
+      {{- if not .Values.affinity }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.highAvailability.podAntiAffinityPreset "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                {{- include "replicated.selectorLabels" . | nindent 16 }}
+            topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "replicated.selectorLabels" . | nindent 20 }}
+              topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -167,6 +189,16 @@ spec:
           value: {{ include "replicated.deploymentName" . }}
         - name: REPLICATED_CONFIG_FILE
           value: /etc/replicated/config.yaml
+        {{- if gt (.Values.replicaCount | int) 1 }}
+        - name: REPLICATED_HA_ENABLED
+          value: "true"
+        - name: REPLICATED_LEASE_DURATION
+          value: {{ .Values.highAvailability.leaderElection.leaseDuration | quote }}
+        - name: REPLICATED_LEASE_RENEW_DEADLINE
+          value: {{ .Values.highAvailability.leaderElection.renewDeadline | quote }}
+        - name: REPLICATED_LEASE_RETRY_PERIOD
+          value: {{ .Values.highAvailability.leaderElection.retryPeriod | quote }}
+        {{- end }}
         {{- if (.Values.integration).licenseID }}
         - name: REPLICATED_INTEGRATION_LICENSE_ID
           valueFrom:

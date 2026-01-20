@@ -60,6 +60,7 @@ func Test_SendInstanceData(t *testing.T) {
 			},
 			isAirgap: false,
 			mockStoreExpectations: func() {
+				mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "test-license-id",
@@ -97,6 +98,7 @@ func Test_SendInstanceData(t *testing.T) {
 			},
 			isAirgap: true,
 			mockStoreExpectations: func() {
+				mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "test-license-id",

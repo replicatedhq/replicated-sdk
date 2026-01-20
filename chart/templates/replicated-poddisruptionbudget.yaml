@@ -1,0 +1,24 @@
+{{- if and (gt (.Values.replicaCount | int) 1) .Values.highAvailability.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    {{- include "replicated.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+  name: {{ include "replicated.deploymentName" . }}
+  namespace: {{ include "replicated.namespace" . | quote }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "replicated.selectorLabels" . | nindent 6 }}
+  {{- if .Values.highAvailability.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.highAvailability.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.highAvailability.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.highAvailability.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+{{- end }}

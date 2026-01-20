@@ -24,6 +24,13 @@ import (
 var instanceDataMtx sync.Mutex
 
 func SendInstanceData(clientset kubernetes.Interface, sdkStore store.Store) error {
+	// Check leadership before acquiring mutex
+	leaderElector := sdkStore.GetLeaderElector()
+	if leaderElector != nil && !leaderElector.IsLeader() {
+		logger.Debugf("Skipping instance data report - not the leader")
+		return nil
+	}
+
 	wrapper := sdkStore.GetLicense()
 
 	canReport, err := canReport(clientset, sdkStore.GetNamespace(), wrapper)
