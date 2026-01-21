@@ -43,12 +43,6 @@ highAvailability:
     minAvailable: 1
     # Alternative: maxUnavailable: 1
 
-  # Leader election configuration (advanced)
-  leaderElection:
-    leaseDuration: "15s"     # How long leader lease is valid
-    renewDeadline: "10s"     # Leader must renew within this time
-    retryPeriod: "2s"        # How often non-leaders check for leadership
-
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
 #
