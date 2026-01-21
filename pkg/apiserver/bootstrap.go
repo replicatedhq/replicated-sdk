@@ -243,6 +243,8 @@ func createLeaderElectionConfig(params APIServerParams, clientset kubernetes.Int
 			// Immediately send instance data when we become the leader
 			// This ensures no reporting gaps after rollouts or failovers
 			go func() {
+				// for testing send data twice, once before and once after waiting for appstate to sync
+				_ = report.SendInstanceData(clientset, store.GetStore())
 				// Ensure appstate has synced its informers before reporting, so we don't send "empty" state on startup/failover.
 				waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 				defer cancel()
