@@ -304,33 +304,10 @@ spec:
 	fmt.Println("Testing High Availability with 3 replicas...")
 
 	// Upgrade the chart to scale to 3 replicas (no restart needed - deployment controller handles it)
-	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{
-			"helm", "upgrade", "test-chart",
-			fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug),
-			"--version", "0.1.0",
-			"--set", "replicated.tlsCertSecretName=test-tls",
-			"--set", "replicated.replicaCount=3",
-		})
-	out, err = ctr.Stdout(ctx)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{"--set", "replicated.replicaCount=3"})
 	if err != nil {
-		stderr, _ := ctr.Stderr(ctx)
-		return fmt.Errorf("failed to upgrade chart to 3 replicas: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
 	}
-	fmt.Println(out)
-
-	// Wait for all 3 replicas to be ready
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", kubeconfigPath).
-		WithExec([]string{"kubectl", "rollout", "status", "deployment/replicated", "--timeout=2m"})
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to wait for 3-replica rollout: %w", err)
-	}
-	fmt.Println(out)
 
 	// Verify there are actually 3 replicas
 	ctr = dag.Container().From("bitnami/kubectl:latest").
@@ -371,34 +348,10 @@ spec:
 	fmt.Println(out)
 
 	// Scale back down to 1 replica for subsequent tests
-	fmt.Println("Scaling back down to 1 replica for remaining tests...")
-	ctr = dag.Container().From("alpine/helm:latest").
-		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
-		WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", "test-customer@replicated.com", "--password", licenseID}).
-		WithExec([]string{
-			"helm", "upgrade", "test-chart",
-			fmt.Sprintf("oci://registry.replicated.com/replicated-sdk-e2e/%s/test-chart", channelSlug),
-			"--version", "0.1.0",
-			"--set", "replicated.tlsCertSecretName=test-tls",
-			"--set", "replicated.replicaCount=1",
-		})
-	out, err = ctr.Stdout(ctx)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{"--set", "replicated.replicaCount=1"})
 	if err != nil {
-		stderr, _ := ctr.Stderr(ctx)
-		return fmt.Errorf("failed to scale back to 1 replica: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
 	}
-	fmt.Println(out)
-
-	// Wait for scale-down to complete
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", kubeconfigPath).
-		WithExec([]string{"kubectl", "rollout", "status", "deployment/replicated", "--timeout=2m"})
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to wait for scale-down to 1 replica: %w", err)
-	}
-	fmt.Println(out)
 
 	// Test minimal RBAC functionality
 	fmt.Println("Testing minimal RBAC functionality...")
