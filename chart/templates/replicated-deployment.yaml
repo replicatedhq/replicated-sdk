@@ -192,12 +192,6 @@ spec:
         {{- if gt (.Values.replicaCount | int) 1 }}
         - name: REPLICATED_HA_ENABLED
           value: "true"
-        - name: REPLICATED_LEASE_DURATION
-          value: {{ .Values.highAvailability.leaderElection.leaseDuration | quote }}
-        - name: REPLICATED_LEASE_RENEW_DEADLINE
-          value: {{ .Values.highAvailability.leaderElection.renewDeadline | quote }}
-        - name: REPLICATED_LEASE_RETRY_PERIOD
-          value: {{ .Values.highAvailability.leaderElection.retryPeriod | quote }}
         {{- end }}
         {{- if (.Values.integration).licenseID }}
         - name: REPLICATED_INTEGRATION_LICENSE_ID
