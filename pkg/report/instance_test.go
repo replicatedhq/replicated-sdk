@@ -73,7 +73,7 @@ func Test_SendInstanceData(t *testing.T) {
 				mockStore.EXPECT().GetChannelID().Return("test-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Test Channel")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
-				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
+				mockStore.EXPECT().GetAppStatus().Times(1).Return(appstatetypes.AppStatus{
 					AppSlug:        "test-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
@@ -111,7 +111,7 @@ func Test_SendInstanceData(t *testing.T) {
 				mockStore.EXPECT().GetChannelID().Return("test-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Test Channel")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
-				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
+				mockStore.EXPECT().GetAppStatus().Times(1).Return(appstatetypes.AppStatus{
 					AppSlug:        "test-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
