@@ -8,9 +8,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
-	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -60,7 +60,7 @@ func Test_SendInstanceData(t *testing.T) {
 			},
 			isAirgap: false,
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLeaderElector().Return(nil)
+				// mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "test-license-id",
@@ -98,7 +98,7 @@ func Test_SendInstanceData(t *testing.T) {
 			},
 			isAirgap: true,
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLeaderElector().Return(nil)
+				// mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "test-license-id",

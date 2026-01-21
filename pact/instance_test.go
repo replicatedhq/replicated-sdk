@@ -9,9 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/pact-foundation/pact-go/dsl"
 	"github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
-	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	mock_store "github.com/replicatedhq/replicated-sdk/pkg/store/mock"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -40,7 +40,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "successful instance data request",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLeaderElector().Return(nil)
+				// mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-0-license",
@@ -93,7 +93,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "expired license should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLeaderElector().Return(nil)
+				// mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-2-license",
@@ -146,7 +146,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "nonexistent license should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLeaderElector().Return(nil)
+				// mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-nonexistent-license",
@@ -199,7 +199,7 @@ func TestSendInstanceData(t *testing.T) {
 		{
 			name: "unauthenticated instance data request should return error",
 			mockStoreExpectations: func() {
-				mockStore.EXPECT().GetLeaderElector().Return(nil)
+				// mockStore.EXPECT().GetLeaderElector().Return(nil)
 				mockStore.EXPECT().GetLicense().Return(licensewrapper.LicenseWrapper{V1: &v1beta1.License{
 					Spec: v1beta1.LicenseSpec{
 						LicenseID: "replicated-sdk-instance-customer-0-license",
