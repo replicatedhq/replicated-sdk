@@ -304,9 +304,12 @@ spec:
 	fmt.Println("Testing High Availability with 3 replicas...")
 
 	// Upgrade the chart to scale to 3 replicas (no restart needed - deployment controller handles it)
-	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{"--set", "replicated.replicaCount=3"})
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.replicaCount=3",
+	})
 	if err != nil {
-		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
+		return fmt.Errorf("failed to upgrade chart to 3 replicas: %w", err)
 	}
 
 	// Verify there are actually 3 replicas
@@ -348,9 +351,13 @@ spec:
 	fmt.Println(out)
 
 	// Scale back down to 1 replica for subsequent tests
-	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{"--set", "replicated.replicaCount=1"})
+	fmt.Println("Scaling back down to 1 replica for remaining tests...")
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.replicaCount=1",
+	})
 	if err != nil {
-		return fmt.Errorf("failed to upgrade chart enabling TLS: %w", err)
+		return fmt.Errorf("failed to scale back to 1 replica: %w", err)
 	}
 
 	// Test minimal RBAC functionality
