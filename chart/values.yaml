@@ -24,8 +24,8 @@ commonAnnotations: {}
 restartPolicy: Always
 
 # Replica configuration for high availability
-# Setting replicaCount > 1 enables HA mode with leader election
-# Default: 1 (single replica, no leader election overhead)
+# Setting replicaCount > 1 enables HA mode
+# Default: 1 (single replica)
 replicaCount: 1
 
 # High Availability configuration
