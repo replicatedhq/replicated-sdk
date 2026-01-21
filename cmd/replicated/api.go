@@ -78,7 +78,9 @@ func APICmd() *cobra.Command {
 				ReportAllImages:       replicatedConfig.ReportAllImages,
 				Namespace:             namespace,
 			}
-			return apiserver.Start(params)
+			apiserver.Start(params)
+
+			return nil
 		},
 	}
 
