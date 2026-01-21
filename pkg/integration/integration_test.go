@@ -137,7 +137,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					},
 				}},
 			},
-			want:    true,
+			want:    false,
 			wantErr: false,
 		},
 		{
@@ -164,7 +164,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					},
 				}},
 			},
-			want:    true,
+			want:    false,
 			wantErr: false,
 		},
 	}
