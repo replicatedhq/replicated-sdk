@@ -1006,6 +1006,24 @@ spec:
 	fmt.Println("Logs after leader failover:")
 	fmt.Println(out)
 
+	// Wait for the deployment to actually be ready from Kubernetes perspective
+	fmt.Println("Waiting for deployment to be ready after leader failover...")
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "wait",
+				"--for=condition=available",
+				"deployment/replicated",
+				"--timeout=2m",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("deployment not ready after leader failover: %w", err)
+	}
+	fmt.Println(out)
+
 	// Verify resources are still being reported after failover
 	fmt.Println("Verifying resources are still being reported after leader failover...")
 	err = waitForResourcesReadyAfter(ctx, haResourceNames, 30, 5*time.Second, tokenPlaintext, instanceAppID, distribution, preLeaderDeletion)
