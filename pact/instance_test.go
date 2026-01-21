@@ -53,7 +53,7 @@ func TestSendInstanceData(t *testing.T) {
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
-				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
+				mockStore.EXPECT().GetAppStatus().Times(1).Return(appstatetypes.AppStatus{
 					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
@@ -106,7 +106,7 @@ func TestSendInstanceData(t *testing.T) {
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
-				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
+				mockStore.EXPECT().GetAppStatus().Times(1).Return(appstatetypes.AppStatus{
 					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
@@ -159,7 +159,7 @@ func TestSendInstanceData(t *testing.T) {
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-beta")
 				mockStore.EXPECT().GetChannelName().Return("Beta")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
-				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
+				mockStore.EXPECT().GetAppStatus().Times(1).Return(appstatetypes.AppStatus{
 					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
@@ -212,7 +212,7 @@ func TestSendInstanceData(t *testing.T) {
 				mockStore.EXPECT().GetChannelID().Return("replicated-sdk-instance-app-nightly")
 				mockStore.EXPECT().GetChannelName().Return("Nightly")
 				mockStore.EXPECT().GetChannelSequence().Return(int64(1))
-				mockStore.EXPECT().GetAppStatus().Times(2).Return(appstatetypes.AppStatus{
+				mockStore.EXPECT().GetAppStatus().Times(1).Return(appstatetypes.AppStatus{
 					AppSlug:        "replicated-sdk-instance-app",
 					Sequence:       1,
 					State:          appstatetypes.StateMissing,
