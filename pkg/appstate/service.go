@@ -25,7 +25,6 @@ func init() {
 func runServiceController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
 	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
-	onSynced func(),
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -49,7 +48,8 @@ func runServiceController(
 		resourceStateCh,
 	)
 
-	runInformer(ctx, informer, eventHandler, onSynced)
+	runInformer(ctx, informer, eventHandler)
+	return
 }
 
 type serviceEventHandler struct {

@@ -18,7 +18,7 @@ import (
 // runPodImageController starts a pod informer for a namespace and updates the
 // store with the mapping of pod UID to container image digests. This follows the
 // same informer pattern used by other controllers in this package.
-func runPodImageController(ctx context.Context, clientset kubernetes.Interface, targetNamespace string, _ []appstatetypes.StatusInformer, _ chan<- appstatetypes.ResourceState, onSynced func()) {
+func runPodImageController(ctx context.Context, clientset kubernetes.Interface, targetNamespace string, _ []appstatetypes.StatusInformer, _ chan<- appstatetypes.ResourceState) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return clientset.CoreV1().Pods(targetNamespace).List(context.TODO(), options)
@@ -34,7 +34,7 @@ func runPodImageController(ctx context.Context, clientset kubernetes.Interface, 
 	)
 
 	eventHandler := &podImageEventHandler{namespace: targetNamespace}
-	runInformer(ctx, informer, eventHandler, onSynced)
+	runInformer(ctx, informer, eventHandler)
 }
 
 type podImageEventHandler struct {

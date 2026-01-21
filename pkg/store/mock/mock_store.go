@@ -10,7 +10,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	types "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	leader "github.com/replicatedhq/replicated-sdk/pkg/leader"
 	types0 "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	types1 "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 )
@@ -146,20 +145,6 @@ func (m *MockStore) GetChannelSequence() int64 {
 func (mr *MockStoreMockRecorder) GetChannelSequence() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChannelSequence", reflect.TypeOf((*MockStore)(nil).GetChannelSequence))
-}
-
-// GetLeaderElector mocks base method.
-func (m *MockStore) GetLeaderElector() leader.LeaderElector {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLeaderElector")
-	ret0, _ := ret[0].(leader.LeaderElector)
-	return ret0
-}
-
-// GetLeaderElector indicates an expected call of GetLeaderElector.
-func (mr *MockStoreMockRecorder) GetLeaderElector() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLeaderElector", reflect.TypeOf((*MockStore)(nil).GetLeaderElector))
 }
 
 // GetLicense mocks base method.
@@ -368,18 +353,6 @@ func (m *MockStore) SetAppStatus(status types.AppStatus) {
 func (mr *MockStoreMockRecorder) SetAppStatus(status interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAppStatus", reflect.TypeOf((*MockStore)(nil).SetAppStatus), status)
-}
-
-// SetLeaderElector mocks base method.
-func (m *MockStore) SetLeaderElector(elector leader.LeaderElector) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetLeaderElector", elector)
-}
-
-// SetLeaderElector indicates an expected call of SetLeaderElector.
-func (mr *MockStoreMockRecorder) SetLeaderElector(elector interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLeaderElector", reflect.TypeOf((*MockStore)(nil).SetLeaderElector), elector)
 }
 
 // SetLicense mocks base method.

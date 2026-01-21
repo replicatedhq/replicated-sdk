@@ -34,7 +34,6 @@ func init() {
 
 func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
 	targetNamespace string, informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
-	onSynced func(),
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -54,7 +53,7 @@ func runDaemonSetController(ctx context.Context, clientset kubernetes.Interface,
 		targetNamespace: targetNamespace,
 	}
 
-	runInformer(ctx, informer, eventHandler, onSynced)
+	runInformer(ctx, informer, eventHandler)
 }
 
 func (h *daemonSetEventHandler) ObjectCreated(obj interface{}) {

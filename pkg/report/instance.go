@@ -24,13 +24,6 @@ import (
 var instanceDataMtx sync.Mutex
 
 func SendInstanceData(clientset kubernetes.Interface, sdkStore store.Store) error {
-	// Check leadership before acquiring mutex
-	// leaderElector := sdkStore.GetLeaderElector()
-	// if leaderElector != nil && !leaderElector.IsLeader() {
-	// 	logger.Debugf("Skipping instance data report - not the leader")
-	// 	return nil
-	// }
-
 	wrapper := sdkStore.GetLicense()
 
 	canReport, err := canReport(clientset, sdkStore.GetNamespace(), wrapper)
@@ -137,18 +130,14 @@ func SendOnlineInstanceData(wrapper licensewrapper.LicenseWrapper, instanceData 
 }
 
 func GetInstanceData(sdkStore store.Store) *types.InstanceData {
-	appStatus := sdkStore.GetAppStatus()
-	resourceStatesJSON, _ := json.Marshal(appStatus.ResourceStates)
-	logger.Infof("Reporting instance data - appStatus: %q, resourceStates: %s", appStatus.State, string(resourceStatesJSON))
-
 	r := types.InstanceData{
 		ClusterID:       sdkStore.GetReplicatedID(),
 		InstanceID:      sdkStore.GetAppID(),
 		ChannelID:       sdkStore.GetChannelID(),
 		ChannelName:     sdkStore.GetChannelName(),
 		ChannelSequence: sdkStore.GetChannelSequence(),
-		AppStatus:       string(appStatus.State),
-		ResourceStates:  appStatus.ResourceStates,
+		AppStatus:       string(sdkStore.GetAppStatus().State),
+		ResourceStates:  sdkStore.GetAppStatus().ResourceStates,
 		RunningImages:   sdkStore.GetRunningImages(),
 	}
 

@@ -50,13 +50,6 @@ func Start() error {
 	cronSpec := fmt.Sprintf("%d %d/4 * * *", m, h)
 
 	_, err := job.AddFunc(cronSpec, func() {
-		// Skip heartbeat if not leader
-		leaderElector := store.GetStore().GetLeaderElector()
-		if leaderElector != nil && !leaderElector.IsLeader() {
-			logger.Debugf("Skipping heartbeat - not the leader")
-			return
-		}
-
 		logger.Debugf("sending a heartbeat for app %s", appSlug)
 
 		if !util.IsAirgap() {

@@ -23,9 +23,6 @@ type Monitor struct {
 	appInformersCh  chan appInformer
 	appStatusCh     chan types.AppStatus
 	cancel          context.CancelFunc
-
-	appMonitors     map[string]*AppMonitor
-	appMonitorsLock sync.RWMutex
 }
 
 type EventHandler interface {
@@ -48,7 +45,6 @@ func NewMonitor(clientset kubernetes.Interface, targetNamespace string) *Monitor
 		appInformersCh:  make(chan appInformer),
 		appStatusCh:     make(chan types.AppStatus),
 		cancel:          cancel,
-		appMonitors:     make(map[string]*AppMonitor),
 	}
 	go m.run(ctx)
 	return m
@@ -74,26 +70,14 @@ func (m *Monitor) AppStatusChan() <-chan types.AppStatus {
 	return m.appStatusCh
 }
 
-func (m *Monitor) WaitForSynced(ctx context.Context) error {
-	m.appMonitorsLock.RLock()
-	defer m.appMonitorsLock.RUnlock()
-	for _, appMonitor := range m.appMonitors {
-		if err := appMonitor.WaitForSynced(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (m *Monitor) run(ctx context.Context) {
 	log.Println("Starting monitor loop")
 
 	defer close(m.appStatusCh)
 
+	appMonitors := make(map[string]*AppMonitor)
 	defer func() {
-		m.appMonitorsLock.Lock()
-		defer m.appMonitorsLock.Unlock()
-		for _, appMonitor := range m.appMonitors {
+		for _, appMonitor := range appMonitors {
 			appMonitor.Shutdown()
 		}
 	}()
@@ -104,9 +88,7 @@ func (m *Monitor) run(ctx context.Context) {
 			return
 
 		case appInformer := <-m.appInformersCh:
-			m.appMonitorsLock.RLock()
-			appMonitor, ok := m.appMonitors[appInformer.appSlug]
-			m.appMonitorsLock.RUnlock()
+			appMonitor, ok := appMonitors[appInformer.appSlug]
 			if !ok || appMonitor.sequence != appInformer.sequence {
 				if appMonitor != nil {
 					appMonitor.Shutdown()
@@ -117,9 +99,7 @@ func (m *Monitor) run(ctx context.Context) {
 						m.appStatusCh <- appStatus
 					}
 				}()
-				m.appMonitorsLock.Lock()
-				m.appMonitors[appInformer.appSlug] = appMonitor
-				m.appMonitorsLock.Unlock()
+				appMonitors[appInformer.appSlug] = appMonitor
 			}
 			appMonitor.Apply(appInformer.informers)
 		}
@@ -134,8 +114,6 @@ type AppMonitor struct {
 	appStatusCh     chan types.AppStatus
 	cancel          context.CancelFunc
 	sequence        int64
-	synced          bool
-	syncedMutex     sync.Mutex
 }
 
 func NewAppMonitor(clientset kubernetes.Interface, targetNamespace, appSlug string, sequence int64) *AppMonitor {
@@ -148,8 +126,6 @@ func NewAppMonitor(clientset kubernetes.Interface, targetNamespace, appSlug stri
 		appStatusCh:     make(chan types.AppStatus),
 		cancel:          cancel,
 		sequence:        sequence,
-		synced:          false,
-		syncedMutex:     sync.Mutex{},
 	}
 	go m.run(ctx)
 	return m
@@ -165,28 +141,6 @@ func (m *AppMonitor) Apply(informers []types.StatusInformer) {
 
 func (m *AppMonitor) AppStatusChan() <-chan types.AppStatus {
 	return m.appStatusCh
-}
-
-// WaitForSynced blocks until this AppMonitor has observed an initial full cache sync
-// for all informers it started (i.e. synced == true), or until ctx is cancelled.
-func (m *AppMonitor) WaitForSynced(ctx context.Context) error {
-	ticker := time.NewTicker(50 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		m.syncedMutex.Lock()
-		synced := m.synced
-		m.syncedMutex.Unlock()
-		if synced {
-			return nil
-		}
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-		}
-	}
 }
 
 func (m *AppMonitor) run(ctx context.Context) {
@@ -218,7 +172,7 @@ func (m *AppMonitor) run(ctx context.Context) {
 	}
 }
 
-type runControllerFunc func(context.Context, kubernetes.Interface, string, []types.StatusInformer, chan<- types.ResourceState, func())
+type runControllerFunc func(context.Context, kubernetes.Interface, string, []types.StatusInformer, chan<- types.ResourceState)
 
 func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusInformer) {
 	informers = normalizeStatusInformers(informers, m.targetNamespace)
@@ -253,17 +207,10 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		namespaceKinds[informer.Namespace] = kindsInNs
 	}
 
-	expectedSyncs := 0
-	var syncCh chan struct{}
-
 	goRun := func(fn runControllerFunc, namespace string, informers []types.StatusInformer) {
 		shutdown.Add(1)
-		expectedSyncs++
 		go func() {
-			var once sync.Once
-			fn(ctx, m.clientset, namespace, informers, resourceStateCh, func() {
-				once.Do(func() { syncCh <- struct{}{} })
-			})
+			fn(ctx, m.clientset, namespace, informers, resourceStateCh)
 			shutdown.Done()
 		}()
 	}
@@ -310,10 +257,6 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		namespacesToWatch = informerNamespaces
 	}
 
-	// We only consider the monitor "synced" once every informer we start has fully synced its cache.
-	// This ensures initial Add events have been observed and we're up to date with k8s at least once.
-	syncCh = make(chan struct{}, expectedSyncs)
-
 	// Filter out namespaces we don't have permission to access
 	for ns := range namespacesToWatch {
 		if canAccessPodsInNamespace(ctx, m.clientset, ns) {
@@ -330,25 +273,6 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 		}
 	}
 
-	// Once all informers we started have synced at least once, mark this app monitor as synced.
-	// If we're cancelled before that happens, we leave synced=false.
-	go func(expected int) {
-		if expected == 0 {
-			m.setSynced(true)
-			return
-		}
-		got := 0
-		for got < expected {
-			select {
-			case <-ctx.Done():
-				return
-			case <-syncCh:
-				got++
-			}
-		}
-		m.setSynced(true)
-	}(expectedSyncs)
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -363,13 +287,7 @@ func (m *AppMonitor) runInformers(ctx context.Context, informers []types.StatusI
 	}
 }
 
-func (m *AppMonitor) setSynced(synced bool) {
-	m.syncedMutex.Lock()
-	defer m.syncedMutex.Unlock()
-	m.synced = synced
-}
-
-func runInformer(ctx context.Context, informer cache.SharedInformer, eventHandler EventHandler, onSynced func()) {
+func runInformer(ctx context.Context, informer cache.SharedInformer, eventHandler EventHandler) {
 	defer utilruntime.HandleCrash()
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -383,14 +301,6 @@ func runInformer(ctx context.Context, informer cache.SharedInformer, eventHandle
 			eventHandler.ObjectDeleted(obj)
 		},
 	})
-
-	if onSynced != nil {
-		go func() {
-			if cache.WaitForCacheSync(ctx.Done(), informer.HasSynced) {
-				onSynced()
-			}
-		}()
-	}
 
 	informer.Run(ctx.Done())
 }

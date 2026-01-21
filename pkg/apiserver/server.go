@@ -3,13 +3,13 @@ package apiserver
 import (
 	"context"
 	"crypto/tls"
-	"errors"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gorilla/mux"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/buildversion"
 	"github.com/replicatedhq/replicated-sdk/pkg/handlers"
@@ -43,31 +43,18 @@ type APIServerParams struct {
 	ReportAllImages       bool
 }
 
-func Start(params APIServerParams) error {
-	logger.Infof("Replicated version: %s", buildversion.Version())
-
-	// If the caller provided a non-cancellable context (or nil), panic so that these errors are caught in testing.
-	ctx := params.Context
-	if ctx == nil {
-		panic("context is nil")
-	} else if ctx.Done() == nil {
-		panic("context is not cancellable")
-	}
-	// Use a derived context so we can cancel all long-running background components if the HTTP server exits early.
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	params.Context = ctx
+func Start(params APIServerParams) {
+	log.Println("Replicated version:", buildversion.Version())
 
 	backoffDuration := 10 * time.Second
 	bootstrapFn := func() error {
 		return bootstrap(params)
 	}
-	bo := backoff.WithContext(backoff.NewConstantBackOff(backoffDuration), ctx)
-	err := backoff.RetryNotify(bootstrapFn, bo, func(err error, d time.Duration) {
-		logger.Errorf("failed to bootstrap, retrying in %s: %v", d, err)
+	err := backoff.RetryNotify(bootstrapFn, backoff.NewConstantBackOff(backoffDuration), func(err error, d time.Duration) {
+		log.Printf("failed to bootstrap, retrying in %s: %v", d, err)
 	})
 	if err != nil {
-		return pkgerrors.Wrap(err, "failed to bootstrap")
+		log.Fatalf("failed to bootstrap: %v", err)
 	}
 
 	r := mux.NewRouter()
@@ -111,58 +98,21 @@ func Start(params APIServerParams) error {
 	if params.TlsCertSecretName != "" {
 		clientset, err := k8sutil.GetClientset()
 		if err != nil {
-			logger.Error(pkgerrors.Wrap(err, "failed to get clientset"))
-			return pkgerrors.Wrap(err, "failed to get clientset")
+			logger.Error(errors.Wrap(err, "failed to get clientset"))
+			return
 		}
 
 		tlsConfig, err := loadTLSConfig(clientset, params.Namespace, params.TlsCertSecretName)
 		if err != nil {
-			return pkgerrors.Wrap(err, "failed to load TLS config")
+			log.Fatalf("failed to load TLS config: %v", err)
 		}
 		srv.TLSConfig = tlsConfig
 
-		logger.Infof("Starting Replicated API on port %d with TLS...", 3000)
-		err = serveWithShutdown(ctx, srv, func() error { return srv.ListenAndServeTLS("", "") })
-		cancel()
-		waitForLeaderElectionStop(10 * time.Second)
-		return err
+		log.Printf("Starting Replicated API on port %d with TLS...\n", 3000)
+		log.Fatal(srv.ListenAndServeTLS("", ""))
 	} else {
-		logger.Infof("Starting Replicated API on port %d...", 3000)
-		err = serveWithShutdown(ctx, srv, srv.ListenAndServe)
-		cancel()
-		waitForLeaderElectionStop(10 * time.Second)
-		return err
-	}
-}
-
-func serveWithShutdown(ctx context.Context, srv *http.Server, serveFn func() error) error {
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- serveFn()
-	}()
-
-	select {
-	case <-ctx.Done():
-		// Best-effort graceful shutdown. This is what triggers leader-election ReleaseOnCancel to run too.
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(shutdownCtx)
-
-		// Prefer the server's return value, but don't wait longer than shutdown timeout.
-		select {
-		case err := <-errCh:
-			if errors.Is(err, http.ErrServerClosed) {
-				return nil
-			}
-			return err
-		case <-shutdownCtx.Done():
-			return nil
-		}
-	case err := <-errCh:
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
+		log.Printf("Starting Replicated API on port %d...\n", 3000)
+		log.Fatal(srv.ListenAndServe())
 	}
 }
 
@@ -170,22 +120,22 @@ func serveWithShutdown(ctx context.Context, srv *http.Server, serveFn func() err
 func loadTLSConfig(clientset kubernetes.Interface, namespace, secretName string) (*tls.Config, error) {
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "failed to get TLS secret %s", secretName)
+		return nil, errors.Wrapf(err, "failed to get TLS secret %s", secretName)
 	}
 
 	certData, ok := secret.Data["tls.crt"]
 	if !ok {
-		return nil, pkgerrors.Errorf("tls.crt not found in secret %s", secretName)
+		return nil, errors.Errorf("tls.crt not found in secret %s", secretName)
 	}
 
 	keyData, ok := secret.Data["tls.key"]
 	if !ok {
-		return nil, pkgerrors.Errorf("tls.key not found in secret %s", secretName)
+		return nil, errors.Errorf("tls.key not found in secret %s", secretName)
 	}
 
 	cert, err := tls.X509KeyPair(certData, keyData)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to parse TLS certificate and key")
+		return nil, errors.Wrap(err, "failed to parse TLS certificate and key")
 	}
 
 	return &tls.Config{

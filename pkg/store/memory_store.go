@@ -2,10 +2,8 @@ package store
 
 import (
 	"strings"
-	"sync"
 
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
-	"github.com/replicatedhq/replicated-sdk/pkg/leader"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
@@ -33,9 +31,6 @@ type InMemoryStore struct {
 	// podImages holds namespace -> podUID -> []ImageInfo
 	podImages       map[string]map[string][]appstatetypes.ImageInfo
 	reportAllImages bool
-	// Leader election
-	leaderElector leader.LeaderElector
-	mu            sync.RWMutex
 }
 
 type InitInMemoryStoreOptions struct {
@@ -331,16 +326,4 @@ func (s *InMemoryStore) SetUpdates(updates []upstreamtypes.ChannelRelease) {
 
 func (s *InMemoryStore) GetReportAllImages() bool {
 	return s.reportAllImages
-}
-
-func (s *InMemoryStore) GetLeaderElector() leader.LeaderElector {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.leaderElector
-}
-
-func (s *InMemoryStore) SetLeaderElector(elector leader.LeaderElector) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.leaderElector = elector
 }

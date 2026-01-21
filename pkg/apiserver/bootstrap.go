@@ -1,10 +1,7 @@
 package apiserver
 
 import (
-	"context"
 	"log"
-	"os"
-	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
@@ -16,7 +13,6 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/helm"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
-	"github.com/replicatedhq/replicated-sdk/pkg/leader"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
@@ -25,7 +21,6 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
-	"k8s.io/client-go/kubernetes"
 )
 
 func bootstrap(params APIServerParams) error {
@@ -179,20 +174,6 @@ func bootstrap(params APIServerParams) error {
 		Informers: informers,
 	})
 
-	// Initialize and start leader election if HA mode is enabled
-	if os.Getenv("REPLICATED_HA_ENABLED") == "true" {
-		leaderConfig := createLeaderElectionConfig(params, clientset, appStateOperator)
-		leaderElector, err := leader.NewLeaderElector(clientset, leaderConfig)
-		if err != nil {
-			return errors.Wrap(err, "failed to create leader elector")
-		}
-
-		store.GetStore().SetLeaderElector(leaderElector)
-
-		// Start leader election in background (tracked so we can wait on shutdown).
-		startLeaderElectionAsync(params.Context, leaderElector)
-	}
-
 	if err := heartbeat.Start(); err != nil {
 		return errors.Wrap(err, "failed to start heartbeat")
 	}
@@ -207,65 +188,4 @@ func bootstrap(params APIServerParams) error {
 	}
 
 	return nil
-}
-
-// createLeaderElectionConfig creates a leader election config from environment variables and params
-func createLeaderElectionConfig(params APIServerParams, clientset kubernetes.Interface, appStateOperator *appstate.Operator) leader.Config {
-	leaseDuration := 15 * time.Second
-	renewDeadline := 10 * time.Second
-	retryPeriod := 2 * time.Second
-
-	// Parse from environment if provided
-	if dur := os.Getenv("REPLICATED_LEASE_DURATION"); dur != "" {
-		if parsed, err := time.ParseDuration(dur); err == nil {
-			leaseDuration = parsed
-		}
-	}
-	if dur := os.Getenv("REPLICATED_LEASE_RENEW_DEADLINE"); dur != "" {
-		if parsed, err := time.ParseDuration(dur); err == nil {
-			renewDeadline = parsed
-		}
-	}
-	if dur := os.Getenv("REPLICATED_LEASE_RETRY_PERIOD"); dur != "" {
-		if parsed, err := time.ParseDuration(dur); err == nil {
-			retryPeriod = parsed
-		}
-	}
-
-	return leader.Config{
-		LeaseName:      "replicated-sdk-leader",
-		LeaseNamespace: params.Namespace,
-		LeaseDuration:  leaseDuration,
-		RenewDeadline:  renewDeadline,
-		RetryPeriod:    retryPeriod,
-		OnStartedLeading: func(ctx context.Context) {
-			logger.Infof("This instance became the leader")
-			// Immediately send instance data when we become the leader
-			// This ensures no reporting gaps after rollouts or failovers
-			go func() {
-				// // for testing send data twice, once before and once after waiting for appstate to sync
-				// _ = report.SendInstanceData(clientset, store.GetStore())
-				// // Ensure appstate has synced its informers before reporting, so we don't send "empty" state on startup/failover.
-				// waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-				// defer cancel()
-				// if appStateOperator != nil {
-				// 	if err := appStateOperator.WaitForSynced(waitCtx); err != nil {
-				// 		logger.Errorf("Timed out waiting for appstate to sync before reporting: %v", err)
-				// 	}
-				// }
-
-				// if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
-				// 	logger.Errorf("Failed to send instance data after becoming leader: %v", err)
-				// } else {
-				// 	logger.Debugf("Successfully sent instance data after becoming leader")
-				// }
-			}()
-		},
-		OnStoppedLeading: func() {
-			logger.Infof("This instance lost leadership")
-		},
-		OnNewLeader: func(identity string) {
-			logger.Infof("New leader elected: %s", identity)
-		},
-	}
 }

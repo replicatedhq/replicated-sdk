@@ -1,7 +1,6 @@
 package appstate
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"sync"
@@ -47,12 +46,6 @@ func MustGetOperator() *Operator {
 func (o *Operator) Start() {
 	o.appStateMonitor = NewMonitor(o.clientset, o.targetNamespace)
 	go o.runAppStateMonitor()
-}
-
-// WaitForSynced blocks until all currently known AppMonitors have synced (or ctx is cancelled).
-// This is useful for ensuring app status has been populated from k8s before reporting.
-func (o *Operator) WaitForSynced(ctx context.Context) error {
-	return o.appStateMonitor.WaitForSynced(ctx)
 }
 
 func (o *Operator) Shutdown() {
