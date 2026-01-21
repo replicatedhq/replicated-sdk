@@ -243,22 +243,22 @@ func createLeaderElectionConfig(params APIServerParams, clientset kubernetes.Int
 			// Immediately send instance data when we become the leader
 			// This ensures no reporting gaps after rollouts or failovers
 			go func() {
-				// for testing send data twice, once before and once after waiting for appstate to sync
-				_ = report.SendInstanceData(clientset, store.GetStore())
-				// Ensure appstate has synced its informers before reporting, so we don't send "empty" state on startup/failover.
-				waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-				defer cancel()
-				if appStateOperator != nil {
-					if err := appStateOperator.WaitForSynced(waitCtx); err != nil {
-						logger.Errorf("Timed out waiting for appstate to sync before reporting: %v", err)
-					}
-				}
+				// // for testing send data twice, once before and once after waiting for appstate to sync
+				// _ = report.SendInstanceData(clientset, store.GetStore())
+				// // Ensure appstate has synced its informers before reporting, so we don't send "empty" state on startup/failover.
+				// waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+				// defer cancel()
+				// if appStateOperator != nil {
+				// 	if err := appStateOperator.WaitForSynced(waitCtx); err != nil {
+				// 		logger.Errorf("Timed out waiting for appstate to sync before reporting: %v", err)
+				// 	}
+				// }
 
-				if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
-					logger.Errorf("Failed to send instance data after becoming leader: %v", err)
-				} else {
-					logger.Debugf("Successfully sent instance data after becoming leader")
-				}
+				// if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
+				// 	logger.Errorf("Failed to send instance data after becoming leader: %v", err)
+				// } else {
+				// 	logger.Debugf("Successfully sent instance data after becoming leader")
+				// }
 			}()
 		},
 		OnStoppedLeading: func() {
