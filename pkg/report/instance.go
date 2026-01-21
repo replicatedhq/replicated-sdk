@@ -137,14 +137,18 @@ func SendOnlineInstanceData(wrapper licensewrapper.LicenseWrapper, instanceData 
 }
 
 func GetInstanceData(sdkStore store.Store) *types.InstanceData {
+	appStatus := sdkStore.GetAppStatus()
+	resourceStatesJSON, _ := json.Marshal(appStatus.ResourceStates)
+	logger.Infof("Reporting instance data - appStatus: %q, resourceStates: %s", appStatus.State, string(resourceStatesJSON))
+
 	r := types.InstanceData{
 		ClusterID:       sdkStore.GetReplicatedID(),
 		InstanceID:      sdkStore.GetAppID(),
 		ChannelID:       sdkStore.GetChannelID(),
 		ChannelName:     sdkStore.GetChannelName(),
 		ChannelSequence: sdkStore.GetChannelSequence(),
-		AppStatus:       string(sdkStore.GetAppStatus().State),
-		ResourceStates:  sdkStore.GetAppStatus().ResourceStates,
+		AppStatus:       string(appStatus.State),
+		ResourceStates:  appStatus.ResourceStates,
 		RunningImages:   sdkStore.GetRunningImages(),
 	}
 

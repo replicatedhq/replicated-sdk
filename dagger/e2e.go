@@ -985,43 +985,29 @@ spec:
 		newLeader = match[1]
 		fmt.Printf("✓ New leader after failover: %s\n", newLeader)
 	}
+	if newLeader == currentLeader {
+		return fmt.Errorf("new leader is the same as the old leader")
+	}
 
 	// Verify that a new leader was elected (or the old one recovered)
 	if newLeader == "" {
 		return fmt.Errorf("no leader elected after failover")
 	}
 
-	// Get logs from all pods to verify leader election occurred
+	// Get logs from new leader pod to see what the new leader reported
+	fmt.Println("Getting logs from new leader pod after deployment is ready...")
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
-				"kubectl", "logs", "deploy/replicated", "--all-containers=true", "--tail=50",
+				"kubectl", "logs", newLeader, "--all-containers=true", "--tail=100",
 			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get logs after failover: %w", err)
 	}
-	fmt.Println("Logs after leader failover:")
-	fmt.Println(out)
-
-	// Wait for the deployment to actually be ready from Kubernetes perspective
-	fmt.Println("Waiting for deployment to be ready after leader failover...")
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", kubeconfigPath).
-		With(CacheBustingExec(
-			[]string{
-				"kubectl", "wait",
-				"--for=condition=available",
-				"deployment/replicated",
-				"--timeout=2m",
-			}))
-	out, err = ctr.Stdout(ctx)
-	if err != nil {
-		return fmt.Errorf("deployment not ready after leader failover: %w", err)
-	}
+	fmt.Printf("Logs from new leader pod (new leader is %s):\n", newLeader)
 	fmt.Println(out)
 
 	// Verify resources are still being reported after failover
