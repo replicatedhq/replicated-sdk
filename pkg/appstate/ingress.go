@@ -28,6 +28,7 @@ func init() {
 func runIngressController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
 	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
+	onSynced func(),
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -51,8 +52,7 @@ func runIngressController(
 		resourceStateCh,
 	)
 
-	runInformer(ctx, informer, eventHandler)
-	return
+	runInformer(ctx, informer, eventHandler, onSynced)
 }
 
 type ingressEventHandler struct {

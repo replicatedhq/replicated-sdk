@@ -35,6 +35,7 @@ func init() {
 func runStatefulSetController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
 	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
+	onSynced func(),
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -57,8 +58,7 @@ func runStatefulSetController(
 		targetNamespace: targetNamespace,
 	}
 
-	runInformer(ctx, informer, eventHandler)
-	return
+	runInformer(ctx, informer, eventHandler, onSynced)
 }
 
 func (h *statefulSetEventHandler) ObjectCreated(obj interface{}) {

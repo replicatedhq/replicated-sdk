@@ -181,7 +181,7 @@ func bootstrap(params APIServerParams) error {
 
 	// Initialize and start leader election if HA mode is enabled
 	if os.Getenv("REPLICATED_HA_ENABLED") == "true" {
-		leaderConfig := createLeaderElectionConfig(params, clientset)
+		leaderConfig := createLeaderElectionConfig(params, clientset, appStateOperator)
 		leaderElector, err := leader.NewLeaderElector(clientset, leaderConfig)
 		if err != nil {
 			return errors.Wrap(err, "failed to create leader elector")
@@ -210,7 +210,7 @@ func bootstrap(params APIServerParams) error {
 }
 
 // createLeaderElectionConfig creates a leader election config from environment variables and params
-func createLeaderElectionConfig(params APIServerParams, clientset kubernetes.Interface) leader.Config {
+func createLeaderElectionConfig(params APIServerParams, clientset kubernetes.Interface, appStateOperator *appstate.Operator) leader.Config {
 	leaseDuration := 15 * time.Second
 	renewDeadline := 10 * time.Second
 	retryPeriod := 2 * time.Second
@@ -243,6 +243,15 @@ func createLeaderElectionConfig(params APIServerParams, clientset kubernetes.Int
 			// Immediately send instance data when we become the leader
 			// This ensures no reporting gaps after rollouts or failovers
 			go func() {
+				// Ensure appstate has synced its informers before reporting, so we don't send "empty" state on startup/failover.
+				waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+				defer cancel()
+				if appStateOperator != nil {
+					if err := appStateOperator.WaitForSynced(waitCtx); err != nil {
+						logger.Errorf("Timed out waiting for appstate to sync before reporting: %v", err)
+					}
+				}
+
 				if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
 					logger.Errorf("Failed to send instance data after becoming leader: %v", err)
 				} else {

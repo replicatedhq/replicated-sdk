@@ -24,6 +24,7 @@ func init() {
 func runDeploymentController(
 	ctx context.Context, clientset kubernetes.Interface, targetNamespace string,
 	informers []types.StatusInformer, resourceStateCh chan<- types.ResourceState,
+	onSynced func(),
 ) {
 	listwatch := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -44,8 +45,7 @@ func runDeploymentController(
 		resourceStateCh,
 	)
 
-	runInformer(ctx, informer, eventHandler)
-	return
+	runInformer(ctx, informer, eventHandler, onSynced)
 }
 
 type deploymentEventHandler struct {
