@@ -23,6 +23,26 @@ commonAnnotations: {}
 # Options: Always, OnFailure, Never
 restartPolicy: Always
 
+# Replica configuration for high availability
+# Setting replicaCount > 1 enables HA mode
+# Default: 1 (single replica)
+replicaCount: 1
+
+# High Availability configuration
+# Only applies when replicaCount > 1
+highAvailability:
+  # Pod anti-affinity to spread replicas across nodes
+  # Options: soft (preferred), hard (required), disabled
+  # Default: soft (balances HA with cluster resource availability)
+  podAntiAffinityPreset: "soft"
+
+  # PodDisruptionBudget ensures minimum replicas during voluntary disruptions
+  # (node drains, cluster upgrades, etc.)
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+    # Alternative: maxUnavailable: 1
+
 # Deprecated: Use .Values.image instead of .Values.images
 # The following properties for the Replicated SDK image are deprecated:
 #
@@ -91,9 +111,10 @@ readinessProbe:
 
 # Liveness probe configuration
 # Determines if the container is alive and should be restarted if unhealthy
+# RECOMMENDED: Enable for HA deployments (replicaCount > 1) to ensure failed pods are restarted
 # Note: The scheme will automatically be set to HTTPS if tlsCertSecretName is provided
 # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-# Example configuration (no defaults provided - configure as needed):
+# Example configuration (recommended for HA):
 # livenessProbe:
 #   httpGet:                       # Uses HTTP GET request to check health
 #     path: /healthz               # Endpoint to query
