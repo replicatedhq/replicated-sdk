@@ -300,6 +300,66 @@ spec:
 	}
 	fmt.Println(out)
 
+	// Test High Availability with 3 replicas
+	fmt.Println("Testing High Availability with 3 replicas...")
+
+	// Upgrade the chart to scale to 3 replicas (no restart needed - deployment controller handles it)
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.replicaCount=3",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart to 3 replicas: %w", err)
+	}
+
+	// Verify there are actually 3 replicas
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "deployment", "replicated", "-o", "jsonpath={.status.replicas},{.status.readyReplicas},{.status.availableReplicas}",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get replica counts: %w", err)
+	}
+
+	// Parse the output: replicas,readyReplicas,availableReplicas
+	parts := strings.Split(strings.TrimSpace(out), ",")
+	if len(parts) != 3 {
+		return fmt.Errorf("unexpected replica count output format: %s", out)
+	}
+	if parts[0] != "3" || parts[1] != "3" || parts[2] != "3" {
+		return fmt.Errorf("expected 3,3,3 replicas (replicas,ready,available) but got: %s", out)
+	}
+	fmt.Printf("Successfully verified 3 replicas are running: replicas=%s, ready=%s, available=%s\n", parts[0], parts[1], parts[2])
+
+	// Verify we can see 3 pods
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "pods", "-l", "app.kubernetes.io/name=replicated",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get replicated pods: %w", err)
+	}
+	fmt.Println("Replicated pods after scaling to 3:")
+	fmt.Println(out)
+
+	// Scale back down to 1 replica for subsequent tests
+	fmt.Println("Scaling back down to 1 replica for remaining tests...")
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set", "replicated.replicaCount=1",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to scale back to 1 replica: %w", err)
+	}
+
 	// Test minimal RBAC functionality
 	fmt.Println("Testing minimal RBAC functionality...")
 
