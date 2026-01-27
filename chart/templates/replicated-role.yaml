@@ -74,6 +74,7 @@ rules:
   - "list"
   - "watch"
 # the SDK secret is required by default (to determine if integration test mode is enabled)
+# the replicated-meta-data secret is required for custom app metrics
 - apiGroups:
   - ""
   resources:
@@ -82,6 +83,7 @@ rules:
   - "get"
   resourceNames:
   - {{ include "replicated.secretName" . }}
+  - replicated-meta-data
 # the legacy replicated-sdk configmap is required when the SDK secret is not found
 - apiGroups:
     - ''
