@@ -83,7 +83,7 @@ rules:
   - "get"
   resourceNames:
   - {{ include "replicated.secretName" . }}
-  - replicated-meta-data
+  # - replicated-meta-data
 # the legacy replicated-sdk configmap is required when the SDK secret is not found
 - apiGroups:
     - ''
