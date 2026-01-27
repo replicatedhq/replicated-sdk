@@ -532,6 +532,49 @@ spec:
 		return fmt.Errorf("failed to wait for resources to be ready: %w", err)
 	}
 
+	// Test custom app metrics functionality with minimal RBAC
+	// This verifies the SDK can read and write to the replicated-meta-data secret
+	fmt.Println("Testing custom app metrics with minimal RBAC...")
+
+	// Use kubectl exec to run curl from inside the replicated-ssl-test pod (which has curl installed)
+	customMetricsPayload := `{"data":{"e2e_test_metric":"test_value","e2e_test_number":42}}`
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"-X", "POST",
+				"-H", "Content-Type: application/json",
+				"-d", customMetricsPayload,
+				"https://replicated:3000/api/v1/app/custom-metrics",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to send custom app metrics: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+
+	// Parse the response - last line is the HTTP status code
+	outputLines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(outputLines) < 1 {
+		return fmt.Errorf("unexpected empty response from custom metrics endpoint")
+	}
+	httpStatus := outputLines[len(outputLines)-1]
+	if httpStatus != "200" {
+		return fmt.Errorf("custom metrics endpoint returned non-200 status: %s, response: %s", httpStatus, out)
+	}
+	fmt.Println("Successfully sent custom app metrics with minimal RBAC enabled")
+
+	// Wait for the custom metric to appear in events
+	fmt.Println("Waiting for custom metrics to be reported...")
+	err = waitForCustomMetric(ctx, tokenPlaintext, instanceAppID, "e2e_test_metric", "test_value", 30, 5*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to verify custom metrics were reported: %w", err)
+	}
+	fmt.Println("Custom app metrics test with minimal RBAC passed")
+
 	// Upgrade the chart to enable minimal RBAC without status informers - this looks for a resource that has not been previously reported
 	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
 		"--set", "replicated.tlsCertSecretName=test-tls",
@@ -942,6 +985,42 @@ func getRunningImages(ctx context.Context, appID string, customerID string, inst
 		}
 	}
 	return imagesSet, nil
+}
+
+// waitForCustomMetric waits for a custom metric to appear in the events API
+func waitForCustomMetric(ctx context.Context, authToken string, instanceAppID string, metricKey string, expectedValue string, maxRetries int, retryInterval time.Duration) error {
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("Attempt %d/%d: Checking for custom metric %s...\n", attempt, maxRetries, metricKey)
+
+		events, err := getEvents(ctx, authToken, instanceAppID)
+		if err != nil {
+			if attempt == maxRetries {
+				return fmt.Errorf("failed to get events after %d attempts: %w", maxRetries, err)
+			}
+			fmt.Printf("Failed to get events on attempt %d: %v\n", attempt, err)
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		// Look for custom metric events
+		for _, event := range events {
+			if event.IsCustom && event.FieldName == metricKey {
+				fmt.Printf("Found custom metric %s with value %s (expected %s)\n", metricKey, event.NewValue, expectedValue)
+				if event.NewValue == expectedValue {
+					fmt.Printf("Custom metric %s verified after %d attempt(s)\n", metricKey, attempt)
+					return nil
+				}
+			}
+		}
+
+		if attempt == maxRetries {
+			return fmt.Errorf("custom metric %s not found or value mismatch after %d attempts", metricKey, maxRetries)
+		}
+
+		fmt.Printf("Custom metric %s not found yet, waiting %s before next attempt...\n", metricKey, retryInterval)
+		time.Sleep(retryInterval)
+	}
+	return fmt.Errorf("unreachable code")
 }
 
 // upgradeChartAndRestart upgrades the helm chart with the provided arguments and restarts deployments
