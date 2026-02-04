@@ -175,6 +175,11 @@ existingSecret:
   # Name of the existing secret to use
   name: ""
 
+# Control whether to create the enterprise-pull-secret
+# Set to false if you manage the pull secret externally
+# Note: If false, you must create a secret named "enterprise-pull-secret" yourself
+createPullSecret: true
+
 # Name of the service account to use
 # If not set and serviceAccount.create is true, a name is generated
 serviceAccountName: ""
