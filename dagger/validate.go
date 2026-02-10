@@ -76,6 +76,26 @@ func (m *ReplicatedSdk) Validate(
 	return nil
 }
 
+// Test runs unit and pact tests
+func (m *ReplicatedSdk) Test(
+	ctx context.Context,
+
+	// +defaultPath="/"
+	source *dagger.Directory,
+
+	opServiceAccount *dagger.Secret,
+) error {
+	if err := testUnit(ctx, source); err != nil {
+		return err
+	}
+
+	if err := testPact(ctx, source, opServiceAccount); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // BuildInfo contains all the information needed to run e2e tests
 type BuildInfo struct {
 	ImageRegistry   string                 `json:"imageRegistry"`
@@ -89,7 +109,7 @@ type BuildInfo struct {
 	Distributions   []DistributionVersion  `json:"distributions"`
 }
 
-// BuildForE2E runs unit tests, pact tests, builds image and chart, creates test release and customer
+// BuildForE2E builds image and chart, creates test release and customer
 // Returns a file containing JSON with all the information needed to run e2e tests
 func (m *ReplicatedSdk) BuildForE2E(
 	ctx context.Context,
@@ -99,14 +119,6 @@ func (m *ReplicatedSdk) BuildForE2E(
 
 	opServiceAccount *dagger.Secret,
 ) (*dagger.File, error) {
-	if err := testUnit(ctx, source); err != nil {
-		return nil, err
-	}
-
-	if err := testPact(ctx, source, opServiceAccount); err != nil {
-		return nil, err
-	}
-
 	imageRegistry, imageRepository, imageTag, err := buildAndPushImageToTTL(ctx, source)
 	if err != nil {
 		return nil, err

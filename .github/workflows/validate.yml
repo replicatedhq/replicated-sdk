@@ -16,6 +16,19 @@ env:
   APP_SLUG: replicated-sdk-e2e
 
 jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.2.0
+        env:
+          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+        with:
+          version: "0.19.9"
+          verb: call
+          args: test --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
   build:
     runs-on: ubuntu-22.04
     outputs:
@@ -75,13 +88,17 @@ jobs:
 
   validate:
     runs-on: ubuntu-22.04
-    needs: e2e
+    needs: [test, e2e]
     if: always()
     steps:
-      - name: Check e2e results
+      - name: Check test and e2e results
         run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Unit/Pact tests failed or were cancelled"
+            exit 1
+          fi
           if [ "${{ needs.e2e.result }}" != "success" ]; then
             echo "E2E tests failed or were cancelled"
             exit 1
           fi
-          echo "All E2E tests passed successfully"
+          echo "All tests passed successfully"
