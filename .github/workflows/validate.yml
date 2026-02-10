@@ -29,7 +29,7 @@ jobs:
         with:
           version: "0.19.9"
           verb: call
-          args: build-for-e2e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT export --path=./build-info.json
+          args: build-for-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT export --path=./build-info.json
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
       - name: Extract distributions for matrix
@@ -65,7 +65,7 @@ jobs:
           version: "0.19.9"
           verb: call
           args: |
-            run-single-e2e \
+            run-single-e-2-e \
               --progress=plain \
               --op-service-account=env:OP_SERVICE_ACCOUNT \
               --distribution="${{ matrix.dist.Distribution }}" \
