@@ -72,3 +72,16 @@ jobs:
               --version="${{ matrix.dist.Version }}" \
               --build-info-file=./build-info.json
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+  validate:
+    runs-on: ubuntu-22.04
+    needs: e2e
+    if: always()
+    steps:
+      - name: Check e2e results
+        run: |
+          if [ "${{ needs.e2e.result }}" != "success" ]; then
+            echo "E2E tests failed or were cancelled"
+            exit 1
+          fi
+          echo "All E2E tests passed successfully"
