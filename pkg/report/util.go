@@ -97,6 +97,13 @@ func GetInstanceDataHeaders(instanceData *types.InstanceData) map[string]string 
 		headers["X-Replicated-K8sDistribution"] = instanceData.K8sDistribution
 	}
 
+	if ecID := os.Getenv("EMBEDDED_CLUSTER_ID"); ecID != "" {
+		headers["X-Replicated-EmbeddedClusterID"] = ecID
+	}
+	if ecVersion := os.Getenv("EMBEDDED_CLUSTER_VERSION"); ecVersion != "" {
+		headers["X-Replicated-EmbeddedClusterVersion"] = ecVersion
+	}
+
 	if !instanceData.Tags.IsEmpty() {
 		b64, err := instanceData.Tags.MarshalBase64()
 		if err != nil {
