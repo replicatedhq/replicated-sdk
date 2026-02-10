@@ -40,5 +40,14 @@ func (m *ReplicatedSdk) TestChart(
 		WithExec([]string{"helm", "push", chartFile, chartRef})
 	fmt.Printf("\n\nWrapped chart pushed to %s:0.1.0\n\n", chartRef)
 
+	// Print summary at the end
+	fmt.Printf("\n========================================\n")
+	fmt.Printf("Build Complete - Artifacts Published:\n")
+	fmt.Printf("========================================\n\n")
+	fmt.Printf("1. Image:         %s/%s:%s\n", imageRegistry, imageRepository, imageTag)
+	fmt.Printf("2. SDK Chart:     %s:1.0.0\n", chart)
+	fmt.Printf("3. Wrapper Chart: %s:0.1.0\n", chartRef)
+	fmt.Printf("\n========================================\n\n")
+
 	return nil
 }
