@@ -26,6 +26,8 @@ type InstanceReportEvent struct {
 	DownstreamChannelID       string `json:"downstream_channel_id,omitempty"`
 	DownstreamChannelSequence int64  `json:"downstream_channel_sequence"`
 	DownstreamChannelName     string `json:"downstream_channel_name,omitempty"`
+	EmbeddedClusterID         string `json:"embedded_cluster_id,omitempty"`
+	EmbeddedClusterVersion    string `json:"embedded_cluster_version,omitempty"`
 	Tags                      string `json:"tags"`
 }
 

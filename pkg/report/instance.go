@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -63,6 +64,8 @@ func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, li
 		DownstreamChannelID:       instanceData.ChannelID,
 		DownstreamChannelName:     instanceData.ChannelName,
 		DownstreamChannelSequence: instanceData.ChannelSequence,
+		EmbeddedClusterID:         os.Getenv("EMBEDDED_CLUSTER_ID"),
+		EmbeddedClusterVersion:    os.Getenv("EMBEDDED_CLUSTER_VERSION"),
 	}
 
 	if instanceData.ResourceStates != nil {
