@@ -16,15 +16,59 @@ env:
   APP_SLUG: replicated-sdk-e2e
 
 jobs:
-  validate:
+  build:
     runs-on: ubuntu-22.04
+    outputs:
+      distributions: ${{ steps.distributions.outputs.result }}
     steps:
       - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.2.0
+        id: build
+        env:
+          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+        with:
+          version: "0.19.9"
+          verb: call
+          args: build-for-e2e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT export --path=./build-info.json
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+      - name: Extract distributions for matrix
+        id: distributions
+        run: |
+          DISTRIBUTIONS=$(jq -c '.distributions' build-info.json)
+          echo "result=$DISTRIBUTIONS" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-info
+          path: build-info.json
+          retention-days: 1
+
+  e2e:
+    runs-on: ubuntu-22.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ${{ fromJson(needs.build.outputs.distributions) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-info
+
       - uses: dagger/dagger-for-github@v8.2.0
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
         with:
           version: "0.19.9"
           verb: call
-          args: validate --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT
+          args: |
+            run-single-e2e \
+              --progress=plain \
+              --op-service-account=env:OP_SERVICE_ACCOUNT \
+              --distribution="${{ matrix.dist.Distribution }}" \
+              --version="${{ matrix.dist.Version }}" \
+              --build-info-file=./build-info.json
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
