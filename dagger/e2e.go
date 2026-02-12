@@ -805,6 +805,107 @@ spec:
 
 	fmt.Printf("reportAllImages test passed - found %d total images (vs %d with filtering)\n", len(allImagesSet), len(imagesSet))
 
+	// Create a new namespace and a pod in that namespace, then restart the app and ensure the image is reported
+	newNs := "dynamic-image-ns"
+	newPodName := "dynamic-image-pod"
+	newPodImage := "docker.io/library/busybox:1.35"
+
+	// Create namespace
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "create", "namespace", newNs,
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create namespace %s: %w", newNs, err)
+	}
+	fmt.Println(out)
+
+	// Create a pod in the new namespace
+	newNsPodYaml := "apiVersion: v1\n" +
+		"kind: Pod\n" +
+		"metadata:\n" +
+		"  name: " + newPodName + "\n" +
+		"  namespace: " + newNs + "\n" +
+		"spec:\n" +
+		"  containers:\n" +
+		"  - name: busybox\n" +
+		"    image: " + newPodImage + "\n" +
+		"    command: [\"sleep\", \"500d\"]\n"
+	newNsPodSource := source.WithNewFile("/dynamic-ns-pod.yaml", newNsPodYaml)
+
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		WithFile("/tmp/dynamic-ns-pod.yaml", newNsPodSource.File("/dynamic-ns-pod.yaml")).
+		WithExec([]string{"kubectl", "apply", "-f", "/tmp/dynamic-ns-pod.yaml"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to apply pod in new namespace: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	fmt.Println(out)
+
+	// Wait for the pod to be ready
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		WithExec([]string{"kubectl", "wait", "--for=condition=ready", "pod/" + newPodName, "-n", newNs, "--timeout=1m"})
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for pod %s in namespace %s to be ready: %w", newPodName, newNs, err)
+	}
+	fmt.Println(out)
+
+	// Restart test-chart deployment to force a reporting message
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "rollout", "restart", "deploy/test-chart",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to restart replicated deployment: %w", err)
+	}
+	fmt.Println(out)
+
+	// Poll for the new image to appear in the running images list
+	maxAttempts = 6
+	retryDelay = 5 * time.Second
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		var getErr error
+		allImagesSet, getErr = getRunningImages(ctx, appID, customerID, instanceAppID, tokenPlaintext)
+		if getErr != nil {
+			if attempt == maxAttempts {
+				return fmt.Errorf("failed to get running images after new namespace creation (after %d attempts): %w", maxAttempts, getErr)
+			}
+			fmt.Printf("attempt %d/%d: failed to get running images: %v\n", attempt, maxAttempts, getErr)
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		if _, ok := allImagesSet[newPodImage]; ok {
+			fmt.Printf("New namespace image %s detected in running images on attempt %d\n", newPodImage, attempt)
+			break
+		}
+
+		if attempt == maxAttempts {
+			seen := make([]string, 0, len(allImagesSet))
+			for k := range allImagesSet {
+				seen = append(seen, k)
+			}
+			return fmt.Errorf("after creating namespace %s and pod %s, expected image %s not found. Seen: %v", newNs, newPodName, newPodImage, seen)
+		}
+
+		fmt.Printf("attempt %d/%d: image %s not yet reported (retrying)\n", attempt, maxAttempts, newPodImage)
+		time.Sleep(retryDelay)
+	}
+
 	return nil
 }
 
