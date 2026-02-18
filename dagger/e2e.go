@@ -545,6 +545,7 @@ spec:
 			[]string{
 				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
 				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "2", "--retry-delay", "5", "--retry-all-errors",
 				"-X", "POST",
 				"-H", "Content-Type: application/json",
 				"-d", customMetricsPayload,
