@@ -135,7 +135,7 @@ func createCustomer(
 
 	ctr := dag.Container().From("replicated/vendor-cli:latest").
 		WithSecretVariable("REPLICATED_API_TOKEN", replicatedServiceAccount).
-		WithExec([]string{"/replicated", "customer", "create", "--app", "replicated-sdk-e2e", "--kots-install=false", "--name", "test-customer", "--channel", channelSlug, "--email", "test-customer@replicated.com", "--output", "json"})
+		WithExec([]string{"/replicated", "customer", "create", "--app", "replicated-sdk-e2e", "--kots-install=false", "--support-bundle-upload", "--name", "test-customer", "--channel", channelSlug, "--email", "test-customer@replicated.com", "--output", "json"})
 
 	out, err := ctr.Stdout(ctx)
 	if err != nil {

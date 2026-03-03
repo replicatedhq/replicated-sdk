@@ -602,6 +602,7 @@ spec:
 	}
 	httpStatus = outputLines[len(outputLines)-1]
 	bundleResponseBody := strings.Join(outputLines[:len(outputLines)-1], "\n")
+
 	if httpStatus != "201" {
 		return fmt.Errorf("support bundle upload returned non-201 status: %s, response: %s", httpStatus, bundleResponseBody)
 	}
