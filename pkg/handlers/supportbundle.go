@@ -28,6 +28,12 @@ func UploadSupportBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.ContentLength <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Content-Length header is required"))
+		return
+	}
+
 	uploadURLResp, err := upstream.GetSupportBundleUploadURL(store.GetStore())
 	if err != nil {
 		logger.Errorf("failed to get support bundle upload url: %v", err)
