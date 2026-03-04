@@ -41,7 +41,7 @@ func UploadSupportBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := upstream.UploadToS3(uploadURLResp.UploadURL, r.Body, r.ContentLength, r.Header.Get("Content-Type")); err != nil {
+	if err := upstream.UploadToS3(uploadURLResp.UploadURL, r.Body, r.ContentLength); err != nil {
 		logger.Errorf("failed to upload support bundle to S3: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -619,14 +619,6 @@ spec:
 	}
 	fmt.Printf("Support bundle uploaded: bundleId=%s, slug=%s\n", bundleResp.BundleID, bundleResp.Slug)
 
-	// Verify the bundle appears in the vendor API
-	fmt.Println("Verifying support bundle appears in vendor API...")
-	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, 10, 5*time.Second)
-	if err != nil {
-		return fmt.Errorf("failed to verify support bundle in vendor API: %w", err)
-	}
-	fmt.Println("Support bundle upload test passed")
-
 	// Upgrade the chart to enable minimal RBAC without status informers - this looks for a resource that has not been previously reported
 	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
 		"--set", "replicated.tlsCertSecretName=test-tls",
@@ -856,6 +848,15 @@ spec:
 	}
 
 	fmt.Printf("reportAllImages test passed - found %d total images (vs %d with filtering)\n", len(allImagesSet), len(imagesSet))
+
+	// Verify the support bundle uploaded earlier appears in the vendor API.
+	// Placed at the end so analysis runs in parallel with other tests.
+	fmt.Println("Verifying support bundle appears in vendor API...")
+	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, 10, 5*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to verify support bundle in vendor API: %w", err)
+	}
+	fmt.Println("Support bundle upload test passed")
 
 	return nil
 }

@@ -84,15 +84,12 @@ func GetSupportBundleUploadURL(sdkStore store.Store) (*SupportBundleUploadURL, e
 	return &uploadURL, nil
 }
 
-func UploadToS3(uploadURL string, body io.Reader, contentLength int64, contentType string) error {
+func UploadToS3(uploadURL string, body io.Reader, contentLength int64) error {
 	req, err := http.NewRequest("PUT", uploadURL, body)
 	if err != nil {
 		return errors.Wrap(err, "failed to create S3 upload request")
 	}
 
-	if contentType != "" {
-		req.Header.Set("Content-Type", contentType)
-	}
 	req.ContentLength = contentLength
 
 	client := &http.Client{
