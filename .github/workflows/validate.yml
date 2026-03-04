@@ -18,16 +18,17 @@ env:
 jobs:
   test:
     runs-on: ubuntu-22.04
+    env:
+      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dagger/dagger-for-github@v8.2.0
-        env:
-          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+      - uses: actions/setup-go@v5
         with:
-          version: "0.19.9"
-          verb: call
-          args: test --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT
-          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+          go-version-file: go.mod
+      - uses: replicatedhq/action-install-pact@main
+      - name: Run unit and pact tests
+        run: make test
 
   build:
     runs-on: ubuntu-22.04
@@ -51,7 +52,7 @@ jobs:
           DISTRIBUTIONS=$(jq -c '.distributions' build-info.json)
           echo "result=$DISTRIBUTIONS" >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: build-info
           path: build-info.json
