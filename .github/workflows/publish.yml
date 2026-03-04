@@ -32,9 +32,12 @@ jobs:
             --branch main \
             --verbose
       - name: Record release
-        run: make record-release
-        env:
-          PACT_VERSION: ${{ github.ref_name }}
+        run: |
+          pact-broker record-release \
+            --pacticipant replicated-sdk \
+            --version ${{ github.ref_name }} \
+            --environment production \
+            --verbose
 
   get-tags:
     runs-on: ubuntu-22.04
