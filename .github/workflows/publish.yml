@@ -15,6 +15,30 @@ env:
   GIT_TAG: ${{ github.ref_name }}
 
 jobs:
+  publish-pact:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: replicatedhq/action-install-pact@main
+      - name: Run pact tests
+        run: make test-pact
+      - name: Publish pact
+        run: |
+          pact-broker publish ./pacts \
+            --consumer-app-version ${{ github.ref_name }} \
+            --branch main \
+            --verbose
+      - name: Record release
+        run: |
+          pact-broker record-release \
+            --pacticipant replicated-sdk \
+            --version ${{ github.ref_name }} \
+            --environment production \
+            --verbose
+
   get-tags:
     runs-on: ubuntu-22.04
     outputs:
