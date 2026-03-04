@@ -80,6 +80,28 @@ jobs:
           args: run-single-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --distribution="${{ matrix.dist.Distribution }}" --version="${{ matrix.dist.Version }}" --build-info-file=./build-info.json
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
+  publish-pact:
+    runs-on: ubuntu-22.04
+    needs: [test]
+    if: github.event_name == 'push'
+    env:
+      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: replicatedhq/action-install-pact@main
+      - name: Run pact tests
+        run: make test-pact
+      - name: Publish pact
+        run: |
+          pact-broker publish ./pacts \
+            --consumer-app-version ${{ github.sha }} \
+            --branch main \
+            --verbose
+
   validate:
     runs-on: ubuntu-22.04
     needs: [test, e2e]

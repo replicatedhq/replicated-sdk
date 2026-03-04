@@ -576,6 +576,49 @@ spec:
 	}
 	fmt.Println("Custom app metrics test with minimal RBAC passed")
 
+	// Test support bundle upload
+	fmt.Println("Testing support bundle upload...")
+
+	// Create a minimal gzip file and upload it to the SDK's support bundle endpoint
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"sh", "-c",
+				`echo "test-support-bundle" | gzip | curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors -X POST -H "Content-Type: application/gzip" --data-binary @- https://replicated:3000/api/v1/supportbundle`,
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to upload support bundle: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+
+	// Parse response - last line is HTTP status code, preceding lines are JSON body
+	outputLines = strings.Split(strings.TrimSpace(out), "\n")
+	if len(outputLines) < 2 {
+		return fmt.Errorf("unexpected response from support bundle endpoint: %s", out)
+	}
+	httpStatus = outputLines[len(outputLines)-1]
+	bundleResponseBody := strings.Join(outputLines[:len(outputLines)-1], "\n")
+
+	if httpStatus != "201" {
+		return fmt.Errorf("support bundle upload returned non-201 status: %s, response: %s", httpStatus, bundleResponseBody)
+	}
+
+	var bundleResp struct {
+		BundleID string `json:"bundleId"`
+		Slug     string `json:"slug"`
+	}
+	if err := json.Unmarshal([]byte(bundleResponseBody), &bundleResp); err != nil {
+		return fmt.Errorf("failed to unmarshal support bundle response: %w, body: %s", err, bundleResponseBody)
+	}
+	if bundleResp.BundleID == "" || bundleResp.Slug == "" {
+		return fmt.Errorf("support bundle response missing bundleId or slug: %s", bundleResponseBody)
+	}
+	fmt.Printf("Support bundle uploaded: bundleId=%s, slug=%s\n", bundleResp.BundleID, bundleResp.Slug)
+
 	// Upgrade the chart to enable minimal RBAC without status informers - this looks for a resource that has not been previously reported
 	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
 		"--set", "replicated.tlsCertSecretName=test-tls",
@@ -806,6 +849,15 @@ spec:
 
 	fmt.Printf("reportAllImages test passed - found %d total images (vs %d with filtering)\n", len(allImagesSet), len(imagesSet))
 
+	// Verify the support bundle uploaded earlier appears in the vendor API.
+	// Placed at the end so analysis runs in parallel with other tests.
+	fmt.Println("Verifying support bundle appears in vendor API...")
+	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, 10, 5*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to verify support bundle in vendor API: %w", err)
+	}
+	fmt.Println("Support bundle upload test passed")
+
 	return nil
 }
 
@@ -1019,6 +1071,57 @@ func waitForCustomMetric(ctx context.Context, authToken string, instanceAppID st
 		}
 
 		fmt.Printf("Custom metric %s not found yet, waiting %s before next attempt...\n", metricKey, retryInterval)
+		time.Sleep(retryInterval)
+	}
+	return fmt.Errorf("unreachable code")
+}
+
+// waitForSupportBundle waits for a support bundle to appear in the vendor API
+func waitForSupportBundle(ctx context.Context, authToken string, appID string, bundleID string, maxRetries int, retryInterval time.Duration) error {
+	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/supportbundles?selector=%s&selectorType=app&searchTerm=", appID)
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fmt.Printf("Attempt %d/%d: Checking for support bundle %s...\n", attempt, maxRetries, bundleID)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Authorization", authToken)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			if attempt == maxRetries {
+				return fmt.Errorf("failed to list support bundles after %d attempts: %w", maxRetries, err)
+			}
+			fmt.Printf("Failed to list support bundles on attempt %d: %v\n", attempt, err)
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			if attempt == maxRetries {
+				return fmt.Errorf("vendor API returned status %d after %d attempts: %s", resp.StatusCode, maxRetries, string(body))
+			}
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		if strings.Contains(string(body), bundleID) {
+			fmt.Printf("Support bundle %s found in vendor API after %d attempt(s)\n", bundleID, attempt)
+			return nil
+		}
+
+		if attempt == maxRetries {
+			return fmt.Errorf("support bundle %s not found in vendor API after %d attempts", bundleID, maxRetries)
+		}
+
+		fmt.Printf("Support bundle %s not found yet, waiting %s...\n", bundleID, retryInterval)
 		time.Sleep(retryInterval)
 	}
 	return fmt.Errorf("unreachable code")

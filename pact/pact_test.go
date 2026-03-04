@@ -32,7 +32,7 @@ func createPact() dsl.Pact {
 
 	return dsl.Pact{
 		Consumer: "replicated-sdk",
-		Provider: "replicated-app",
+		Provider: "market-api",
 		LogDir:   logDir,
 		PactDir:  pactDir,
 		LogLevel: "debug",
