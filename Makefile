@@ -10,7 +10,7 @@ test-pact:
 	@if ! command -v pact-mock-service &> /dev/null; then \
 		echo "The 'pact-mock-service' command is not found on your PATH. Please install the CLI from the releases page in https://github.com/pact-foundation/pact-ruby-standalone."; \
 	else \
-		go test -v ./pact/... -tags "$(BUILDTAGS)"; \
+		go test -count=1 -v ./pact/... -tags "$(BUILDTAGS)"; \
 	fi
 
 .PHONY: test
