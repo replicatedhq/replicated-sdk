@@ -58,6 +58,29 @@ jobs:
           path: build-info.json
           retention-days: 1
 
+  scan:
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: build-info
+
+      - name: Extract image reference
+        id: image
+        run: |
+          IMAGE_REF="$(jq -r '"\(.imageRegistry)/\(.imageRepository):\(.imageTag)"' build-info.json)"
+          echo "ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+
+      - name: Scan image with Grype
+        uses: anchore/scan-action@latest
+        with:
+          image: "${{ steps.image.outputs.ref }}"
+          fail-build: "true"
+          severity-cutoff: "negligible"
+          only-fixed: "true"
+          output-format: "table"
+
   e2e:
     runs-on: ubuntu-22.04
     needs: build
@@ -105,10 +128,10 @@ jobs:
 
   validate:
     runs-on: ubuntu-22.04
-    needs: [test, e2e]
+    needs: [test, e2e, scan]
     if: always()
     steps:
-      - name: Check test and e2e results
+      - name: Check test, e2e, and scan results
         run: |
           if [ "${{ needs.test.result }}" != "success" ]; then
             echo "Unit/Pact tests failed or were cancelled"
@@ -116,6 +139,10 @@ jobs:
           fi
           if [ "${{ needs.e2e.result }}" != "success" ]; then
             echo "E2E tests failed or were cancelled"
+            exit 1
+          fi
+          if [ "${{ needs.scan.result }}" != "success" ]; then
+            echo "Security scan failed or was cancelled"
             exit 1
           fi
           echo "All tests passed successfully"
