@@ -15,13 +15,6 @@ type UploadSupportBundleResponse struct {
 }
 
 func UploadSupportBundle(w http.ResponseWriter, r *http.Request) {
-	license := store.GetStore().GetLicense()
-	if !license.IsSupportBundleUploadSupported() {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("support bundle upload is not enabled for this license"))
-		return
-	}
-
 	if util.IsAirgap() {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("support bundle upload is not available in airgap mode"))
