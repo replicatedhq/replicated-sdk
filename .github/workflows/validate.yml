@@ -77,7 +77,7 @@ jobs:
         with:
           image: "${{ steps.image.outputs.ref }}"
           fail-build: "true"
-          severity-cutoff: "high"
+          severity-cutoff: "negligible"
           only-fixed: "true"
           output-format: "table"
 
