@@ -1193,14 +1193,15 @@ func testSupportBundleMetadata(ctx context.Context, kubeconfigSource *dagger.Dir
 	}
 	fmt.Println("PATCH /api/v1/supportbundle/metadata returned 200")
 
-	// Read the secret and verify contents: key1=val1, key2=updated, key3=val3
+	// Read the secret and verify contents: each key is a top-level data key
+	// Use -o json to get the full secret and decode all data keys
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
 				"kubectl", "get", "secret", "replicated-support-metadata",
-				"-o", "jsonpath={.data.support-bundle-metadata}",
+				"-o", "jsonpath={.data}",
 			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
@@ -1208,14 +1209,19 @@ func testSupportBundleMetadata(ctx context.Context, kubeconfigSource *dagger.Dir
 		return fmt.Errorf("failed to read support bundle metadata secret: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(out))
-	if err != nil {
-		return fmt.Errorf("failed to base64 decode support bundle metadata: %w, raw: %s", err, out)
+	// jsonpath {.data} returns a map of base64-encoded values like {"key1":"dmFsMQ==","key2":"..."}
+	var encodedData map[string]string
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &encodedData); err != nil {
+		return fmt.Errorf("failed to unmarshal secret data: %w, raw: %s", err, out)
 	}
 
-	var metadataMap map[string]string
-	if err := json.Unmarshal(decodedBytes, &metadataMap); err != nil {
-		return fmt.Errorf("failed to unmarshal support bundle metadata: %w, decoded: %s", err, string(decodedBytes))
+	metadataMap := make(map[string]string, len(encodedData))
+	for k, v := range encodedData {
+		decoded, err := base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			return fmt.Errorf("failed to base64 decode key %s: %w", k, err)
+		}
+		metadataMap[k] = string(decoded)
 	}
 
 	expectedMetadata := map[string]string{"key1": "val1", "key2": "updated", "key3": "val3"}

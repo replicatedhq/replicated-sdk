@@ -2,7 +2,6 @@ package supportbundle
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,6 +9,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
+
+func secretDataToStringMap(data map[string][]byte) map[string]string {
+	result := make(map[string]string, len(data))
+	for k, v := range data {
+		result[k] = string(v)
+	}
+	return result
+}
 
 func TestSaveMetadata_Overwrite(t *testing.T) {
 	ctx := context.Background()
@@ -31,13 +38,10 @@ func TestSaveMetadata_Overwrite(t *testing.T) {
 	err = SaveMetadata(ctx, clientset, namespace, data1, true)
 	require.NoError(t, err)
 
-	// Verify data was saved
+	// Verify data was saved as top-level keys
 	s, err := clientset.CoreV1().Secrets(namespace).Get(ctx, SupportBundleMetadataSecretName, metav1.GetOptions{})
 	require.NoError(t, err)
-	var saved map[string]string
-	err = json.Unmarshal(s.Data[supportBundleMetadataKey], &saved)
-	require.NoError(t, err)
-	require.Equal(t, data1, saved)
+	require.Equal(t, data1, secretDataToStringMap(s.Data))
 
 	// POST (overwrite) with new data
 	data2 := map[string]string{"key3": "val3"}
@@ -46,11 +50,9 @@ func TestSaveMetadata_Overwrite(t *testing.T) {
 
 	s, err = clientset.CoreV1().Secrets(namespace).Get(ctx, SupportBundleMetadataSecretName, metav1.GetOptions{})
 	require.NoError(t, err)
-	var saved2 map[string]string
-	err = json.Unmarshal(s.Data[supportBundleMetadataKey], &saved2)
-	require.NoError(t, err)
-	require.Equal(t, data2, saved2)
-	require.NotContains(t, saved2, "key1")
+	saved := secretDataToStringMap(s.Data)
+	require.Equal(t, data2, saved)
+	require.NotContains(t, saved, "key1")
 }
 
 func TestSaveMetadata_Patch(t *testing.T) {
@@ -80,10 +82,7 @@ func TestSaveMetadata_Patch(t *testing.T) {
 
 	s, err := clientset.CoreV1().Secrets(namespace).Get(ctx, SupportBundleMetadataSecretName, metav1.GetOptions{})
 	require.NoError(t, err)
-	var saved map[string]string
-	err = json.Unmarshal(s.Data[supportBundleMetadataKey], &saved)
-	require.NoError(t, err)
-	require.Equal(t, map[string]string{"key1": "val1", "key2": "updated", "key3": "val3"}, saved)
+	require.Equal(t, map[string]string{"key1": "val1", "key2": "updated", "key3": "val3"}, secretDataToStringMap(s.Data))
 }
 
 func TestSaveMetadata_SecretNotFound(t *testing.T) {
