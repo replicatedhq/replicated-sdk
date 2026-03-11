@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -576,6 +577,12 @@ spec:
 	}
 	fmt.Println("Custom app metrics test with minimal RBAC passed")
 
+	// Test support bundle metadata endpoints
+	err = testSupportBundleMetadata(ctx, kubeconfigSource)
+	if err != nil {
+		return fmt.Errorf("support bundle metadata test failed: %w", err)
+	}
+
 	// Test support bundle upload
 	fmt.Println("Testing support bundle upload...")
 
@@ -1125,6 +1132,104 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 		time.Sleep(retryInterval)
 	}
 	return fmt.Errorf("unreachable code")
+}
+
+// testSupportBundleMetadata tests the POST and PATCH /api/v1/supportbundle/metadata endpoints
+// and verifies the resulting secret contents.
+func testSupportBundleMetadata(ctx context.Context, kubeconfigSource *dagger.Directory) error {
+	fmt.Println("Testing support bundle metadata endpoints...")
+
+	// POST metadata (overwrite all)
+	postMetadataPayload := `{"data":{"key1":"val1","key2":"val2"}}`
+	ctr := dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "2", "--retry-delay", "5", "--retry-all-errors",
+				"-X", "POST",
+				"-H", "Content-Type: application/json",
+				"-d", postMetadataPayload,
+				"https://replicated:3000/api/v1/supportbundle/metadata",
+			}))
+	out, err := ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to POST support bundle metadata: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	outputLines := strings.Split(strings.TrimSpace(out), "\n")
+	httpStatus := outputLines[len(outputLines)-1]
+	if httpStatus != "200" {
+		return fmt.Errorf("POST support bundle metadata returned non-200 status: %s, response: %s", httpStatus, out)
+	}
+	fmt.Println("POST /api/v1/supportbundle/metadata returned 200")
+
+	// PATCH metadata (merge keys)
+	patchMetadataPayload := `{"data":{"key2":"updated","key3":"val3"}}`
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "2", "--retry-delay", "5", "--retry-all-errors",
+				"-X", "PATCH",
+				"-H", "Content-Type: application/json",
+				"-d", patchMetadataPayload,
+				"https://replicated:3000/api/v1/supportbundle/metadata",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to PATCH support bundle metadata: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	outputLines = strings.Split(strings.TrimSpace(out), "\n")
+	httpStatus = outputLines[len(outputLines)-1]
+	if httpStatus != "200" {
+		return fmt.Errorf("PATCH support bundle metadata returned non-200 status: %s, response: %s", httpStatus, out)
+	}
+	fmt.Println("PATCH /api/v1/supportbundle/metadata returned 200")
+
+	// Read the secret and verify contents: key1=val1, key2=updated, key3=val3
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "secret", "replicated-support-metadata",
+				"-o", "jsonpath={.data.support-bundle-metadata}",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to read support bundle metadata secret: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(out))
+	if err != nil {
+		return fmt.Errorf("failed to base64 decode support bundle metadata: %w, raw: %s", err, out)
+	}
+
+	var metadataMap map[string]string
+	if err := json.Unmarshal(decodedBytes, &metadataMap); err != nil {
+		return fmt.Errorf("failed to unmarshal support bundle metadata: %w, decoded: %s", err, string(decodedBytes))
+	}
+
+	expectedMetadata := map[string]string{"key1": "val1", "key2": "updated", "key3": "val3"}
+	for k, v := range expectedMetadata {
+		if metadataMap[k] != v {
+			return fmt.Errorf("support bundle metadata mismatch: expected %s=%s, got %s=%s. Full metadata: %v", k, v, k, metadataMap[k], metadataMap)
+		}
+	}
+	if len(metadataMap) != len(expectedMetadata) {
+		return fmt.Errorf("support bundle metadata has unexpected keys: expected %v, got %v", expectedMetadata, metadataMap)
+	}
+	fmt.Printf("Support bundle metadata verified: %v\n", metadataMap)
+
+	return nil
 }
 
 // upgradeChartAndRestart upgrades the helm chart with the provided arguments and restarts deployments
