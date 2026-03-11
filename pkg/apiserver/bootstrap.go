@@ -17,6 +17,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	reporttypes "github.com/replicatedhq/replicated-sdk/pkg/report/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/secretwatcher"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
@@ -173,6 +174,8 @@ func bootstrap(params APIServerParams) error {
 		Sequence:  store.GetStore().GetReleaseSequence(),
 		Informers: informers,
 	})
+
+	go secretwatcher.Start(params.Context, clientset, params.Namespace, util.GetReplicatedSecretName())
 
 	if err := heartbeat.Start(); err != nil {
 		return errors.Wrap(err, "failed to start heartbeat")
