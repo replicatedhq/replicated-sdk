@@ -133,28 +133,56 @@ func (s *InMemoryStore) GetChannelID() string {
 	return s.channelID
 }
 
+func (s *InMemoryStore) SetChannelID(channelID string) {
+	s.channelID = channelID
+}
+
 func (s *InMemoryStore) GetChannelName() string {
 	return s.channelName
+}
+
+func (s *InMemoryStore) SetChannelName(channelName string) {
+	s.channelName = channelName
 }
 
 func (s *InMemoryStore) GetChannelSequence() int64 {
 	return s.channelSequence
 }
 
+func (s *InMemoryStore) SetChannelSequence(channelSequence int64) {
+	s.channelSequence = channelSequence
+}
+
 func (s *InMemoryStore) GetReleaseSequence() int64 {
 	return s.releaseSequence
+}
+
+func (s *InMemoryStore) SetReleaseSequence(releaseSequence int64) {
+	s.releaseSequence = releaseSequence
 }
 
 func (s *InMemoryStore) GetReleaseCreatedAt() string {
 	return s.releaseCreatedAt
 }
 
+func (s *InMemoryStore) SetReleaseCreatedAt(releaseCreatedAt string) {
+	s.releaseCreatedAt = releaseCreatedAt
+}
+
 func (s *InMemoryStore) GetReleaseNotes() string {
 	return s.releaseNotes
 }
 
+func (s *InMemoryStore) SetReleaseNotes(releaseNotes string) {
+	s.releaseNotes = releaseNotes
+}
+
 func (s *InMemoryStore) GetVersionLabel() string {
 	return s.versionLabel
+}
+
+func (s *InMemoryStore) SetVersionLabel(versionLabel string) {
+	s.versionLabel = versionLabel
 }
 
 func (s *InMemoryStore) GetReplicatedAppEndpoint() string {

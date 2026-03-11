@@ -24,12 +24,19 @@ type Store interface {
 	GetAppSlug() string
 	GetAppName() string
 	GetChannelID() string
+	SetChannelID(channelID string)
 	GetChannelName() string
+	SetChannelName(channelName string)
 	GetChannelSequence() int64
+	SetChannelSequence(channelSequence int64)
 	GetReleaseSequence() int64
+	SetReleaseSequence(releaseSequence int64)
 	GetReleaseCreatedAt() string
+	SetReleaseCreatedAt(releaseCreatedAt string)
 	GetReleaseNotes() string
+	SetReleaseNotes(releaseNotes string)
 	GetVersionLabel() string
+	SetVersionLabel(versionLabel string)
 	GetReplicatedAppEndpoint() string
 	GetReleaseImages() []string
 	GetNamespace() string
