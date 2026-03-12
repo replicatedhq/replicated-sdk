@@ -595,7 +595,7 @@ spec:
 		WithExec([]string{"sh", "-c", "curl -sLo /usr/local/bin/kubectl 'https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl' && chmod +x /usr/local/bin/kubectl"}).
 		WithExec([]string{"sh", "-c", "curl -sL https://github.com/replicatedhq/troubleshoot/releases/latest/download/support-bundle_linux_amd64.tar.gz | tar xz -C /usr/local/bin"}).
 		With(CacheBustingExec([]string{"sh", "-c",
-			`kubectl port-forward svc/replicated 3000:3000 &` +
+			`kubectl port-forward svc/replicated 3000:3000 > /dev/null 2>&1 &` +
 				`sleep 3 && ` +
 				`support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && ` +
 				`echo "---UPLOAD_RESPONSE---" && ` +
