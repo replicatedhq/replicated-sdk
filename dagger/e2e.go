@@ -583,23 +583,44 @@ spec:
 		return fmt.Errorf("support bundle metadata test failed: %w", err)
 	}
 
-	// Test support bundle upload
-	fmt.Println("Testing support bundle upload...")
+	// Collect a real support bundle in-cluster using the troubleshoot image and upload it.
+	// The test-chart includes a support bundle spec (with supportBundleMetadata collector
+	// and afterCollection uploadResultsTo) that is discovered via --load-cluster-specs.
+	// RBAC for the collector is provided by the test-chart-support-bundle service account.
+	fmt.Println("Collecting and uploading real support bundle...")
 
-	// Create a minimal gzip file and upload it to the SDK's support bundle endpoint
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", kubeconfigPath).
 		With(CacheBustingExec(
 			[]string{
-				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
 				"sh", "-c",
-				`echo "test-support-bundle" | gzip | curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors -X POST -H "Content-Type: application/gzip" --data-binary @- https://replicated:3000/api/v1/supportbundle`,
+				`kubectl run support-bundle-collector --image=replicated/troubleshoot:0.125.0 --restart=Never --overrides='
+{
+  "spec": {
+    "serviceAccountName": "test-chart-support-bundle",
+    "containers": [{
+      "name": "support-bundle-collector",
+      "image": "replicated/troubleshoot:0.125.0",
+      "command": ["support-bundle", "--load-cluster-specs", "--interactive=false", "-o", "/tmp/bundle"],
+      "volumeMounts": [{"name": "output", "mountPath": "/tmp"}]
+    }],
+    "volumes": [{"name": "output", "emptyDir": {}}]
+  }
+}' && ` +
+					`kubectl wait --for=condition=Ready pod/support-bundle-collector --timeout=30s && ` +
+					`kubectl logs -f support-bundle-collector && ` +
+					`kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/support-bundle-collector --timeout=5m && ` +
+					// Copy the bundle out of the pod and upload via the ssl-test pod
+					`kubectl cp support-bundle-collector:/tmp/bundle.tar.gz /tmp/bundle.tar.gz && ` +
+					`POD=$(kubectl get pod -l app=replicated-ssl-test -o jsonpath='{.items[0].metadata.name}') && ` +
+					`kubectl cp /tmp/bundle.tar.gz $POD:/tmp/bundle.tar.gz && ` +
+					`kubectl exec $POD -- curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors -X POST -H "Content-Type: application/gzip" --data-binary @/tmp/bundle.tar.gz https://replicated:3000/api/v1/supportbundle`,
 			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		stderr, _ := ctr.Stderr(ctx)
-		return fmt.Errorf("failed to upload support bundle: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+		return fmt.Errorf("failed to collect/upload support bundle: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
 	}
 
 	// Parse response - last line is HTTP status code, preceding lines are JSON body
@@ -859,7 +880,8 @@ spec:
 	// Verify the support bundle uploaded earlier appears in the vendor API.
 	// Placed at the end so analysis runs in parallel with other tests.
 	fmt.Println("Verifying support bundle appears in vendor API...")
-	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, 10, 5*time.Second)
+	expectedMetadata := map[string]string{"key1": "val1", "key2": "updated", "key3": "val3"}
+	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, expectedMetadata, 10, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to verify support bundle in vendor API: %w", err)
 	}
@@ -1084,7 +1106,8 @@ func waitForCustomMetric(ctx context.Context, authToken string, instanceAppID st
 }
 
 // waitForSupportBundle waits for a support bundle to appear in the vendor API
-func waitForSupportBundle(ctx context.Context, authToken string, appID string, bundleID string, maxRetries int, retryInterval time.Duration) error {
+// and validates that it contains the expected metadata.
+func waitForSupportBundle(ctx context.Context, authToken string, appID string, bundleID string, expectedMetadata map[string]string, maxRetries int, retryInterval time.Duration) error {
 	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/supportbundles?selector=%s&selectorType=app&searchTerm=", appID)
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
@@ -1119,17 +1142,45 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 			continue
 		}
 
-		if strings.Contains(string(body), bundleID) {
-			fmt.Printf("Support bundle %s found in vendor API after %d attempt(s)\n", bundleID, attempt)
-			return nil
+		if !strings.Contains(string(body), bundleID) {
+			if attempt == maxRetries {
+				return fmt.Errorf("support bundle %s not found in vendor API after %d attempts", bundleID, maxRetries)
+			}
+			fmt.Printf("Support bundle %s not found yet, waiting %s...\n", bundleID, retryInterval)
+			time.Sleep(retryInterval)
+			continue
 		}
 
-		if attempt == maxRetries {
-			return fmt.Errorf("support bundle %s not found in vendor API after %d attempts", bundleID, maxRetries)
+		fmt.Printf("Support bundle %s found in vendor API after %d attempt(s)\n", bundleID, attempt)
+
+		// Validate metadata if expected
+		if len(expectedMetadata) > 0 {
+			var response struct {
+				SupportBundles []struct {
+					ID       string            `json:"id"`
+					Metadata map[string]string `json:"metadata"`
+				} `json:"supportBundles"`
+			}
+			if err := json.Unmarshal(body, &response); err != nil {
+				return fmt.Errorf("failed to unmarshal support bundles response: %w, body: %s", err, string(body))
+			}
+
+			for _, bundle := range response.SupportBundles {
+				if bundle.ID != bundleID {
+					continue
+				}
+				for k, v := range expectedMetadata {
+					if bundle.Metadata[k] != v {
+						return fmt.Errorf("support bundle metadata mismatch: expected %s=%s, got %s=%s. Full metadata: %v", k, v, k, bundle.Metadata[k], bundle.Metadata)
+					}
+				}
+				fmt.Printf("Support bundle metadata verified: %v\n", bundle.Metadata)
+				return nil
+			}
+			return fmt.Errorf("support bundle %s found in response but could not match by ID for metadata check", bundleID)
 		}
 
-		fmt.Printf("Support bundle %s not found yet, waiting %s...\n", bundleID, retryInterval)
-		time.Sleep(retryInterval)
+		return nil
 	}
 	return fmt.Errorf("unreachable code")
 }
