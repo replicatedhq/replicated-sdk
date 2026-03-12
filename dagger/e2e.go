@@ -595,17 +595,21 @@ spec:
 		With(CacheBustingExec(
 			[]string{
 				"sh", "-c",
-				`kubectl run support-bundle-collector --image=replicated/troubleshoot:0.125.0 --restart=Never --overrides='
-{
-  "spec": {
-    "serviceAccountName": "test-chart-support-bundle",
-    "containers": [{
-      "name": "support-bundle-collector",
-      "image": "replicated/troubleshoot:0.125.0",
-      "command": ["sh", "-c", "support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && curl -k -s -w '\\n%{http_code}' --retry 2 --retry-delay 5 --retry-all-errors -X POST -H 'Content-Type: application/gzip' --data-binary @/tmp/bundle.tar.gz https://replicated:3000/api/v1/supportbundle"]
-    }]
-  }
-}' && ` +
+				`cat <<'PODEOF' | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: support-bundle-collector
+spec:
+  serviceAccountName: test-chart-support-bundle
+  restartPolicy: Never
+  containers:
+    - name: support-bundle-collector
+      image: replicated/troubleshoot:0.125.0
+      command: ["sh", "-c"]
+      args: ["support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && curl -k -s -w '\\n%{http_code}' -X POST -H 'Content-Type: application/gzip' --data-binary @/tmp/bundle.tar.gz https://replicated:3000/api/v1/supportbundle"]
+PODEOF
+` +
 					`kubectl wait --for=condition=Ready pod/support-bundle-collector --timeout=30s && ` +
 					`kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/support-bundle-collector --timeout=5m && ` +
 					`kubectl logs support-bundle-collector`,
