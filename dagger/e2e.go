@@ -598,6 +598,7 @@ spec:
 			`kubectl port-forward svc/replicated 3000:3000 &` +
 				`sleep 3 && ` +
 				`support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && ` +
+				`echo "---UPLOAD_RESPONSE---" && ` +
 				`curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors ` +
 				`-X POST -H "Content-Type: application/gzip" --data-binary @/tmp/bundle.tar.gz ` +
 				`https://localhost:3000/api/v1/supportbundle`,
@@ -608,10 +609,15 @@ spec:
 		return fmt.Errorf("failed to collect/upload support bundle: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
 	}
 
-	// Parse response - last line is HTTP status code, preceding lines are JSON body
-	outputLines = strings.Split(strings.TrimSpace(out), "\n")
+	// Parse response after the delimiter - curl output is: JSON body + newline + HTTP status code
+	delimIdx := strings.Index(out, "---UPLOAD_RESPONSE---")
+	if delimIdx == -1 {
+		return fmt.Errorf("upload response delimiter not found in output: %s", out)
+	}
+	uploadOutput := strings.TrimSpace(out[delimIdx+len("---UPLOAD_RESPONSE---"):])
+	outputLines = strings.Split(uploadOutput, "\n")
 	if len(outputLines) < 2 {
-		return fmt.Errorf("unexpected response from support bundle endpoint: %s", out)
+		return fmt.Errorf("unexpected response from support bundle endpoint: %s", uploadOutput)
 	}
 	httpStatus = outputLines[len(outputLines)-1]
 	bundleResponseBody := strings.Join(outputLines[:len(outputLines)-1], "\n")
