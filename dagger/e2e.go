@@ -583,37 +583,25 @@ spec:
 		return fmt.Errorf("support bundle metadata test failed: %w", err)
 	}
 
-	// Collect a real support bundle in-cluster using the troubleshoot image and upload it.
-	// The test-chart includes a support bundle spec (with supportBundleMetadata collector
-	// and afterCollection uploadResultsTo) that is discovered via --load-cluster-specs.
-	// RBAC for the collector is provided by the test-chart-support-bundle service account.
+	// Collect a real support bundle from outside the cluster and upload via port-forward.
+	// The test-chart includes a support bundle spec (with supportBundleMetadata collector)
+	// that is discovered via --load-cluster-specs.
 	fmt.Println("Collecting and uploading real support bundle...")
 
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", kubeconfigPath).
-		With(CacheBustingExec(
-			[]string{
-				"sh", "-c",
-				`cat <<'PODEOF' | kubectl apply -f -
-apiVersion: v1
-kind: Pod
-metadata:
-  name: support-bundle-collector
-spec:
-  serviceAccountName: test-chart-support-bundle
-  restartPolicy: Never
-  containers:
-    - name: support-bundle-collector
-      image: replicated/troubleshoot:0.125.0
-      command: ["sh", "-c"]
-      args: ["support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && curl -k -s -w '\\n%{http_code}' -X POST -H 'Content-Type: application/gzip' --data-binary @/tmp/bundle.tar.gz https://replicated:3000/api/v1/supportbundle"]
-PODEOF
-` +
-					`kubectl wait --for=condition=Ready pod/support-bundle-collector --timeout=30s && ` +
-					`kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/support-bundle-collector --timeout=5m && ` +
-					`kubectl logs support-bundle-collector`,
-			}))
+	ctr = dag.Container().From("alpine:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"apk", "add", "--no-cache", "curl"}).
+		WithExec([]string{"sh", "-c", "curl -sLo /usr/local/bin/kubectl 'https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl' && chmod +x /usr/local/bin/kubectl"}).
+		WithExec([]string{"sh", "-c", "curl -sL https://github.com/replicatedhq/troubleshoot/releases/latest/download/support-bundle_linux_amd64.tar.gz | tar xz -C /usr/local/bin"}).
+		With(CacheBustingExec([]string{"sh", "-c",
+			`kubectl port-forward svc/replicated 3000:3000 &` +
+				`sleep 3 && ` +
+				`support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && ` +
+				`curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors ` +
+				`-X POST -H "Content-Type: application/gzip" --data-binary @/tmp/bundle.tar.gz ` +
+				`https://localhost:3000/api/v1/supportbundle`,
+		}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		stderr, _ := ctr.Stderr(ctx)
