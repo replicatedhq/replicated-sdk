@@ -1168,7 +1168,7 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 				fmt.Printf("Support bundle metadata verified: %v\n", bundle.Metadata)
 				return nil
 			}
-			return fmt.Errorf("support bundle %s found in response but could not match by ID for metadata check", bundleID)
+			return fmt.Errorf("support bundle %s found in response but could not match by ID for metadata check. Response: %s", bundleID, string(body))
 		}
 
 		return nil
