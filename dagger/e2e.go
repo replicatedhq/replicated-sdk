@@ -1150,7 +1150,7 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 				SupportBundles []struct {
 					ID       string            `json:"id"`
 					Metadata map[string]string `json:"metadata"`
-				} `json:"supportBundles"`
+				} `json:"bundles"`
 			}
 			if err := json.Unmarshal(body, &response); err != nil {
 				return fmt.Errorf("failed to unmarshal support bundles response: %w, body: %s", err, string(body))
