@@ -602,20 +602,13 @@ spec:
     "containers": [{
       "name": "support-bundle-collector",
       "image": "replicated/troubleshoot:0.125.0",
-      "command": ["support-bundle", "--load-cluster-specs", "--interactive=false", "-o", "/tmp/bundle"],
-      "volumeMounts": [{"name": "output", "mountPath": "/tmp"}]
-    }],
-    "volumes": [{"name": "output", "emptyDir": {}}]
+      "command": ["sh", "-c", "support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && curl -k -s -w '\\n%{http_code}' --retry 2 --retry-delay 5 --retry-all-errors -X POST -H 'Content-Type: application/gzip' --data-binary @/tmp/bundle.tar.gz https://replicated:3000/api/v1/supportbundle"]
+    }]
   }
 }' && ` +
 					`kubectl wait --for=condition=Ready pod/support-bundle-collector --timeout=30s && ` +
-					`kubectl logs -f support-bundle-collector && ` +
 					`kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/support-bundle-collector --timeout=5m && ` +
-					// Copy the bundle out of the pod and upload via the ssl-test pod
-					`kubectl cp support-bundle-collector:/tmp/bundle.tar.gz /tmp/bundle.tar.gz && ` +
-					`POD=$(kubectl get pod -l app=replicated-ssl-test -o jsonpath='{.items[0].metadata.name}') && ` +
-					`kubectl cp /tmp/bundle.tar.gz $POD:/tmp/bundle.tar.gz && ` +
-					`kubectl exec $POD -- curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors -X POST -H "Content-Type: application/gzip" --data-binary @/tmp/bundle.tar.gz https://replicated:3000/api/v1/supportbundle`,
+					`kubectl logs support-bundle-collector`,
 			}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
