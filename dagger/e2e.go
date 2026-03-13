@@ -1099,7 +1099,7 @@ func waitForCustomMetric(ctx context.Context, authToken string, instanceAppID st
 // waitForSupportBundle waits for a support bundle to appear in the vendor API
 // and validates that it contains the expected metadata.
 func waitForSupportBundle(ctx context.Context, authToken string, appID string, bundleID string, expectedMetadata map[string]string, maxRetries int, retryInterval time.Duration) error {
-	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/supportbundles?selector=%s&selectorType=app&searchTerm=", appID)
+	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/supportbundle/%s", bundleID)
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		fmt.Printf("Attempt %d/%d: Checking for support bundle %s...\n", attempt, maxRetries, bundleID)
@@ -1115,9 +1115,9 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 		resp, err := client.Do(req)
 		if err != nil {
 			if attempt == maxRetries {
-				return fmt.Errorf("failed to list support bundles after %d attempts: %w", maxRetries, err)
+				return fmt.Errorf("failed to get support bundle after %d attempts: %w", maxRetries, err)
 			}
-			fmt.Printf("Failed to list support bundles on attempt %d: %v\n", attempt, err)
+			fmt.Printf("Failed to get support bundle on attempt %d: %v\n", attempt, err)
 			time.Sleep(retryInterval)
 			continue
 		}
@@ -1141,34 +1141,26 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 			time.Sleep(retryInterval)
 			continue
 		}
-
 		fmt.Printf("Support bundle %s found in vendor API after %d attempt(s)\n", bundleID, attempt)
 
 		// Validate metadata if expected
 		if len(expectedMetadata) > 0 {
 			var response struct {
-				SupportBundles []struct {
+				Bundle struct {
 					ID       string            `json:"id"`
 					Metadata map[string]string `json:"metadata"`
-				} `json:"bundles"`
+				} `json:"bundle"`
 			}
 			if err := json.Unmarshal(body, &response); err != nil {
-				return fmt.Errorf("failed to unmarshal support bundles response: %w, body: %s", err, string(body))
+				return fmt.Errorf("failed to unmarshal support bundle response: %w, body: %s", err, string(body))
 			}
 
-			for _, bundle := range response.SupportBundles {
-				if bundle.ID != bundleID {
-					continue
+			for k, v := range expectedMetadata {
+				if response.Bundle.Metadata[k] != v {
+					return fmt.Errorf("support bundle metadata mismatch: expected %s=%s, got %s=%s. Full metadata: %v", k, v, k, response.Bundle.Metadata[k], response.Bundle.Metadata)
 				}
-				for k, v := range expectedMetadata {
-					if bundle.Metadata[k] != v {
-						return fmt.Errorf("support bundle metadata mismatch: expected %s=%s, got %s=%s. Full metadata: %v", k, v, k, bundle.Metadata[k], bundle.Metadata)
-					}
-				}
-				fmt.Printf("Support bundle metadata verified: %v\n", bundle.Metadata)
-				return nil
 			}
-			return fmt.Errorf("support bundle %s found in response but could not match by ID for metadata check", bundleID)
+			fmt.Printf("Support bundle metadata verified: %v\n", response.Bundle.Metadata)
 		}
 
 		return nil
