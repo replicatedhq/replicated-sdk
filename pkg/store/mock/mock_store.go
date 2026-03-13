@@ -329,6 +329,90 @@ func (mr *MockStoreMockRecorder) GetVersionLabel() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVersionLabel", reflect.TypeOf((*MockStore)(nil).GetVersionLabel))
 }
 
+// SetChannelID mocks base method.
+func (m *MockStore) SetChannelID(channelID string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetChannelID", channelID)
+}
+
+// SetChannelID indicates an expected call of SetChannelID.
+func (mr *MockStoreMockRecorder) SetChannelID(channelID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetChannelID", reflect.TypeOf((*MockStore)(nil).SetChannelID), channelID)
+}
+
+// SetChannelName mocks base method.
+func (m *MockStore) SetChannelName(channelName string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetChannelName", channelName)
+}
+
+// SetChannelName indicates an expected call of SetChannelName.
+func (mr *MockStoreMockRecorder) SetChannelName(channelName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetChannelName", reflect.TypeOf((*MockStore)(nil).SetChannelName), channelName)
+}
+
+// SetChannelSequence mocks base method.
+func (m *MockStore) SetChannelSequence(channelSequence int64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetChannelSequence", channelSequence)
+}
+
+// SetChannelSequence indicates an expected call of SetChannelSequence.
+func (mr *MockStoreMockRecorder) SetChannelSequence(channelSequence interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetChannelSequence", reflect.TypeOf((*MockStore)(nil).SetChannelSequence), channelSequence)
+}
+
+// SetReleaseCreatedAt mocks base method.
+func (m *MockStore) SetReleaseCreatedAt(releaseCreatedAt string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetReleaseCreatedAt", releaseCreatedAt)
+}
+
+// SetReleaseCreatedAt indicates an expected call of SetReleaseCreatedAt.
+func (mr *MockStoreMockRecorder) SetReleaseCreatedAt(releaseCreatedAt interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReleaseCreatedAt", reflect.TypeOf((*MockStore)(nil).SetReleaseCreatedAt), releaseCreatedAt)
+}
+
+// SetReleaseNotes mocks base method.
+func (m *MockStore) SetReleaseNotes(releaseNotes string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetReleaseNotes", releaseNotes)
+}
+
+// SetReleaseNotes indicates an expected call of SetReleaseNotes.
+func (mr *MockStoreMockRecorder) SetReleaseNotes(releaseNotes interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReleaseNotes", reflect.TypeOf((*MockStore)(nil).SetReleaseNotes), releaseNotes)
+}
+
+// SetReleaseSequence mocks base method.
+func (m *MockStore) SetReleaseSequence(releaseSequence int64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetReleaseSequence", releaseSequence)
+}
+
+// SetReleaseSequence indicates an expected call of SetReleaseSequence.
+func (mr *MockStoreMockRecorder) SetReleaseSequence(releaseSequence interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReleaseSequence", reflect.TypeOf((*MockStore)(nil).SetReleaseSequence), releaseSequence)
+}
+
+// SetVersionLabel mocks base method.
+func (m *MockStore) SetVersionLabel(versionLabel string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetVersionLabel", versionLabel)
+}
+
+// SetVersionLabel indicates an expected call of SetVersionLabel.
+func (mr *MockStoreMockRecorder) SetVersionLabel(versionLabel interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVersionLabel", reflect.TypeOf((*MockStore)(nil).SetVersionLabel), versionLabel)
+}
+
 // IsDevLicense mocks base method.
 func (m *MockStore) IsDevLicense() bool {
 	m.ctrl.T.Helper()
