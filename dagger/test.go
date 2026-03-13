@@ -84,7 +84,7 @@ func testPact(
 }
 
 func buildEnvSDK(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	ctr := dag.Container().From("golang:1.25").
+	ctr := dag.Container().From("golang:1.26").
 		WithDirectory("/src", source).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "mod", "download"})

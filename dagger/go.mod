@@ -1,6 +1,6 @@
 module dagger/replicated-sdk
 
-go 1.24.0
+go 1.25.5
 
 require (
 	github.com/1password/onepassword-sdk-go v0.1.5
