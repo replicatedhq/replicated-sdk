@@ -38,6 +38,7 @@ rules:
   - replicated-instance-report
   - replicated-custom-app-metrics-report
   - replicated-meta-data
+  - replicated-support-metadata
 {{ if .Values.tlsCertSecretName }}
 - apiGroups:
   - ""
@@ -84,6 +85,7 @@ rules:
   resourceNames:
   - {{ include "replicated.secretName" . }}
   - replicated-meta-data
+  - replicated-support-metadata
 # the legacy replicated-sdk configmap is required when the SDK secret is not found
 - apiGroups:
     - ''

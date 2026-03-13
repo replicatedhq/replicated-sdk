@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -576,29 +577,47 @@ spec:
 	}
 	fmt.Println("Custom app metrics test with minimal RBAC passed")
 
-	// Test support bundle upload
-	fmt.Println("Testing support bundle upload...")
+	// Test support bundle metadata endpoints
+	err = testSupportBundleMetadata(ctx, kubeconfigSource)
+	if err != nil {
+		return fmt.Errorf("support bundle metadata test failed: %w", err)
+	}
 
-	// Create a minimal gzip file and upload it to the SDK's support bundle endpoint
-	ctr = dag.Container().From("bitnami/kubectl:latest").
-		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
-		WithEnvVariable("KUBECONFIG", kubeconfigPath).
-		With(CacheBustingExec(
-			[]string{
-				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
-				"sh", "-c",
-				`echo "test-support-bundle" | gzip | curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors -X POST -H "Content-Type: application/gzip" --data-binary @- https://replicated:3000/api/v1/supportbundle`,
-			}))
+	// Collect a real support bundle from outside the cluster and upload via port-forward.
+	// The test-chart includes a support bundle spec (with supportBundleMetadata collector)
+	// that is discovered via --load-cluster-specs.
+	fmt.Println("Collecting and uploading real support bundle...")
+
+	ctr = dag.Container().From("alpine:latest").
+		WithFile("/root/.kube/config", kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", "/root/.kube/config").
+		WithExec([]string{"apk", "add", "--no-cache", "curl"}).
+		WithExec([]string{"sh", "-c", "curl -sLo /usr/local/bin/kubectl 'https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl' && chmod +x /usr/local/bin/kubectl"}).
+		WithExec([]string{"sh", "-c", "curl -sL https://github.com/replicatedhq/troubleshoot/releases/latest/download/support-bundle_linux_amd64.tar.gz | tar xz -C /usr/local/bin"}).
+		With(CacheBustingExec([]string{"sh", "-c",
+			`kubectl port-forward svc/replicated 3000:3000 > /dev/null 2>&1 &` +
+				`sleep 3 && ` +
+				`support-bundle --load-cluster-specs --interactive=false --metadata ticketID=ISSUE-42 -o /tmp/bundle && ` +
+				`echo "---UPLOAD_RESPONSE---" && ` +
+				`curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors ` +
+				`-X POST -H "Content-Type: application/gzip" --data-binary @/tmp/bundle.tar.gz ` +
+				`https://localhost:3000/api/v1/supportbundle`,
+		}))
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		stderr, _ := ctr.Stderr(ctx)
-		return fmt.Errorf("failed to upload support bundle: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+		return fmt.Errorf("failed to collect/upload support bundle: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
 	}
 
-	// Parse response - last line is HTTP status code, preceding lines are JSON body
-	outputLines = strings.Split(strings.TrimSpace(out), "\n")
+	// Parse response after the delimiter - curl output is: JSON body + newline + HTTP status code
+	delimIdx := strings.Index(out, "---UPLOAD_RESPONSE---")
+	if delimIdx == -1 {
+		return fmt.Errorf("upload response delimiter not found in output: %s", out)
+	}
+	uploadOutput := strings.TrimSpace(out[delimIdx+len("---UPLOAD_RESPONSE---"):])
+	outputLines = strings.Split(uploadOutput, "\n")
 	if len(outputLines) < 2 {
-		return fmt.Errorf("unexpected response from support bundle endpoint: %s", out)
+		return fmt.Errorf("unexpected response from support bundle endpoint: %s", uploadOutput)
 	}
 	httpStatus = outputLines[len(outputLines)-1]
 	bundleResponseBody := strings.Join(outputLines[:len(outputLines)-1], "\n")
@@ -852,7 +871,8 @@ spec:
 	// Verify the support bundle uploaded earlier appears in the vendor API.
 	// Placed at the end so analysis runs in parallel with other tests.
 	fmt.Println("Verifying support bundle appears in vendor API...")
-	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, 10, 5*time.Second)
+	expectedMetadata := map[string]string{"key1": "val1", "key2": "updated", "key3": "val3", "ticketID": "ISSUE-42"}
+	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, expectedMetadata, 10, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to verify support bundle in vendor API: %w", err)
 	}
@@ -1077,8 +1097,9 @@ func waitForCustomMetric(ctx context.Context, authToken string, instanceAppID st
 }
 
 // waitForSupportBundle waits for a support bundle to appear in the vendor API
-func waitForSupportBundle(ctx context.Context, authToken string, appID string, bundleID string, maxRetries int, retryInterval time.Duration) error {
-	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/supportbundles?selector=%s&selectorType=app&searchTerm=", appID)
+// and validates that it contains the expected metadata.
+func waitForSupportBundle(ctx context.Context, authToken string, appID string, bundleID string, expectedMetadata map[string]string, maxRetries int, retryInterval time.Duration) error {
+	url := fmt.Sprintf("https://api.replicated.com/vendor/v3/supportbundle/%s", bundleID)
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		fmt.Printf("Attempt %d/%d: Checking for support bundle %s...\n", attempt, maxRetries, bundleID)
@@ -1094,9 +1115,9 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 		resp, err := client.Do(req)
 		if err != nil {
 			if attempt == maxRetries {
-				return fmt.Errorf("failed to list support bundles after %d attempts: %w", maxRetries, err)
+				return fmt.Errorf("failed to get support bundle after %d attempts: %w", maxRetries, err)
 			}
-			fmt.Printf("Failed to list support bundles on attempt %d: %v\n", attempt, err)
+			fmt.Printf("Failed to get support bundle on attempt %d: %v\n", attempt, err)
 			time.Sleep(retryInterval)
 			continue
 		}
@@ -1112,19 +1133,143 @@ func waitForSupportBundle(ctx context.Context, authToken string, appID string, b
 			continue
 		}
 
-		if strings.Contains(string(body), bundleID) {
-			fmt.Printf("Support bundle %s found in vendor API after %d attempt(s)\n", bundleID, attempt)
-			return nil
+		if !strings.Contains(string(body), bundleID) {
+			if attempt == maxRetries {
+				return fmt.Errorf("support bundle %s not found in vendor API after %d attempts", bundleID, maxRetries)
+			}
+			fmt.Printf("Support bundle %s not found yet, waiting %s...\n", bundleID, retryInterval)
+			time.Sleep(retryInterval)
+			continue
+		}
+		fmt.Printf("Support bundle %s found in vendor API after %d attempt(s)\n", bundleID, attempt)
+
+		// Validate metadata if expected
+		if len(expectedMetadata) > 0 {
+			var response struct {
+				Bundle struct {
+					ID       string            `json:"id"`
+					Metadata map[string]string `json:"metadata"`
+				} `json:"bundle"`
+			}
+			if err := json.Unmarshal(body, &response); err != nil {
+				return fmt.Errorf("failed to unmarshal support bundle response: %w, body: %s", err, string(body))
+			}
+
+			for k, v := range expectedMetadata {
+				if response.Bundle.Metadata[k] != v {
+					return fmt.Errorf("support bundle metadata mismatch: expected %s=%s, got %s=%s. Full metadata: %v", k, v, k, response.Bundle.Metadata[k], response.Bundle.Metadata)
+				}
+			}
+			fmt.Printf("Support bundle metadata verified: %v\n", response.Bundle.Metadata)
 		}
 
-		if attempt == maxRetries {
-			return fmt.Errorf("support bundle %s not found in vendor API after %d attempts", bundleID, maxRetries)
-		}
-
-		fmt.Printf("Support bundle %s not found yet, waiting %s...\n", bundleID, retryInterval)
-		time.Sleep(retryInterval)
+		return nil
 	}
 	return fmt.Errorf("unreachable code")
+}
+
+// testSupportBundleMetadata tests the POST and PATCH /api/v1/supportbundle/metadata endpoints
+// and verifies the resulting secret contents.
+func testSupportBundleMetadata(ctx context.Context, kubeconfigSource *dagger.Directory) error {
+	fmt.Println("Testing support bundle metadata endpoints...")
+
+	// POST metadata (overwrite all)
+	postMetadataPayload := `{"data":{"key1":"val1","key2":"val2"}}`
+	ctr := dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "2", "--retry-delay", "5", "--retry-all-errors",
+				"-X", "POST",
+				"-H", "Content-Type: application/json",
+				"-d", postMetadataPayload,
+				"https://replicated:3000/api/v1/supportbundle/metadata",
+			}))
+	out, err := ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to POST support bundle metadata: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	outputLines := strings.Split(strings.TrimSpace(out), "\n")
+	httpStatus := outputLines[len(outputLines)-1]
+	if httpStatus != "200" {
+		return fmt.Errorf("POST support bundle metadata returned non-200 status: %s, response: %s", httpStatus, out)
+	}
+	fmt.Println("POST /api/v1/supportbundle/metadata returned 200")
+
+	// PATCH metadata (merge keys)
+	patchMetadataPayload := `{"data":{"key2":"updated","key3":"val3"}}`
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "2", "--retry-delay", "5", "--retry-all-errors",
+				"-X", "PATCH",
+				"-H", "Content-Type: application/json",
+				"-d", patchMetadataPayload,
+				"https://replicated:3000/api/v1/supportbundle/metadata",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to PATCH support bundle metadata: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	outputLines = strings.Split(strings.TrimSpace(out), "\n")
+	httpStatus = outputLines[len(outputLines)-1]
+	if httpStatus != "200" {
+		return fmt.Errorf("PATCH support bundle metadata returned non-200 status: %s, response: %s", httpStatus, out)
+	}
+	fmt.Println("PATCH /api/v1/supportbundle/metadata returned 200")
+
+	// Read the secret and verify contents: each key is a top-level data key
+	// Use -o json to get the full secret and decode all data keys
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "secret", "replicated-support-metadata",
+				"-o", "jsonpath={.data}",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to read support bundle metadata secret: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+
+	// jsonpath {.data} returns a map of base64-encoded values like {"key1":"dmFsMQ==","key2":"..."}
+	var encodedData map[string]string
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &encodedData); err != nil {
+		return fmt.Errorf("failed to unmarshal secret data: %w, raw: %s", err, out)
+	}
+
+	metadataMap := make(map[string]string, len(encodedData))
+	for k, v := range encodedData {
+		decoded, err := base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			return fmt.Errorf("failed to base64 decode key %s: %w", k, err)
+		}
+		metadataMap[k] = string(decoded)
+	}
+
+	expectedMetadata := map[string]string{"key1": "val1", "key2": "updated", "key3": "val3"}
+	for k, v := range expectedMetadata {
+		if metadataMap[k] != v {
+			return fmt.Errorf("support bundle metadata mismatch: expected %s=%s, got %s=%s. Full metadata: %v", k, v, k, metadataMap[k], metadataMap)
+		}
+	}
+	if len(metadataMap) != len(expectedMetadata) {
+		return fmt.Errorf("support bundle metadata has unexpected keys: expected %v, got %v", expectedMetadata, metadataMap)
+	}
+	fmt.Printf("Support bundle metadata verified: %v\n", metadataMap)
+
+	return nil
 }
 
 // upgradeChartAndRestart upgrades the helm chart with the provided arguments and restarts deployments

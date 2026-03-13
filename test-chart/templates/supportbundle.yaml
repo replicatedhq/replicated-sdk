@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Chart.Name }}-supportbundle
+  labels:
+    {{- include "test-chart.labels" . | nindent 4 }}
+    troubleshoot.sh/kind: support-bundle
+stringData:
+  support-bundle-spec: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: SupportBundle
+    metadata:
+      name: {{ .Chart.Name }}
+    spec:
+      collectors:
+        - clusterInfo: {}
+        - supportBundleMetadata:
+            namespace: {{ .Release.Namespace }}
