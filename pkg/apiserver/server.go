@@ -86,6 +86,8 @@ func Start(params APIServerParams) {
 
 	// support bundle
 	r.HandleFunc("/api/v1/supportbundle", handlers.UploadSupportBundle).Methods("POST")
+	r.HandleFunc("/api/v1/supportbundle/metadata", handlers.PostSupportBundleMetadata).Methods("POST")
+	r.HandleFunc("/api/v1/supportbundle/metadata", handlers.PatchSupportBundleMetadata).Methods("PATCH")
 
 	// integration
 	r.HandleFunc("/api/v1/integration/mock-data", handlers.EnforceMockAccess(handlers.PostIntegrationMockData)).Methods("POST")
