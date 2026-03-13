@@ -597,7 +597,7 @@ spec:
 		With(CacheBustingExec([]string{"sh", "-c",
 			`kubectl port-forward svc/replicated 3000:3000 > /dev/null 2>&1 &` +
 				`sleep 3 && ` +
-				`support-bundle --load-cluster-specs --interactive=false -o /tmp/bundle && ` +
+				`support-bundle --load-cluster-specs --interactive=false --metadata ticketID=ISSUE-42 -o /tmp/bundle && ` +
 				`echo "---UPLOAD_RESPONSE---" && ` +
 				`curl -k -s -w "\n%{http_code}" --retry 2 --retry-delay 5 --retry-all-errors ` +
 				`-X POST -H "Content-Type: application/gzip" --data-binary @/tmp/bundle.tar.gz ` +
@@ -871,7 +871,7 @@ spec:
 	// Verify the support bundle uploaded earlier appears in the vendor API.
 	// Placed at the end so analysis runs in parallel with other tests.
 	fmt.Println("Verifying support bundle appears in vendor API...")
-	expectedMetadata := map[string]string{"key1": "val1", "key2": "updated", "key3": "val3"}
+	expectedMetadata := map[string]string{"key1": "val1", "key2": "updated", "key3": "val3", "ticketID": "ISSUE-42"}
 	err = waitForSupportBundle(ctx, tokenPlaintext, appID, bundleResp.BundleID, expectedMetadata, 10, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to verify support bundle in vendor API: %w", err)
