@@ -38,7 +38,7 @@ func IsEnabled(ctx context.Context, clientset kubernetes.Interface, namespace st
 
 	v, ok := secret.Data[integrationEnabledKey]
 	if !ok || len(v) == 0 {
-		return true, nil
+		return false, nil
 	}
 
 	enabled, _ := strconv.ParseBool(string(v))
