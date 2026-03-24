@@ -20,6 +20,7 @@ environment:
       - make
   environment:
     GOMODCACHE: '/var/cache/melange'
+    GOPROXY: 'https://proxy.golang.org,direct'
     CGO_ENABLED: '0'
 
 pipeline:
