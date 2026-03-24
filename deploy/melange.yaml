@@ -15,6 +15,7 @@ environment:
     packages:
       - ca-certificates-bundle
       - busybox
+      - bash
       - go
       - make
   environment:
