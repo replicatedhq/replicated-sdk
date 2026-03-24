@@ -13,21 +13,21 @@ func buildAndPushImageToTTL(
 	source *dagger.Directory,
 ) (string, string, string, error) {
 	now := time.Now().Format("20060102150405")
-	version := now // used as melange version string only
+	tag := "24h"
 
-	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
+	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, tag)
 	if err != nil {
 		return "", "", "", err
 	}
 
 	imagePath := fmt.Sprintf("ttl.sh/automated-%s/replicated-image/replicated-sdk", now)
 	_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey,
-		version, imagePath, "", nil, nil, nil)
+		tag, imagePath, "", nil, nil, nil)
 	if err != nil {
 		return "", "", "", err
 	}
 
-	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), "24h", nil
+	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), tag, nil
 }
 
 func buildAndPushChartToTTL(
