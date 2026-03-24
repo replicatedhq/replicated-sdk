@@ -67,9 +67,7 @@ mock:
 
 .PHONY: scan
 scan:
-	trivy fs \
-		--scanners vuln \
-		--exit-code=1 \
-		--severity="CRITICAL,HIGH,MEDIUM" \
-		--ignore-unfixed \
-		./
+	grype db update
+	grype dir:. \
+		--only-fixed \
+		--fail-on medium
