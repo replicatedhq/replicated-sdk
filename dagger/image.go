@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func buildAndPublishChainguardImage(
+func buildImage(
 	ctx context.Context,
 	dag *dagger.Client,
 	source *dagger.Directory,
@@ -49,7 +49,7 @@ func buildAndPublishChainguardImage(
 	return amdPackages, armPackages, melangeKey, nil
 }
 
-func publishChainguardImage(
+func publishImage(
 	ctx context.Context,
 	dag *dagger.Client,
 	source *dagger.Directory,
@@ -210,7 +210,7 @@ func publishChainguardImage(
 	mainDigest := manifestObj.Manifests[0].Digest
 
 	// Check for SBOM attestation in the manifest
-	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
+	if cosignKey != nil && !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
 		fmt.Printf("SBOM attestation not found in manifest, will attempt to create it...\n")
 
 		// Get the base64 encoded key as a string and decode it

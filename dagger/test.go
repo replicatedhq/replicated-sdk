@@ -99,7 +99,7 @@ func testSBOMGeneration(
 	version string,
 ) error {
 	// Build the image first
-	amdPackages, armPackages, melangeKey, err := buildAndPublishChainguardImage(ctx, dag, source, version)
+	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
 	if err != nil {
 		return fmt.Errorf("failed to build image: %w", err)
 	}
@@ -108,7 +108,7 @@ func testSBOMGeneration(
 	testRegistry := fmt.Sprintf("ttl.sh/replicated-sdk-sbom-test-%s", version)
 
 	// Publish the image with SBOM enabled
-	digest, err := publishChainguardImage(
+	digest, err := publishImage(
 		ctx,
 		dag,
 		source,
