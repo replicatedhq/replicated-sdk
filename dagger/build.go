@@ -19,7 +19,7 @@ func buildAndPushImageToTTL(
 	// which melange then rejects. Dots are safe.
 	version := fmt.Sprintf("0.0.%s", now)
 
-	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
+	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version, []string{"x86_64"})
 	if err != nil {
 		return "", "", "", err
 	}

@@ -99,7 +99,7 @@ func testSBOMGeneration(
 	version string,
 ) error {
 	// Build the image first
-	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
+	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version, []string{"x86_64"})
 	if err != nil {
 		return fmt.Errorf("failed to build image: %w", err)
 	}

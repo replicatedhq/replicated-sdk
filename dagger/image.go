@@ -14,6 +14,8 @@ func buildImage(
 	dag *dagger.Client,
 	source *dagger.Directory,
 	version string,
+	// archs is the list of melange architectures to build (e.g. "x86_64", "aarch64")
+	archs []string,
 ) (*dagger.Directory, *dagger.Directory, *dagger.File, error) {
 	// Update melange.yaml with correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
@@ -23,20 +25,29 @@ func buildImage(
 	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", sanitizeVersionForMelange(version)), 1)
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
 
-	// Build AMD64 package with melange
-	amdPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
-		SourceDir: source,
-		Arch:      "x86_64",
-	})
+	var amdPackages *dagger.Directory
+	var armPackages *dagger.Directory
+	var melangeKey *dagger.File
 
-	// Get the signing key from melange build
-	melangeKey := amdPackages.File("melange.rsa.pub")
-
-	// Build ARM64 package with melange
-	armPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
-		SourceDir: source,
-		Arch:      "aarch64",
-	})
+	for _, arch := range archs {
+		packages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
+			SourceDir: source,
+			Arch:      arch,
+		})
+		switch arch {
+		case "x86_64":
+			amdPackages = packages
+			// Get the signing key from the first build
+			if melangeKey == nil {
+				melangeKey = packages.File("melange.rsa.pub")
+			}
+		case "aarch64":
+			armPackages = packages
+			if melangeKey == nil {
+				melangeKey = packages.File("melange.rsa.pub")
+			}
+		}
+	}
 
 	// Update apko.yaml with just the VERSION environment variable
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
@@ -103,15 +114,26 @@ func publishImage(
 		apkoWithAuth = apko
 	}
 
+	// Determine platforms and package sources based on what was built
+	platforms := []dagger.Platform{}
+	packageSource := updatedSource
+	if amdPackages != nil {
+		platforms = append(platforms, dagger.Platform("linux/amd64"))
+		packageSource = packageSource.WithDirectory("packages", amdPackages)
+	}
+	if armPackages != nil {
+		platforms = append(platforms, dagger.Platform("linux/arm64"))
+		packageSource = packageSource.WithDirectory("packages", armPackages)
+	}
+	packageSource = packageSource.WithFile("melange.rsa.pub", melangeKey)
+
 	image := apkoWithAuth.
 		Publish(
 			updatedSource.File("deploy/apko.yaml"),
 			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
 			dagger.ApkoPublishOpts{
-				Arch: []dagger.Platform{dagger.Platform("linux/amd64"), dagger.Platform("linux/arm64")},
-				Source: updatedSource.WithDirectory("packages", amdPackages).
-					WithDirectory("packages", armPackages).
-					WithFile("melange.rsa.pub", melangeKey),
+				Arch:   platforms,
+				Source: packageSource,
 				Sbom: true,
 			},
 		)
@@ -238,21 +260,13 @@ func publishImage(
 			return "", fmt.Errorf("no SBOM files were generated during image publish")
 		}
 
-		// Map of architecture to its digest
-		archDigests := make(map[string]string)
-		for _, m := range manifestObj.Manifests {
-			archDigests[m.Platform.Architecture] = m.Digest
-		}
-
 		// Use cosign module to create SBOM attestation
 		cosignModule := dag.Cosign()
 
-		// For each architecture
-		for _, arch := range []string{"amd64", "arm64"} {
-			digest, ok := archDigests[arch]
-			if !ok {
-				return "", fmt.Errorf("digest not found for architecture %s", arch)
-			}
+		// For each architecture present in the manifest
+		for _, m := range manifestObj.Manifests {
+			arch := m.Platform.Architecture
+			digest := m.Digest
 
 			// Find matching SBOM file for this architecture
 			var sbomFile string

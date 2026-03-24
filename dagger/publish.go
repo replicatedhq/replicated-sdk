@@ -45,7 +45,7 @@ func (m *ReplicatedSdk) Publish(
 	cosignPassword *dagger.Secret,
 ) error {
 	// version must be passed in, it will be used to tag the image
-	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
+	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version, []string{"x86_64", "aarch64"})
 	if err != nil {
 		return err
 	}
