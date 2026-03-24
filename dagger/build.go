@@ -13,14 +13,16 @@ func buildAndPushImageToTTL(
 	source *dagger.Directory,
 ) (string, string, string, error) {
 	now := time.Now().Format("20060102150405")
+	version := now // used as melange version string only
 
-	_, err := source.
-		DockerBuild(dagger.DirectoryDockerBuildOpts{
-			Platform:   "linux/amd64",
-			Dockerfile: "deploy/Dockerfile",
-		}).
-		Publish(ctx, fmt.Sprintf("ttl.sh/automated-%s/replicated-image/replicated-sdk:24h", now))
+	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
+	if err != nil {
+		return "", "", "", err
+	}
 
+	imagePath := fmt.Sprintf("ttl.sh/automated-%s/replicated-image/replicated-sdk", now)
+	_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey,
+		version, imagePath, "", nil, nil, nil)
 	if err != nil {
 		return "", "", "", err
 	}
