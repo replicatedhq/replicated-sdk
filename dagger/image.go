@@ -295,6 +295,8 @@ func publishImage(
 		}
 
 		fmt.Printf("Successfully created all SBOM attestations\n")
+	} else if cosignKey == nil {
+		fmt.Printf("Skipping SBOM attestation signing (no cosign key provided) for %s:%s\n", imagePath, version)
 	} else {
 		fmt.Printf("SBOM attestation already exists in manifest for %s:%s\n", imagePath, version)
 	}

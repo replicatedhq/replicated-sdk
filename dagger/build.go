@@ -13,21 +13,25 @@ func buildAndPushImageToTTL(
 	source *dagger.Directory,
 ) (string, string, string, error) {
 	now := time.Now().Format("20060102150405")
-	tag := "24h"
+	// Use a valid semver version for melange package building and apko package pinning.
+	// publishImage uses this for both the package constraint and the image tag.
+	// ttl.sh ignores tags it doesn't recognize as durations, so the image simply
+	// gets the default TTL (currently 24h on ttl.sh).
+	version := fmt.Sprintf("0.0.0-%s", now)
 
-	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, tag)
+	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
 	if err != nil {
 		return "", "", "", err
 	}
 
 	imagePath := fmt.Sprintf("ttl.sh/automated-%s/replicated-image/replicated-sdk", now)
 	_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey,
-		tag, imagePath, "", nil, nil, nil)
+		version, imagePath, "", nil, nil, nil)
 	if err != nil {
 		return "", "", "", err
 	}
 
-	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), tag, nil
+	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), version, nil
 }
 
 func buildAndPushChartToTTL(
