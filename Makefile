@@ -65,16 +65,16 @@ mock:
 	go install github.com/golang/mock/mockgen@v1.6.0
 	mockgen -source=pkg/store/store_interface.go -destination=pkg/store/mock/mock_store.go
 
-.PHONY: govulncheck
-govulncheck:
+.PHONY: get-govulncheck
+get-govulncheck:
 	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
 
-.PHONY: grype
-grype:
+.PHONY: get-grype
+get-grype:
 	@command -v grype >/dev/null 2>&1 || curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b $(GOPATH)/bin
 
 .PHONY: scan
-scan: govulncheck grype
+scan: get-govulncheck get-grype
 	govulncheck ./...
 	grype db update
 	grype dir:. \
