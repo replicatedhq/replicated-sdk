@@ -93,7 +93,12 @@ The file name references Chainguard but the functions use generic melange/apko t
 | `buildAndPublishChainguardImage` | `buildImage` |
 | `publishChainguardImage` | `publishImage` |
 
-All call sites in `publish.go`, `test.go`, and the new `build.go` are updated accordingly.
+All call sites are updated:
+- `dagger/publish.go` — `buildAndPublishChainguardImage` and `publishChainguardImage` calls
+- `dagger/test.go` — `testSBOMGeneration` calls both `buildAndPublishChainguardImage` and `publishChainguardImage`
+- `dagger/build.go` — new `buildAndPushImageToTTL` implementation
+
+Helper function `sanitizeVersionForMelange` moves with the file rename (no changes needed).
 
 ### 5. Replace `buildAndPushImageToTTL` in `dagger/build.go`
 
@@ -107,23 +112,25 @@ func buildAndPushImageToTTL(
     source *dagger.Directory,
 ) (string, string, string, error) {
     now := time.Now().Format("20060102150405")
-    version := fmt.Sprintf("24h-%s", now)
+    version := now  // used as tag only, not a real version
 
     amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version)
     if err != nil {
         return "", "", "", err
     }
 
-    imagePath := fmt.Sprintf("ttl.sh/automated-%s/replicated-sdk", now)
+    imagePath := fmt.Sprintf("ttl.sh/automated-%s/replicated-image/replicated-sdk", now)
     _, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey,
         version, imagePath, "", nil, nil, nil)
     if err != nil {
         return "", "", "", err
     }
 
-    return "ttl.sh", fmt.Sprintf("automated-%s/replicated-sdk", now), version, nil
+    return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), "24h", nil
 }
 ```
+
+Note: The tag returned to callers is `24h` (matching the current behavior for ttl.sh image expiry). The `version` passed to `buildImage`/`publishImage` is the timestamp, used only for the melange version string. The repository path preserves the existing `replicated-image/replicated-sdk` structure.
 
 ### 6. No changes to chart, publish flow, or signing
 
@@ -133,6 +140,7 @@ func buildAndPushImageToTTL(
 | `dagger/publish.go` | Only function name updates (`publishImage` instead of `publishChainguardImage`) |
 | `dagger/validate.go` | No — calls `buildAndPushImageToTTL` which is reimplemented internally |
 | `dagger/testchart.go` | No — same interface |
+| `dagger/build.go` (`buildAndPushChartToTTL`) | No — chart build function is unchanged |
 | Cosign signing / SBOM | No — unchanged |
 | SLSA provenance | No — unchanged |
 | Registry targets | No — ttl.sh, Docker Hub, registry.replicated.com, registry.staging.replicated.com |
@@ -145,8 +153,14 @@ func buildAndPushImageToTTL(
 ## Risks
 
 - **Missing cve0 packages**: If a package needed by `apko.yaml` or `melange.yaml` is not in `apk.cve0.io`, the build fails at melange/apko time. This is visible and fixable.
-- **Test build speed**: The Dockerfile path was faster than melange/apko. Test builds will be slower but now test the actual production image, which is a better tradeoff.
+- **Test build speed**: The Dockerfile path was single-arch (amd64 only) and faster. The melange/apko pipeline builds multi-arch (amd64 + arm64), roughly doubling build time. This is a tradeoff for testing the actual production image. If CI time becomes a concern, `publishImage` could be called with amd64-only for TTL builds.
+- **SBOM overhead on test builds**: `publishImage` generates SBOMs and runs crane manifest inspection even for ephemeral TTL images. This is unnecessary overhead but keeps the code path simple. A lightweight publish path could be added later if needed.
 - **Package version differences**: cve0 packages may have different versions than Wolfi (e.g., `busybox`, `curl`). The application should be compatible but may need testing.
+- **Go package resolution**: Confirm that the `go` package in `apk.cve0.io` resolves to Go 1.26. The Dockerfile explicitly uses `go-1.26`; the melange.yaml uses `go` without version pinning.
+
+## Rollback
+
+If cve0.io has an outage or missing packages, revert the apko.yaml and melange.yaml changes back to Wolfi repos, and restore the Dockerfile. All changes are in `deploy/` and `dagger/` — no chart or application code changes are involved.
 
 ## Files changed
 
