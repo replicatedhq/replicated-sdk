@@ -302,18 +302,22 @@ func publishImage(
 	}
 
 	// Print verification instructions
-	fmt.Printf("\n✨ Image successfully built, published, and signed!\n")
-	fmt.Printf("To verify the image, run:\n\n")
+	if cosignKey != nil {
+		fmt.Printf("\n✨ Image successfully built, published, and signed!\n")
+		fmt.Printf("To verify the image, run:\n\n")
 
-	// Determine environment from image path
-	env := "dev"
-	if strings.Contains(imagePath, "registry.staging.replicated.com") {
-		env = "stage"
-	} else if strings.Contains(imagePath, "registry.replicated.com") {
-		env = "prod"
+		// Determine environment from image path
+		env := "dev"
+		if strings.Contains(imagePath, "registry.staging.replicated.com") {
+			env = "stage"
+		} else if strings.Contains(imagePath, "registry.replicated.com") {
+			env = "prod"
+		}
+
+		fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, version, mainDigest)
+	} else {
+		fmt.Printf("\n✨ Image successfully built and published (unsigned).\n")
 	}
-
-	fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, version, mainDigest)
 
 	return mainDigest, nil
 }
