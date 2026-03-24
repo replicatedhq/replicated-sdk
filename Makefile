@@ -79,4 +79,6 @@ scan: get-govulncheck get-grype
 	grype db update
 	grype dir:. \
 		--only-fixed \
-		--fail-on medium
+		--fail-on medium \
+		-o template \
+		-t .grype.tmpl
