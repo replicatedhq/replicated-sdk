@@ -65,11 +65,20 @@ mock:
 	go install github.com/golang/mock/mockgen@v1.6.0
 	mockgen -source=pkg/store/store_interface.go -destination=pkg/store/mock/mock_store.go
 
+.PHONY: get-govulncheck
+get-govulncheck:
+	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
+
+.PHONY: get-grype
+get-grype:
+	@command -v grype >/dev/null 2>&1 || curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b $(GOPATH)/bin
+
 .PHONY: scan
-scan:
-	trivy fs \
-		--scanners vuln \
-		--exit-code=1 \
-		--severity="CRITICAL,HIGH,MEDIUM" \
-		--ignore-unfixed \
-		./
+scan: get-govulncheck get-grype
+	govulncheck ./...
+	grype db update
+	grype dir:. \
+		--only-fixed \
+		--fail-on medium \
+		-o template \
+		-t .grype.tmpl
