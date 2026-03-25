@@ -70,7 +70,7 @@ Note: SLSA provenance generation requires both `--slsa=true` and a valid `--gith
 Software Bill of Materials (SBOM) is automatically generated during the build process:
 
 1. **Generation Method**: 
-   - Uses Chainguard's melange and apko to create SPDX-formatted SBOMs
+   - Uses melange and apko to create SPDX-formatted SBOMs
    - SBOMs are generated for both the base image and application layers
    - Includes all direct and transitive dependencies
 
