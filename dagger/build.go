@@ -14,9 +14,9 @@ func buildAndPushImageToTTL(
 ) (string, string, string, error) {
 	now := time.Now().Format("20060102150405")
 	// Use a valid melange version for package building and apko package pinning.
-	// publishImage uses this for both the package constraint and the image tag.
 	// No dashes allowed — sanitizeVersionForMelange converts them to underscores
 	// which melange then rejects. Dots are safe.
+	// The image tag is "24h" (ttl.sh expiry duration), separate from the build version.
 	version := fmt.Sprintf("0.0.%s", now)
 
 	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version, []string{"x86_64"})
@@ -26,12 +26,12 @@ func buildAndPushImageToTTL(
 
 	imagePath := fmt.Sprintf("ttl.sh/automated-%s/replicated-image/replicated-sdk", now)
 	_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey,
-		version, imagePath, "", nil, nil, nil)
+		version, "24h", imagePath, "", nil, nil, nil)
 	if err != nil {
 		return "", "", "", err
 	}
 
-	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), version, nil
+	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), "24h", nil
 }
 
 func buildAndPushChartToTTL(

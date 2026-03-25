@@ -116,6 +116,7 @@ func testSBOMGeneration(
 		armPackages,
 		melangeKey,
 		version,
+		"",
 		testRegistry,
 		"",
 		nil,

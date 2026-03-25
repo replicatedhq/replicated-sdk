@@ -58,7 +58,7 @@ func (m *ReplicatedSdk) Publish(
 			cosignPassword = mustGetSecret(ctx, opServiceAccount, "Replicated-SDK-Dev-Cosign.info", "password", VaultDeveloperAutomation)
 		}
 		// in dev mode we don't have username/password for the registry
-		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey, cosignPassword)
+		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -77,12 +77,12 @@ func (m *ReplicatedSdk) Publish(
 		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
 		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "staging_library_password", VaultDeveloperAutomationProduction)
 
-		_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
+		_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 
-		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
+		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -101,12 +101,12 @@ func (m *ReplicatedSdk) Publish(
 		libraryUsername := mustGetNonSensitiveSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_username", VaultDeveloperAutomationProduction)
 		libraryPassword := mustGetSecret(ctx, opServiceAccountProduction, "Replicated SDK Publish", "library_password", VaultDeveloperAutomationProduction)
 
-		_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
+		_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "index.docker.io/replicated/replicated-sdk", username, password, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
 
-		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
+		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}

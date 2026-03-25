@@ -67,8 +67,10 @@ func publishImage(
 	amdPackages *dagger.Directory,
 	armPackages *dagger.Directory,
 	melangeKey *dagger.File,
-	// version to tag the image with
+	// version used for package pinning in apko.yaml
 	version string,
+	// tag to use for the image (if empty, defaults to version)
+	tag string,
 	// full image path including registry (e.g. "ttl.sh/replicated/replicated-sdk")
 	imagePath string,
 	// registry username (empty for ttl.sh)
@@ -80,6 +82,11 @@ func publishImage(
 	// password to decrypt the cosign private key
 	cosignPassword *dagger.Secret,
 ) (string, error) {
+
+	// Default tag to version if not specified
+	if tag == "" {
+		tag = version
+	}
 
 	// Update apko.yaml to set the package version constraint
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
@@ -130,7 +137,7 @@ func publishImage(
 	image := apkoWithAuth.
 		Publish(
 			updatedSource.File("deploy/apko.yaml"),
-			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
+			[]string{fmt.Sprintf("%s:%s", imagePath, tag)},
 			dagger.ApkoPublishOpts{
 				Arch:   platforms,
 				Source: packageSource,
@@ -205,7 +212,7 @@ func publishImage(
 	}
 
 	manifest, err := craneContainer.
-		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, version)}).
+		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, tag)}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get manifest: %w", err)
@@ -310,9 +317,9 @@ func publishImage(
 
 		fmt.Printf("Successfully created all SBOM attestations\n")
 	} else if cosignKey == nil {
-		fmt.Printf("Skipping SBOM attestation signing (no cosign key provided) for %s:%s\n", imagePath, version)
+		fmt.Printf("Skipping SBOM attestation signing (no cosign key provided) for %s:%s\n", imagePath, tag)
 	} else {
-		fmt.Printf("SBOM attestation already exists in manifest for %s:%s\n", imagePath, version)
+		fmt.Printf("SBOM attestation already exists in manifest for %s:%s\n", imagePath, tag)
 	}
 
 	// Print verification instructions
@@ -328,7 +335,7 @@ func publishImage(
 			env = "prod"
 		}
 
-		fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, version, mainDigest)
+		fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, tag, mainDigest)
 	} else {
 		fmt.Printf("\n✨ Image successfully built and published (unsigned).\n")
 	}
