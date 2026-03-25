@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run Grype vulnerability scanner in repo mode
-        uses: anchore/scan-action@v6
+        uses: anchore/scan-action@v7
         id: fs_scan
         with:
           path: '.'
@@ -52,7 +52,7 @@ jobs:
             core.setOutput('tag_name', release.data.tag_name);
 
       - name: Run Grype vulnerability scanner
-        uses: anchore/scan-action@v6
+        uses: anchore/scan-action@v7
         id: image_scan
         with:
           image: 'index.docker.io/replicated/replicated-sdk:${{ steps.get_release.outputs.tag_name }}'
