@@ -36,7 +36,7 @@ jobs:
       distributions: ${{ steps.distributions.outputs.result }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dagger/dagger-for-github@v8.4.0
+      - uses: dagger/dagger-for-github@v8.4.1
         id: build
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
@@ -95,7 +95,7 @@ jobs:
         with:
           name: build-info
 
-      - uses: dagger/dagger-for-github@v8.4.0
+      - uses: dagger/dagger-for-github@v8.4.1
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
         with:
