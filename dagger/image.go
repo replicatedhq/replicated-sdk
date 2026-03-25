@@ -9,11 +9,13 @@ import (
 	"strings"
 )
 
-func buildAndPublishChainguardImage(
+func buildImage(
 	ctx context.Context,
 	dag *dagger.Client,
 	source *dagger.Directory,
 	version string,
+	// archs is the list of melange architectures to build (e.g. "x86_64", "aarch64")
+	archs []string,
 ) (*dagger.Directory, *dagger.Directory, *dagger.File, error) {
 	// Update melange.yaml with correct version
 	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
@@ -23,20 +25,29 @@ func buildAndPublishChainguardImage(
 	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", sanitizeVersionForMelange(version)), 1)
 	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
 
-	// Build AMD64 package with melange
-	amdPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
-		SourceDir: source,
-		Arch:      "x86_64",
-	})
+	var amdPackages *dagger.Directory
+	var armPackages *dagger.Directory
+	var melangeKey *dagger.File
 
-	// Get the signing key from melange build
-	melangeKey := amdPackages.File("melange.rsa.pub")
-
-	// Build ARM64 package with melange
-	armPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
-		SourceDir: source,
-		Arch:      "aarch64",
-	})
+	for _, arch := range archs {
+		packages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
+			SourceDir: source,
+			Arch:      arch,
+		})
+		switch arch {
+		case "x86_64":
+			amdPackages = packages
+			// Get the signing key from the first build
+			if melangeKey == nil {
+				melangeKey = packages.File("melange.rsa.pub")
+			}
+		case "aarch64":
+			armPackages = packages
+			if melangeKey == nil {
+				melangeKey = packages.File("melange.rsa.pub")
+			}
+		}
+	}
 
 	// Update apko.yaml with just the VERSION environment variable
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
@@ -49,15 +60,17 @@ func buildAndPublishChainguardImage(
 	return amdPackages, armPackages, melangeKey, nil
 }
 
-func publishChainguardImage(
+func publishImage(
 	ctx context.Context,
 	dag *dagger.Client,
 	source *dagger.Directory,
 	amdPackages *dagger.Directory,
 	armPackages *dagger.Directory,
 	melangeKey *dagger.File,
-	// version to tag the image with
+	// version used for package pinning in apko.yaml
 	version string,
+	// tag to use for the image (if empty, defaults to version)
+	tag string,
 	// full image path including registry (e.g. "ttl.sh/replicated/replicated-sdk")
 	imagePath string,
 	// registry username (empty for ttl.sh)
@@ -69,6 +82,11 @@ func publishChainguardImage(
 	// password to decrypt the cosign private key
 	cosignPassword *dagger.Secret,
 ) (string, error) {
+
+	// Default tag to version if not specified
+	if tag == "" {
+		tag = version
+	}
 
 	// Update apko.yaml to set the package version constraint
 	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
@@ -103,15 +121,26 @@ func publishChainguardImage(
 		apkoWithAuth = apko
 	}
 
+	// Determine platforms and package sources based on what was built
+	platforms := []dagger.Platform{}
+	packageSource := updatedSource
+	if amdPackages != nil {
+		platforms = append(platforms, dagger.Platform("linux/amd64"))
+		packageSource = packageSource.WithDirectory("packages", amdPackages)
+	}
+	if armPackages != nil {
+		platforms = append(platforms, dagger.Platform("linux/arm64"))
+		packageSource = packageSource.WithDirectory("packages", armPackages)
+	}
+	packageSource = packageSource.WithFile("melange.rsa.pub", melangeKey)
+
 	image := apkoWithAuth.
 		Publish(
 			updatedSource.File("deploy/apko.yaml"),
-			[]string{fmt.Sprintf("%s:%s", imagePath, version)},
+			[]string{fmt.Sprintf("%s:%s", imagePath, tag)},
 			dagger.ApkoPublishOpts{
-				Arch: []dagger.Platform{dagger.Platform("linux/amd64"), dagger.Platform("linux/arm64")},
-				Source: updatedSource.WithDirectory("packages", amdPackages).
-					WithDirectory("packages", armPackages).
-					WithFile("melange.rsa.pub", melangeKey),
+				Arch:   platforms,
+				Source: packageSource,
 				Sbom: true,
 			},
 		)
@@ -183,7 +212,7 @@ func publishChainguardImage(
 	}
 
 	manifest, err := craneContainer.
-		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, version)}).
+		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, tag)}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get manifest: %w", err)
@@ -210,7 +239,7 @@ func publishChainguardImage(
 	mainDigest := manifestObj.Manifests[0].Digest
 
 	// Check for SBOM attestation in the manifest
-	if !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
+	if cosignKey != nil && !strings.Contains(manifest, "application/spdx+json") && !strings.Contains(manifest, "application/vnd.cyclonedx+json") {
 		fmt.Printf("SBOM attestation not found in manifest, will attempt to create it...\n")
 
 		// Get the base64 encoded key as a string and decode it
@@ -238,21 +267,13 @@ func publishChainguardImage(
 			return "", fmt.Errorf("no SBOM files were generated during image publish")
 		}
 
-		// Map of architecture to its digest
-		archDigests := make(map[string]string)
-		for _, m := range manifestObj.Manifests {
-			archDigests[m.Platform.Architecture] = m.Digest
-		}
-
 		// Use cosign module to create SBOM attestation
 		cosignModule := dag.Cosign()
 
-		// For each architecture
-		for _, arch := range []string{"amd64", "arm64"} {
-			digest, ok := archDigests[arch]
-			if !ok {
-				return "", fmt.Errorf("digest not found for architecture %s", arch)
-			}
+		// For each architecture present in the manifest
+		for _, m := range manifestObj.Manifests {
+			arch := m.Platform.Architecture
+			digest := m.Digest
 
 			// Find matching SBOM file for this architecture
 			var sbomFile string
@@ -295,23 +316,29 @@ func publishChainguardImage(
 		}
 
 		fmt.Printf("Successfully created all SBOM attestations\n")
+	} else if cosignKey == nil {
+		fmt.Printf("Skipping SBOM attestation signing (no cosign key provided) for %s:%s\n", imagePath, tag)
 	} else {
-		fmt.Printf("SBOM attestation already exists in manifest for %s:%s\n", imagePath, version)
+		fmt.Printf("SBOM attestation already exists in manifest for %s:%s\n", imagePath, tag)
 	}
 
 	// Print verification instructions
-	fmt.Printf("\n✨ Image successfully built, published, and signed!\n")
-	fmt.Printf("To verify the image, run:\n\n")
+	if cosignKey != nil {
+		fmt.Printf("\n✨ Image successfully built, published, and signed!\n")
+		fmt.Printf("To verify the image, run:\n\n")
 
-	// Determine environment from image path
-	env := "dev"
-	if strings.Contains(imagePath, "registry.staging.replicated.com") {
-		env = "stage"
-	} else if strings.Contains(imagePath, "registry.replicated.com") {
-		env = "prod"
+		// Determine environment from image path
+		env := "dev"
+		if strings.Contains(imagePath, "registry.staging.replicated.com") {
+			env = "stage"
+		} else if strings.Contains(imagePath, "registry.replicated.com") {
+			env = "prod"
+		}
+
+		fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, tag, mainDigest)
+	} else {
+		fmt.Printf("\n✨ Image successfully built and published (unsigned).\n")
 	}
-
-	fmt.Printf("./verify-image.sh --env %s --version %s --digest %s\n\n", env, version, mainDigest)
 
 	return mainDigest, nil
 }
