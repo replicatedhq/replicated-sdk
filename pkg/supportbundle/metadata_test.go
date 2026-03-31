@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,4 +93,21 @@ func TestSaveMetadata_SecretNotFound(t *testing.T) {
 	err := SaveMetadata(ctx, clientset, "test-ns", map[string]string{"key": "val"}, true)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not found")
+}
+
+func TestSaveMetadata_ReadOnlyMode(t *testing.T) {
+	req := require.New(t)
+
+	store.InitInMemory(store.InitInMemoryStoreOptions{
+		ReadOnlyMode: true,
+	})
+
+	ctx := context.Background()
+	clientset := fake.NewSimpleClientset()
+	namespace := "test-ns"
+
+	data := map[string]string{"key": "value"}
+	err := SaveMetadata(ctx, clientset, namespace, data, true)
+	req.Error(err)
+	req.Contains(err.Error(), "read-only mode")
 }
