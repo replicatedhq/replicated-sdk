@@ -885,6 +885,7 @@ spec:
 	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
 		"--set", "replicated.readOnlyMode=true",
 		"--set", "replicated.minimalRBAC=true",
+		"--set", "replicated.tlsCertSecretName=test-tls",
 		"--set-json", `replicated.statusInformers=[]`,
 	})
 	if err != nil {
