@@ -985,9 +985,9 @@ spec:
 			[]string{
 				"kubectl", "logs", "deployment/replicated", "--tail=50",
 			}))
-	out, err2 := ctr.Stdout(ctx)
-	if err2 != nil {
-		return fmt.Errorf("failed to get logs in read-only mode: %w", err2)
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get logs in read-only mode: %w", err)
 	}
 	fmt.Println("SDK logs in read-only mode:")
 	fmt.Println(out)
