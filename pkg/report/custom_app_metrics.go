@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/meta"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -20,7 +21,8 @@ func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, 
 
 	syncedMetrics, err := meta.SyncCustomAppMetrics(context.Background(), clientset, sdkStore.GetNamespace(), data, overwrite)
 	if err != nil {
-		return errors.Wrap(err, "failed to sync custom app metrics")
+		logger.Errorf("failed to sync custom app metrics locally: %v", err)
+		syncedMetrics = data
 	}
 
 	if util.IsAirgap() {
