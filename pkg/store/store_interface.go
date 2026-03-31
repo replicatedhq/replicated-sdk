@@ -42,6 +42,7 @@ type Store interface {
 	GetUpdates() []upstreamtypes.ChannelRelease
 	SetUpdates(updates []upstreamtypes.ChannelRelease)
 	GetReportAllImages() bool
+	GetReadOnlyMode() bool
 }
 
 func SetStore(s Store) {

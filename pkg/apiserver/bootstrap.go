@@ -132,6 +132,7 @@ func bootstrap(params APIServerParams) error {
 		ReplicatedID:          replicatedID,
 		AppID:                 appID,
 		ReportAllImages:       reportAllImages,
+		ReadOnlyMode:          params.ReadOnlyMode,
 	})
 
 	isIntegrationModeEnabled, err := integration.IsEnabled(params.Context, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())

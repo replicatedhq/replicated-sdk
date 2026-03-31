@@ -189,6 +189,20 @@ func (mr *MockStoreMockRecorder) GetNamespace() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespace", reflect.TypeOf((*MockStore)(nil).GetNamespace))
 }
 
+// GetReadOnlyMode mocks base method.
+func (m *MockStore) GetReadOnlyMode() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReadOnlyMode")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// GetReadOnlyMode indicates an expected call of GetReadOnlyMode.
+func (mr *MockStoreMockRecorder) GetReadOnlyMode() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReadOnlyMode", reflect.TypeOf((*MockStore)(nil).GetReadOnlyMode))
+}
+
 // GetReleaseCreatedAt mocks base method.
 func (m *MockStore) GetReleaseCreatedAt() string {
 	m.ctrl.T.Helper()
