@@ -333,6 +333,12 @@ minimalRBAC: false
 # When false (default), only images matching the releaseImages list will be reported
 reportAllImages: false
 
+# When true, the SDK will not create or update any Kubernetes secrets at runtime.
+# The RBAC Role will contain only read (get) permissions. Two chart-managed secrets
+# (replicated-support-metadata, replicated-supportbundle) will not be created.
+# See docs for feature availability in this mode.
+readOnlyMode: false
+
 # Proxy configuration for outbound connections
 # Configure HTTPS proxy settings for the Replicated SDK
 # These values can also be set via global.replicated.httpsProxy and global.replicated.noProxy

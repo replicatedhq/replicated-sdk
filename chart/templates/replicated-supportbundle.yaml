@@ -1,6 +1,7 @@
 {{/*
-Renders the Support Bundle secret to be used by replicated 
+Renders the Support Bundle secret to be used by replicated
 */}}
+{{- if not .Values.readOnlyMode }}
 ---
 apiVersion: v1
 kind: Secret
@@ -88,7 +89,7 @@ stringData:
             namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated-meta-data
             includeValue: true
-            key: instance-tag-data 
+            key: instance-tag-data
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status
@@ -102,3 +103,4 @@ stringData:
               - pass:
                   when: "true"
                   message: Replicated SDK App status is ready.
+{{- end }}
