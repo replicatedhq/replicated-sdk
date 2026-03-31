@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +28,10 @@ const (
 var replicatedSecretLock = sync.Mutex{}
 
 func save(ctx context.Context, clientset kubernetes.Interface, namespace string, key replicatedMetadataSecretKey, data interface{}) error {
+	if store.GetStore().GetReadOnlyMode() {
+		logger.Infof("read-only mode: skipping metadata write for key %s", key)
+		return nil
+	}
 
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
