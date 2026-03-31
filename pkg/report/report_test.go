@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -478,6 +480,29 @@ func getTestCustomAppMetricsReportWithMaxEvents() *CustomAppMetricsReport {
 		report.Events = append(report.Events, createTestCustomAppMetricsEvent(int64(i)))
 	}
 	return report
+}
+
+func Test_AppendReport_ReadOnlyMode(t *testing.T) {
+	req := require.New(t)
+
+	store.InitInMemory(store.InitInMemoryStoreOptions{
+		ReadOnlyMode: true,
+	})
+
+	clientset := fake.NewSimpleClientset()
+
+	report := &InstanceReport{
+		Events: []InstanceReportEvent{
+			createTestInstanceEvent(1234567890),
+		},
+	}
+
+	err := AppendReport(clientset, "test-ns", report)
+	req.NoError(err)
+
+	// Verify no secret was created
+	_, err = clientset.CoreV1().Secrets("test-ns").Get(context.Background(), report.GetSecretName(), metav1.GetOptions{})
+	req.True(kuberneteserrors.IsNotFound(err), "secret should not have been created in read-only mode")
 }
 
 func getTestCustomAppMetricsReportWithMaxSize() (*CustomAppMetricsReport, error) {
