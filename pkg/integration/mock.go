@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/integration/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"gopkg.in/yaml.v2"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -50,6 +51,10 @@ func GetDefaultMockData(ctx context.Context) (types.MockData, error) {
 }
 
 func SetMockData(ctx context.Context, clientset kubernetes.Interface, namespace string, mockData types.MockData) error {
+	if store.GetStore().GetReadOnlyMode() {
+		return errors.New("mock data updates are unavailable in read-only mode")
+	}
+
 	replicatedSecretLock.Lock()
 	defer replicatedSecretLock.Unlock()
 

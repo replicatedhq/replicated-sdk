@@ -10,6 +10,7 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -208,6 +209,21 @@ func TestMock_SetMockData(t *testing.T) {
 			tt.validate(t, got)
 		})
 	}
+}
+
+func TestMock_SetMockData_ReadOnlyMode(t *testing.T) {
+	req := require.New(t)
+
+	store.InitInMemory(store.InitInMemoryStoreOptions{
+		ReadOnlyMode: true,
+	})
+
+	clientset := fake.NewSimpleClientset()
+
+	mockData := &integrationtypes.MockDataV1{}
+	err := SetMockData(context.Background(), clientset, "test-ns", mockData)
+	req.Error(err)
+	req.Contains(err.Error(), "read-only mode")
 }
 
 func GetTestMockData(b []byte) (integrationtypes.MockData, error) {
