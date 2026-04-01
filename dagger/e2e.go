@@ -939,6 +939,7 @@ spec:
 			[]string{
 				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
 				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "3", "--retry-delay", "5", "--retry-all-errors",
 				"https://replicated:3000/api/v1/license/info",
 			}))
 	out, err = ctr.Stdout(ctx)
@@ -961,6 +962,7 @@ spec:
 			[]string{
 				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
 				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "3", "--retry-delay", "5", "--retry-all-errors",
 				"-X", "POST",
 				"-H", "Content-Type: application/json",
 				"-d", `{"data":{"test":"value"}}`,
