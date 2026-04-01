@@ -101,6 +101,7 @@ func TestSaveMetadata_ReadOnlyMode(t *testing.T) {
 	store.InitInMemory(store.InitInMemoryStoreOptions{
 		ReadOnlyMode: true,
 	})
+	defer store.SetStore(nil)
 
 	ctx := context.Background()
 	clientset := fake.NewSimpleClientset()

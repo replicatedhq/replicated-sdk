@@ -488,6 +488,7 @@ func Test_AppendReport_ReadOnlyMode(t *testing.T) {
 	store.InitInMemory(store.InitInMemoryStoreOptions{
 		ReadOnlyMode: true,
 	})
+	defer store.SetStore(nil)
 
 	clientset := fake.NewSimpleClientset()
 
