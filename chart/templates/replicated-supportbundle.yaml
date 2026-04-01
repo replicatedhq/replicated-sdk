@@ -1,7 +1,6 @@
 {{/*
 Renders the Support Bundle secret to be used by replicated
 */}}
-{{- if not .Values.readOnlyMode }}
 ---
 apiVersion: v1
 kind: Secret
@@ -103,4 +102,3 @@ stringData:
               - pass:
                   when: "true"
                   message: Replicated SDK App status is ready.
-{{- end }}
