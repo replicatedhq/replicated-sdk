@@ -292,7 +292,7 @@ service:
 # "integration" mode related values.
 integration:
   licenseID: ""
-  # enabled: false
+  enabled: false
   mockData: ""
 
 isAirgap: false
