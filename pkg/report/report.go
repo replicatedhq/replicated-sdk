@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +44,11 @@ var _ Report = &InstanceReport{}
 var _ Report = &CustomAppMetricsReport{}
 
 func AppendReport(clientset kubernetes.Interface, namespace string, report Report) error {
+	if store.GetStore().GetReadOnlyMode() {
+		logger.Infof("read-only mode: skipping %s report write", report.GetType())
+		return nil
+	}
+
 	report.GetMtx().Lock()
 	defer report.GetMtx().Unlock()
 

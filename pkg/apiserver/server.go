@@ -41,6 +41,7 @@ type APIServerParams struct {
 	Namespace             string
 	TlsCertSecretName     string
 	ReportAllImages       bool
+	ReadOnlyMode          bool
 }
 
 func Start(params APIServerParams) {

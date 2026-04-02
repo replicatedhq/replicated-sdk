@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -20,6 +21,10 @@ var metadataLock = sync.Mutex{}
 // in the replicated-support-metadata secret's data field.
 // If overwrite is true, the existing data is replaced entirely. If false, the provided keys are merged.
 func SaveMetadata(ctx context.Context, clientset kubernetes.Interface, namespace string, data map[string]string, overwrite bool) error {
+	if store.GetStore().GetReadOnlyMode() {
+		return errors.New("support bundle metadata is unavailable in read-only mode")
+	}
+
 	metadataLock.Lock()
 	defer metadataLock.Unlock()
 

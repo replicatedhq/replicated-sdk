@@ -16,6 +16,14 @@ type SupportBundleMetadataRequest struct {
 }
 
 func PostSupportBundleMetadata(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().GetReadOnlyMode() {
+		JSON(w, http.StatusUnprocessableEntity, map[string]interface{}{
+			"error":        "support bundle metadata is unavailable in read-only mode",
+			"readOnlyMode": true,
+		})
+		return
+	}
+
 	request := SupportBundleMetadataRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		logger.Errorf("failed to decode support bundle metadata request: %v", err)
@@ -49,6 +57,14 @@ func PostSupportBundleMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func PatchSupportBundleMetadata(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().GetReadOnlyMode() {
+		JSON(w, http.StatusUnprocessableEntity, map[string]interface{}{
+			"error":        "support bundle metadata is unavailable in read-only mode",
+			"readOnlyMode": true,
+		})
+		return
+	}
+
 	request := SupportBundleMetadataRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		logger.Errorf("failed to decode support bundle metadata request: %v", err)

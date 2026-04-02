@@ -16,6 +16,14 @@ type GetIntegrationStatusResponse struct {
 }
 
 func PostIntegrationMockData(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().GetReadOnlyMode() {
+		JSON(w, http.StatusUnprocessableEntity, map[string]interface{}{
+			"error":        "mock data updates are unavailable in read-only mode",
+			"readOnlyMode": true,
+		})
+		return
+	}
+
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get clientset"))

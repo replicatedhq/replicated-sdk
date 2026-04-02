@@ -31,6 +31,7 @@ type InMemoryStore struct {
 	// podImages holds namespace -> podUID -> []ImageInfo
 	podImages       map[string]map[string][]appstatetypes.ImageInfo
 	reportAllImages bool
+	readOnlyMode    bool
 }
 
 type InitInMemoryStoreOptions struct {
@@ -50,6 +51,7 @@ type InitInMemoryStoreOptions struct {
 	ReleaseImages         []string
 	Namespace             string
 	ReportAllImages       bool
+	ReadOnlyMode          bool
 }
 
 func InitInMemory(options InitInMemoryStoreOptions) {
@@ -71,6 +73,7 @@ func InitInMemory(options InitInMemoryStoreOptions) {
 		releaseImages:         options.ReleaseImages,
 		namespace:             options.Namespace,
 		reportAllImages:       options.ReportAllImages,
+		readOnlyMode:          options.ReadOnlyMode,
 	})
 }
 
@@ -326,4 +329,8 @@ func (s *InMemoryStore) SetUpdates(updates []upstreamtypes.ChannelRelease) {
 
 func (s *InMemoryStore) GetReportAllImages() bool {
 	return s.reportAllImages
+}
+
+func (s *InMemoryStore) GetReadOnlyMode() bool {
+	return s.readOnlyMode
 }

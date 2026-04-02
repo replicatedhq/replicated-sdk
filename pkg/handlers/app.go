@@ -498,6 +498,14 @@ func SendCustomAppMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteCustomAppMetricsKey(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().GetReadOnlyMode() {
+		JSON(w, http.StatusUnprocessableEntity, map[string]interface{}{
+			"error":        "custom metrics delete is unavailable in read-only mode",
+			"readOnlyMode": true,
+		})
+		return
+	}
+
 	key, ok := mux.Vars(r)["key"]
 
 	if !ok || key == "" {
@@ -550,6 +558,14 @@ func validateCustomAppMetricsData(data CustomAppMetricsData) error {
 }
 
 func SendAppInstanceTags(w http.ResponseWriter, r *http.Request) {
+	if store.GetStore().GetReadOnlyMode() {
+		JSON(w, http.StatusUnprocessableEntity, map[string]interface{}{
+			"error":        "instance tags are unavailable in read-only mode",
+			"readOnlyMode": true,
+		})
+		return
+	}
+
 	request := SendAppInstanceTagsRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		t, ok := err.(*json.UnmarshalTypeError)

@@ -878,6 +878,128 @@ spec:
 	}
 	fmt.Println("Support bundle upload test passed")
 
+	// Test read-only mode functionality
+	fmt.Println("Testing read-only mode functionality...")
+
+	// Upgrade the chart to enable read-only mode with minimal RBAC
+	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
+		"--set", "replicated.readOnlyMode=true",
+		"--set", "replicated.minimalRBAC=true",
+		"--set", "replicated.tlsCertSecretName=test-tls",
+		"--set-json", `replicated.statusInformers=[]`,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upgrade chart enabling read-only mode: %w", err)
+	}
+
+	// Verify the role does not contain create or update verbs for secrets
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "describe", "role", "replicated-role",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to describe role in read-only mode: %w", err)
+	}
+	fmt.Println("Role permissions in read-only mode:")
+	fmt.Println(out)
+
+	if strings.Contains(out, "create") {
+		return fmt.Errorf("role contains 'create' verb in read-only mode, expected only 'get'")
+	}
+	if strings.Contains(out, "update") {
+		return fmt.Errorf("role contains 'update' verb in read-only mode, expected only 'get'")
+	}
+
+	// Verify the support-metadata secret was not created
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "secret", "replicated-support-metadata", "--ignore-not-found",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check support-metadata secret: %w", err)
+	}
+	if strings.Contains(out, "replicated-support-metadata") {
+		return fmt.Errorf("replicated-support-metadata secret exists in read-only mode, expected it to not be created")
+	}
+	fmt.Println("Verified: replicated-support-metadata secret not created in read-only mode")
+
+	// Verify the SDK is healthy by checking the license info endpoint
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "3", "--retry-delay", "5", "--retry-all-errors",
+				"https://replicated:3000/api/v1/license/info",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to get license info in read-only mode: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	outputLines = strings.Split(strings.TrimSpace(out), "\n")
+	httpStatus = outputLines[len(outputLines)-1]
+	if httpStatus != "200" {
+		return fmt.Errorf("license info endpoint returned non-200 in read-only mode: %s", httpStatus)
+	}
+	fmt.Println("Verified: license info API works in read-only mode")
+
+	// Verify instance tags endpoint returns 422 in read-only mode
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "exec", "deployment/replicated-ssl-test", "--",
+				"curl", "-k", "-s", "-w", "\n%{http_code}",
+				"--retry", "3", "--retry-delay", "5", "--retry-all-errors",
+				"-X", "POST",
+				"-H", "Content-Type: application/json",
+				"-d", `{"data":{"test":"value"}}`,
+				"https://replicated:3000/api/v1/app/instance-tags",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		stderr, _ := ctr.Stderr(ctx)
+		return fmt.Errorf("failed to test instance tags in read-only mode: %w\n\nStderr: %s\n\nStdout: %s", err, stderr, out)
+	}
+	outputLines = strings.Split(strings.TrimSpace(out), "\n")
+	httpStatus = outputLines[len(outputLines)-1]
+	if httpStatus != "422" {
+		return fmt.Errorf("instance tags endpoint returned %s in read-only mode, expected 422", httpStatus)
+	}
+	fmt.Println("Verified: instance tags endpoint returns 422 in read-only mode")
+
+	// Check SDK logs for any RBAC errors
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "logs", "deployment/replicated", "--tail=50",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get logs in read-only mode: %w", err)
+	}
+	fmt.Println("SDK logs in read-only mode:")
+	fmt.Println(out)
+	if strings.Contains(out, "forbidden") || strings.Contains(out, "Forbidden") {
+		return fmt.Errorf("SDK logs contain RBAC forbidden errors in read-only mode")
+	}
+
+	fmt.Println("Read-only mode test passed")
+
 	return nil
 }
 

@@ -1,5 +1,5 @@
 {{/*
-Renders the Support Bundle secret to be used by replicated 
+Renders the Support Bundle secret to be used by replicated
 */}}
 ---
 apiVersion: v1
@@ -88,7 +88,7 @@ stringData:
             namespace: {{ include "replicated.namespace" . | quote }}
             name: replicated-meta-data
             includeValue: true
-            key: instance-tag-data 
+            key: instance-tag-data
       analyzers:
         - jsonCompare:
             checkName: Replicated SDK App Status
