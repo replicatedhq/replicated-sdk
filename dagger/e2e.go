@@ -25,6 +25,7 @@ func e2e(
 	appID string,
 	customerID string,
 	sdkImage string,
+	imageDigest string,
 	licenseID string,
 	distribution string,
 	version string,
@@ -364,14 +365,36 @@ spec:
 	// Test minimal RBAC functionality
 	fmt.Println("Testing minimal RBAC functionality...")
 
-	// Upgrade the chart to enable minimal RBAC
+	// Upgrade the chart to enable minimal RBAC, using image digest instead of tag
 	err = upgradeChartAndRestart(ctx, kubeconfigSource, licenseID, channelSlug, []string{
 		"--set", "replicated.tlsCertSecretName=test-tls",
 		"--set", "replicated.minimalRBAC=true",
 		"--set-json", `replicated.statusInformers=["deployment/test-chart","service/test-chart","daemonset/test-daemonset","statefulset/test-statefulset","pvc/test-pvc"]`,
+		"--set", fmt.Sprintf("replicated.image.digest=%s", imageDigest),
+		"--set", "replicated.image.tag=",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upgrade chart enabling minimal RBAC: %w", err)
+	}
+
+	// Verify the deployment uses a digest reference (contains @) and matches the expected digest
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "deploy/replicated", "-o", "jsonpath={.spec.template.spec.containers[0].image}",
+			}))
+	digestImage, err := ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get replicated deployment image: %w", err)
+	}
+	fmt.Printf("Deployment image with digest: %s\n", digestImage)
+	if !strings.Contains(digestImage, "@") {
+		return fmt.Errorf("expected image reference to contain '@' for digest, got: %s", digestImage)
+	}
+	if !strings.Contains(digestImage, imageDigest) {
+		return fmt.Errorf("expected image reference to contain digest %s, got: %s", imageDigest, digestImage)
 	}
 
 	// Check the role to verify minimal RBAC is applied

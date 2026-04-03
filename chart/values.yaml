@@ -55,6 +55,7 @@ image:
   registry: proxy.replicated.com              # Registry where the image is hosted
   repository: "library/replicated-sdk-image"  # Image repository
   tag: "1.0.0"                                # Image tag, replaced in our pipeline
+  digest: ""                                  # Image digest (e.g. sha256:abc123...), takes precedence over tag
   pullPolicy: IfNotPresent                    # Image pull policy: Always, IfNotPresent, Never
 
 # Additional labels to add to the pod template only

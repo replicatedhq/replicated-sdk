@@ -11,7 +11,7 @@ import (
 func buildAndPushImageToTTL(
 	ctx context.Context,
 	source *dagger.Directory,
-) (string, string, string, error) {
+) (string, string, string, string, error) {
 	now := time.Now().Format("20060102150405")
 	// Use a valid melange version for package building and apko package pinning.
 	// No dashes allowed — sanitizeVersionForMelange converts them to underscores
@@ -21,17 +21,17 @@ func buildAndPushImageToTTL(
 
 	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version, []string{"x86_64"})
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 
 	imagePath := fmt.Sprintf("ttl.sh/automated-%s/replicated-image/replicated-sdk", now)
-	_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey,
+	digest, err := publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey,
 		version, "24h", imagePath, "", nil, nil, nil)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 
-	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), "24h", nil
+	return "ttl.sh", fmt.Sprintf("automated-%s/replicated-image/replicated-sdk", now), "24h", digest, nil
 }
 
 func buildAndPushChartToTTL(
