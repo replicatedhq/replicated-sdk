@@ -26,12 +26,12 @@ func (m *ReplicatedSdk) Validate(
 		return err
 	}
 
-	imageRegistry, imageRepository, imageTag, err := buildAndPushImageToTTL(ctx, source)
+	imageRegistry, imageRepository, imageTag, imageDigest, err := buildAndPushImageToTTL(ctx, source)
 	if err != nil {
 		return err
 	}
 	sdkImage := fmt.Sprintf("%s/%s:%s", imageRegistry, imageRepository, imageTag)
-	fmt.Printf("Image pushed to %s\n", sdkImage)
+	fmt.Printf("Image pushed to %s (digest: %s)\n", sdkImage, imageDigest)
 
 	chart, err := buildAndPushChartToTTL(ctx, source, imageRegistry, imageRepository, imageTag)
 	if err != nil {
@@ -66,7 +66,7 @@ func (m *ReplicatedSdk) Validate(
 		wg.Add(1)
 		go func(distribution DistributionVersion) {
 			defer wg.Done()
-			if err := e2e(ctx, source, opServiceAccount, appID, customerID, sdkImage, licenseID, distribution.Distribution, distribution.Version, channelSlug); err != nil {
+			if err := e2e(ctx, source, opServiceAccount, appID, customerID, sdkImage, imageDigest, licenseID, distribution.Distribution, distribution.Version, channelSlug); err != nil {
 				panic(fmt.Sprintf("E2E test failed for distribution %s %s: %v", distribution.Distribution, distribution.Version, err))
 			}
 		}(distribution)
@@ -101,6 +101,7 @@ type BuildInfo struct {
 	ImageRegistry   string                 `json:"imageRegistry"`
 	ImageRepository string                 `json:"imageRepository"`
 	ImageTag        string                 `json:"imageTag"`
+	ImageDigest     string                 `json:"imageDigest"`
 	Chart           string                 `json:"chart"`
 	ChannelSlug     string                 `json:"channelSlug"`
 	CustomerID      string                 `json:"customerID"`
@@ -119,12 +120,12 @@ func (m *ReplicatedSdk) BuildForE2E(
 
 	opServiceAccount *dagger.Secret,
 ) (*dagger.File, error) {
-	imageRegistry, imageRepository, imageTag, err := buildAndPushImageToTTL(ctx, source)
+	imageRegistry, imageRepository, imageTag, imageDigest, err := buildAndPushImageToTTL(ctx, source)
 	if err != nil {
 		return nil, err
 	}
 	sdkImage := fmt.Sprintf("%s/%s:%s", imageRegistry, imageRepository, imageTag)
-	fmt.Printf("Image pushed to %s\n", sdkImage)
+	fmt.Printf("Image pushed to %s (digest: %s)\n", sdkImage, imageDigest)
 
 	chart, err := buildAndPushChartToTTL(ctx, source, imageRegistry, imageRepository, imageTag)
 	if err != nil {
@@ -158,6 +159,7 @@ func (m *ReplicatedSdk) BuildForE2E(
 		ImageRegistry:   imageRegistry,
 		ImageRepository: imageRepository,
 		ImageTag:        imageTag,
+		ImageDigest:     imageDigest,
 		Chart:           chart,
 		ChannelSlug:     channelSlug,
 		CustomerID:      customerID,
@@ -208,5 +210,5 @@ func (m *ReplicatedSdk) RunSingleE2E(
 
 	sdkImage := fmt.Sprintf("%s/%s:%s", buildInfo.ImageRegistry, buildInfo.ImageRepository, buildInfo.ImageTag)
 
-	return e2e(ctx, source, opServiceAccount, buildInfo.AppID, buildInfo.CustomerID, sdkImage, buildInfo.LicenseID, distribution, version, buildInfo.ChannelSlug)
+	return e2e(ctx, source, opServiceAccount, buildInfo.AppID, buildInfo.CustomerID, sdkImage, buildInfo.ImageDigest, buildInfo.LicenseID, distribution, version, buildInfo.ChannelSlug)
 }
