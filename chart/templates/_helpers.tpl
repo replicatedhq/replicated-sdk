@@ -68,7 +68,10 @@ Image
   {{- fail "Image repository is required but not set" -}}
 {{- end -}}
 
-{{- if .Values.image.tag -}}
+{{- if .Values.image.digest -}}
+  {{- $separator = "@" -}}
+  {{- $termination = .Values.image.digest | toString -}}
+{{- else if .Values.image.tag -}}
   {{- $termination = .Values.image.tag | toString -}}
 {{- else if .Chart -}}
   {{- $termination = .Chart.AppVersion | default "latest" | toString -}}
