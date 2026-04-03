@@ -6,17 +6,23 @@ import (
 
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	v1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
-	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	discoveryfake "k8s.io/client-go/discovery/fake"
 )
 
 func mockClientsetK8sVersion(expectedMajor string, expectedMinor string) kubernetes.Interface {
+	boolTrue := true
+	portHTTP := "http"
+	port80 := int32(80)
+	port8080 := int32(8080)
+	protocolTCP := v1.ProtocolTCP
 	clientset := fake.NewSimpleClientset(
-		// Defaul backend service and endpoint
+		// Default backend service and endpoint slice
 		&v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "default-http-backend",
@@ -31,29 +37,31 @@ func mockClientsetK8sVersion(expectedMajor string, expectedMinor string) kuberne
 				},
 			},
 		},
-		&v1.Endpoints{
+		&discoveryv1.EndpointSlice{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "default-http-backend",
+				Name:      "default-http-backend-abc",
 				Namespace: metav1.NamespaceSystem,
+				Labels: map[string]string{
+					discoveryv1.LabelServiceName: "default-http-backend",
+				},
 			},
-			Subsets: []v1.EndpointSubset{
+			AddressType: discoveryv1.AddressTypeIPv4,
+			Ports: []discoveryv1.EndpointPort{
 				{
-					Ports: []v1.EndpointPort{
-						{
-							Name: "http",
-							Port: 80,
-						},
-					},
-					Addresses: []v1.EndpointAddress{
-						{
-							IP: "192.0.0.2",
-						},
-					},
+					Name:     &portHTTP,
+					Port:     &port80,
+					Protocol: &protocolTCP,
+				},
+			},
+			Endpoints: []discoveryv1.Endpoint{
+				{
+					Addresses:  []string{"192.0.0.2"},
+					Conditions: discoveryv1.EndpointConditions{Ready: &boolTrue},
 				},
 			},
 		},
 
-		// LoadBalancer service and endpoint
+		// LoadBalancer service and endpoint slice
 		&v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "app-lb",
@@ -69,29 +77,31 @@ func mockClientsetK8sVersion(expectedMajor string, expectedMinor string) kuberne
 				},
 			},
 		},
-		&v1.Endpoints{
+		&discoveryv1.EndpointSlice{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "app-lb",
+				Name:      "app-lb-abc",
 				Namespace: "",
+				Labels: map[string]string{
+					discoveryv1.LabelServiceName: "app-lb",
+				},
 			},
-			Subsets: []v1.EndpointSubset{
+			AddressType: discoveryv1.AddressTypeIPv4,
+			Ports: []discoveryv1.EndpointPort{
 				{
-					Ports: []v1.EndpointPort{
-						{
-							Name: "http",
-							Port: 8080,
-						},
-					},
-					Addresses: []v1.EndpointAddress{
-						{
-							IP: "172.0.0.2",
-						},
-					},
+					Name:     &portHTTP,
+					Port:     &port8080,
+					Protocol: &protocolTCP,
+				},
+			},
+			Endpoints: []discoveryv1.Endpoint{
+				{
+					Addresses:  []string{"172.0.0.2"},
+					Conditions: discoveryv1.EndpointConditions{Ready: &boolTrue},
 				},
 			},
 		},
 
-		// NodePort service and endpoint
+		// NodePort service and endpoint slice
 		&v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "app-nodeport",
@@ -107,24 +117,26 @@ func mockClientsetK8sVersion(expectedMajor string, expectedMinor string) kuberne
 				},
 			},
 		},
-		&v1.Endpoints{
+		&discoveryv1.EndpointSlice{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "app-nodeport",
+				Name:      "app-nodeport-abc",
 				Namespace: "",
+				Labels: map[string]string{
+					discoveryv1.LabelServiceName: "app-nodeport",
+				},
 			},
-			Subsets: []v1.EndpointSubset{
+			AddressType: discoveryv1.AddressTypeIPv4,
+			Ports: []discoveryv1.EndpointPort{
 				{
-					Ports: []v1.EndpointPort{
-						{
-							Name: "http",
-							Port: 8080,
-						},
-					},
-					Addresses: []v1.EndpointAddress{
-						{
-							IP: "172.0.0.2",
-						},
-					},
+					Name:     &portHTTP,
+					Port:     &port8080,
+					Protocol: &protocolTCP,
+				},
+			},
+			Endpoints: []discoveryv1.Endpoint{
+				{
+					Addresses:  []string{"172.0.0.2"},
+					Conditions: discoveryv1.EndpointConditions{Ready: &boolTrue},
 				},
 			},
 		},
