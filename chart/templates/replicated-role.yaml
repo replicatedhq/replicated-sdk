@@ -123,12 +123,17 @@ rules:
   - ""
   resources:
   - "services"
-  - "endpoints"
   - "persistentvolumeclaims"
   verbs:
   - "get"
   - "list"
   - "watch"
+- apiGroups:
+  - "discovery.k8s.io"
+  resources:
+  - "endpointslices"
+  verbs:
+  - "list"
 - apiGroups:
   - "networking.k8s.io"
   resources:
@@ -192,7 +197,6 @@ rules:
   - ""
   resources:
   - "services"
-  - "endpoints"
   verbs:
   - "list"
   - "watch"
@@ -200,11 +204,16 @@ rules:
   - ""
   resources:
   - "services"
-  - "endpoints"
   verbs:
   - "get"
   resourceNames:
   {{ include "replicated.statusInformers.services" . | nindent 4 }}
+- apiGroups:
+  - "discovery.k8s.io"
+  resources:
+  - "endpointslices"
+  verbs:
+  - "list"
 {{ end }}
 
 {{ if include "replicated.statusInformers.ingresses" . | trim }}
@@ -227,10 +236,15 @@ rules:
   - ""
   resources:
   - "services"
-  - "endpoints"
   verbs:
   - "get"
   - "watch"
+- apiGroups:
+  - "discovery.k8s.io"
+  resources:
+  - "endpointslices"
+  verbs:
+  - "list"
 {{ end }}
 
 {{ if include "replicated.statusInformers.pvcs" . | trim }}

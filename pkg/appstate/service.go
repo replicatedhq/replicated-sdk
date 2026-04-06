@@ -6,7 +6,9 @@ import (
 
 	"github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/watch"
@@ -125,46 +127,57 @@ func CalculateServiceState(clientset kubernetes.Interface, r *corev1.Service) ty
 }
 
 func serviceGetStateFromEndpoints(clientset kubernetes.Interface, svc *corev1.Service) (minState types.State) {
-	endpoints, _ := clientset.CoreV1().Endpoints(svc.Namespace).Get(context.TODO(), svc.Name, metav1.GetOptions{})
-	if endpoints == nil {
-		// I'm unsure of the state for this case
+	selector := labels.Set{discoveryv1.LabelServiceName: svc.Name}.AsSelector()
+	endpointSlices, err := clientset.DiscoveryV1().EndpointSlices(svc.Namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil || endpointSlices == nil || len(endpointSlices.Items) == 0 {
 		return types.StateUnavailable
 	}
 	for i := range svc.Spec.Ports {
 		sp := &svc.Spec.Ports[i]
-		minState = types.MinState(minState, servicePortGetStateFromEndpoints(endpoints, sets.NewString(sp.Name)))
+		minState = types.MinState(minState, servicePortGetStateFromEndpointSlices(endpointSlices.Items, sets.NewString(sp.Name)))
 	}
 	return
 }
 
-func servicePortGetStateFromEndpoints(endpoints *corev1.Endpoints, ports sets.String) (minState types.State) {
-	if len(endpoints.Subsets) == 0 {
-		// I'm unsure of the state for this case
-		return types.StateUnavailable
-	}
-	for i := range endpoints.Subsets {
-		ss := &endpoints.Subsets[i]
-		if len(ss.Ports) == 0 {
+func servicePortGetStateFromEndpointSlices(slices []discoveryv1.EndpointSlice, ports sets.String) (minState types.State) {
+	hasMatchingPort := false
+	for _, slice := range slices {
+		if len(slice.Ports) == 0 {
 			// It's possible to have headless services with no ports.
-			if len(ss.NotReadyAddresses) > 0 {
-				minState = types.MinState(minState, types.StateDegraded)
-			}
-			// What else can we infer here?
-		} else {
-			// "Normal" services with ports defined.
-			for i := range ss.Ports {
-				port := &ss.Ports[i]
-				if ports.Has(port.Name) {
-					if len(ss.Addresses) == 0 {
-						minState = types.MinState(minState, types.StateUnavailable)
-					} else if len(ss.NotReadyAddresses) > 0 {
-						minState = types.MinState(minState, types.StateDegraded)
-					} else {
-						minState = types.MinState(minState, types.StateReady)
-					}
+			for _, ep := range slice.Endpoints {
+				if ep.Conditions.Ready != nil && !*ep.Conditions.Ready {
+					minState = types.MinState(minState, types.StateDegraded)
 				}
 			}
+			continue
 		}
+		for _, port := range slice.Ports {
+			if port.Name == nil || !ports.Has(*port.Name) {
+				continue
+			}
+			hasMatchingPort = true
+			readyCount := 0
+			notReadyCount := 0
+			for _, ep := range slice.Endpoints {
+				if ep.Conditions.Ready != nil && *ep.Conditions.Ready {
+					readyCount++
+				} else {
+					notReadyCount++
+				}
+			}
+			if readyCount == 0 {
+				minState = types.MinState(minState, types.StateUnavailable)
+			} else if notReadyCount > 0 {
+				minState = types.MinState(minState, types.StateDegraded)
+			} else {
+				minState = types.MinState(minState, types.StateReady)
+			}
+		}
+	}
+	if !hasMatchingPort {
+		return types.StateUnavailable
 	}
 	return
 }
