@@ -133,9 +133,7 @@ rules:
   resources:
   - "endpointslices"
   verbs:
-  - "get"
   - "list"
-  - "watch"
 - apiGroups:
   - "networking.k8s.io"
   resources:
@@ -215,9 +213,7 @@ rules:
   resources:
   - "endpointslices"
   verbs:
-  - "get"
   - "list"
-  - "watch"
 {{ end }}
 
 {{ if include "replicated.statusInformers.ingresses" . | trim }}
@@ -248,9 +244,7 @@ rules:
   resources:
   - "endpointslices"
   verbs:
-  - "get"
   - "list"
-  - "watch"
 {{ end }}
 
 {{ if include "replicated.statusInformers.pvcs" . | trim }}

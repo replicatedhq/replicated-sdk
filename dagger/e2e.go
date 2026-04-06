@@ -469,21 +469,17 @@ spec:
 	}
 
 	// Check for test-chart service in the role
-	// services                      []                 [test-chart]                            [get]
-	// services                      []                 []                                      [list watch]
-	// endpoints                     []                 [test-chart]                            [get]
-	// endpoints                     []                 []                                      [list watch]
+	// services                                []                 [test-chart]                            [get]
+	// services                                []                 []                                      [list watch]
+	// endpointslices.discovery.k8s.io         []                 []                                      [list]
 	if !regexp.MustCompile(`services +\[\] +\[test-chart\] +\[get\]`).MatchString(roleOutput) {
 		return fmt.Errorf("role does not contain 'test-chart' service get permission as expected")
 	}
 	if !regexp.MustCompile(`services +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
 		return fmt.Errorf("role does not contain service list watch permission as expected")
 	}
-	if !regexp.MustCompile(`endpoints +\[\] +\[test-chart\] +\[get\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain 'test-chart' endpoint get permission as expected")
-	}
-	if !regexp.MustCompile(`endpoints +\[\] +\[\] +\[list watch\]`).MatchString(roleOutput) {
-		return fmt.Errorf("role does not contain endpoint list watch permission as expected")
+	if !regexp.MustCompile(`endpointslices.discovery.k8s.io +\[\] +\[\] +\[list\]`).MatchString(roleOutput) {
+		return fmt.Errorf("role does not contain endpointslices list permission as expected")
 	}
 
 	// check that there are not ingress permissions in the role
