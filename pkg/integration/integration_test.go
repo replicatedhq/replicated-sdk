@@ -116,7 +116,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "enabled for a dev license because key doesn't exist",
+			name: "not enabled for a dev license because key doesn't exist",
 			args: args{
 				clientset: fake.NewSimpleClientset(&corev1.SecretList{
 					TypeMeta: metav1.TypeMeta{},
@@ -137,11 +137,11 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					},
 				}},
 			},
-			want:    true,
+			want:    false,
 			wantErr: false,
 		},
 		{
-			name: "enabled for a dev license because value is empty",
+			name: "not enabled for a dev license because value is empty",
 			args: args{
 				clientset: fake.NewSimpleClientset(&corev1.SecretList{
 					TypeMeta: metav1.TypeMeta{},
@@ -164,7 +164,7 @@ func TestIntegration_IsEnabled(t *testing.T) {
 					},
 				}},
 			},
-			want:    true,
+			want:    false,
 			wantErr: false,
 		},
 	}
