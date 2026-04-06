@@ -154,11 +154,7 @@ func servicePortGetStateFromEndpointSlices(slices []discoveryv1.EndpointSlice, p
 			continue
 		}
 		for _, port := range slice.Ports {
-			portName := ""
-			if port.Name != nil {
-				portName = *port.Name
-			}
-			if !ports.Has(portName) {
+			if port.Name == nil || !ports.Has(*port.Name) {
 				continue
 			}
 			hasMatchingPort = true
