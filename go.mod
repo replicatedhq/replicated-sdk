@@ -1,6 +1,6 @@
 module github.com/replicatedhq/replicated-sdk
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
