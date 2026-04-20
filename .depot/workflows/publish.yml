@@ -16,7 +16,7 @@ env:
 
 jobs:
   publish-pact:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -40,7 +40,7 @@ jobs:
             --verbose
 
   get-tags:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     outputs:
       previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
     steps:
@@ -66,7 +66,7 @@ jobs:
             }
 
   generate-release-notes-pr:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     needs: [get-tags]
     if: github.ref_type != 'branch'
     steps:
@@ -84,8 +84,8 @@ jobs:
           "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
 
   staging:
-    runs-on:
-      labels: ReplicatedSDK
+    # Replaces the old self-hosted ReplicatedSDK runner label with Depot CI's default Ubuntu sandbox.
+    runs-on: depot-ubuntu-24.04
     outputs:
       digest: ${{ steps.dagger-publish.outputs.stdout }}
     steps:
@@ -108,8 +108,8 @@ jobs:
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
   production:
-    runs-on:
-      labels: ReplicatedSDK
+    # Replaces the old self-hosted ReplicatedSDK runner label with Depot CI's default Ubuntu sandbox.
+    runs-on: depot-ubuntu-24.04
     outputs:
       digest: ${{ steps.dagger-publish.outputs.stdout }}
     steps:

@@ -17,7 +17,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     env:
       PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
       PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
@@ -31,7 +31,7 @@ jobs:
         run: make test
 
   build:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     outputs:
       distributions: ${{ steps.distributions.outputs.result }}
     steps:
@@ -59,7 +59,7 @@ jobs:
           retention-days: 1
 
   scan:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     needs: build
     steps:
       - uses: actions/download-artifact@v8
@@ -82,7 +82,7 @@ jobs:
           output-format: "table"
 
   e2e:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     needs: build
     strategy:
       fail-fast: false
@@ -105,7 +105,7 @@ jobs:
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
   publish-pact:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     needs: [test]
     if: github.event_name == 'push'
     env:
@@ -127,7 +127,7 @@ jobs:
             --verbose
 
   validate:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     needs: [test, e2e, scan]
     if: always()
     steps:

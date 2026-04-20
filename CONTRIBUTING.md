@@ -72,7 +72,13 @@ helm install replicated oci://ttl.sh/salah/replicated \
 
 ## Testing
 
-Tests are automatically run in GitHub Actions after opening or updating a pull request.
+Tests are automatically run in Depot CI after opening or updating a pull request once the `.depot/workflows/` changes are merged and the repository is connected in Depot.
+
+You can also run the Depot CI workflow locally against your current working tree:
+
+```bash
+depot ci run --workflow .depot/workflows/validate.yml
+```
 
 Unit and Pact tests can be run locally using the `make test` command.
 
@@ -89,5 +95,5 @@ eg:
   git tag $SDK_TAG
   git push -u origin $SDK_TAG
 ```
-4. Ensure that the GitHub actions associated with the newly created tag are executed, and verify that the updated Helm charts are successfully published to both the staging and production replicated registry.
+4. Ensure that the Depot CI publish workflow associated with the newly created tag is executed, and verify that the updated Helm charts are successfully published to both the staging and production replicated registry. The SLSA provenance bridge still dispatches from GitHub Actions until that final step is moved to Depot CI as well.
 5. Make sure to update the [Replicated SDK Documentation](https://docs.replicated.com/vendor/replicated-sdk-overview) by replacing all instances of the Replicated SDK version with the latest tag.

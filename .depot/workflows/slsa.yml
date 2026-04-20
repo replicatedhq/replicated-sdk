@@ -1,0 +1,41 @@
+name: publish-slsa
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "Digest to publish"
+        required: true
+      production:
+        description: "Publish production (false for staging)"
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  provenance-staging:
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    if: ${{ inputs.production == false }}
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: registry.staging.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
+      digest: ${{ inputs.digest }}
+    secrets:
+      registry-password: ${{ secrets.REPLICATED_PASS_STAGING }}
+      registry-username: ${{ secrets.REPLICATED_USER_STAGING }}
+
+  provenance-production:
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    if: ${{ inputs.production == true }}
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: registry.replicated.com/library/replicated-sdk-image:${{ github.ref_name }}
+      digest: ${{ inputs.digest }}
+    secrets:
+      registry-password: ${{ secrets.REPLICATED_PASS_PROD }}
+      registry-username: ${{ secrets.REPLICATED_USER_PROD }}

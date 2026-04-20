@@ -3,22 +3,21 @@ name: Image Security Scans
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs nightly at midnight (UTC)
-  workflow_dispatch:      # Allows manual triggering through GitHub UI
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
-permissions: {}  # Remove all permissions by default
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Get the latest release tag first
   get-latest-tag:
     name: Get Latest Release Tag
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
-      contents: read    # Needed to read releases
+      contents: read
     outputs:
       tag_name: ${{ steps.get_release.outputs.tag_name }}
     steps:
@@ -32,14 +31,14 @@ jobs:
               repo: context.repo.repo
             });
             core.setOutput('tag_name', release.data.tag_name);
-  
+
   scan-replicated-sdk:
     name: Scan Replicated SDK
-    needs: get-latest-tag  # Wait for tag to be fetched
-    uses: ./.github/workflows/scan-image-grype.yml
+    needs: get-latest-tag
+    uses: ./.depot/workflows/scan-image-grype.yml
     permissions:
-      contents: read        # Needed to read workflow files
-      security-events: write # Needed to upload SARIF results
+      contents: read
+      security-events: write
       actions: read
     with:
       image: replicated/replicated-sdk:${{ needs.get-latest-tag.outputs.tag_name }}

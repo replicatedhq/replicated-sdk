@@ -4,7 +4,7 @@ This document outlines the process for creating and publishing new releases of t
 
 ## Overview
 
-The release process is automated through GitHub Actions. When a new version tag is pushed to the repository, it triggers a workflow that:
+The release process is automated through Depot CI. When a new version tag is pushed to the repository, it triggers the workflow in `.depot/workflows/publish.yml`, which:
 1. Builds and tests the code
 2. Creates a Docker image using Chainguard's melange and apko
 3. Builds and publishes Helm charts
@@ -22,7 +22,8 @@ To create releases, you'll need:
    - For production environment access
 
 2. **GitHub Token**:
-   - With permissions to trigger the SLSA GitHub workflow
+   - With permissions to create GitHub releases
+   - With permissions to trigger the `slsa.yml` provenance workflow while the SLSA dispatch path still goes through the GitHub Actions API
 
 ### Version Tag Format
 
@@ -41,7 +42,7 @@ Note: While older beta releases used a 'v' prefix (e.g., v1.0.0-beta.28), curren
    git push origin X.Y.Z
    ```
 
-2. The GitHub Actions workflow will automatically:
+2. The Depot CI workflow will automatically:
    - Run all tests
    - Build the Go binaries
    - Create and push Docker images
@@ -129,7 +130,7 @@ The release process is handled by the `Publish` function in `dagger/publish.go`.
    ```
 
 5. **SLSA Provenance**:
-   If SLSA provenance is enabled, the process triggers a GitHub workflow:
+   If SLSA provenance is enabled, the process currently dispatches `slsa.yml` through the GitHub Actions API from the Depot CI release workflow:
    ```go
    if slsa {
        ctr := dag.Gh().
@@ -145,8 +146,8 @@ The release process is handled by the `Publish` function in `dagger/publish.go`.
 
    Important notes about SLSA provenance:
    - This step is automatically triggered by the Dagger pipeline during production releases
-   - Requires a GitHub token with permissions to trigger the SLSA workflow (`slsa.yml`)
-   - The workflow is triggered via GitHub API to generate and attach provenance to the image
+   - Requires a GitHub token with permissions to trigger the provenance workflow (`slsa.yml`) and create the GitHub release
+   - The workflow is currently dispatched via the GitHub API even though the main release pipeline runs in Depot CI
    - This step is skipped for development and staging releases
 
 ### Security and Attestations
@@ -195,14 +196,15 @@ After a release is published, verify:
 
 If the release workflow fails:
 
-1. Check the GitHub Actions logs for errors
+1. Check the Depot CI logs for errors
 2. Common issues:
    - Failed tests
    - Docker registry authentication issues
    - Helm chart validation failures
    - Version format issues with melange/apko builds
    - Missing or invalid credentials
-   - Insufficient GitHub token permissions
+   - Insufficient Depot CI secret configuration
+   - Insufficient GitHub token permissions for release creation or SLSA dispatch
 
 ## Post-Release
 
@@ -216,7 +218,7 @@ After a successful release:
 ## Support
 
 If you encounter issues with the release process:
-1. Check the GitHub Actions logs
+1. Check the Depot CI logs
 2. Review the workflow error messages
 3. Contact the maintainers team
 

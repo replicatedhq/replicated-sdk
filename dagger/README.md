@@ -61,7 +61,7 @@ dagger call publish --progress=plain \
 - `--staging`: (boolean) Use staging environment
 - `--version`: Version string for the release
 - `--slsa`: (boolean) Enable SLSA provenance generation
-- `--github-token`: GitHub token for SLSA workflow access
+- `--github-token`: GitHub token for GitHub release creation and SLSA workflow dispatch
 
 Note: SLSA provenance generation requires both `--slsa=true` and a valid `--github-token`.
 
@@ -110,6 +110,6 @@ Software Bill of Materials (SBOM) is automatically generated during the build pr
 
 For production releases, SLSA provenance is automatically generated:
 - Triggered by the Dagger pipeline during production releases
-- Requires a GitHub token with permissions to trigger the SLSA workflow (`slsa.yml`)
-- The workflow is triggered via GitHub API to generate and attach provenance to the image
+- Requires a GitHub token with permissions to trigger the SLSA workflow (`slsa.yml`) and create a GitHub release
+- The release pipeline now runs in Depot CI, but the provenance workflow is still dispatched via the GitHub API
 - This step is skipped for development and staging releases

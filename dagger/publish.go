@@ -117,7 +117,8 @@ func (m *ReplicatedSdk) Publish(
 		return err
 	}
 
-	// if we are running in CI we trigger the SLSA provenance workflow
+	// If SLSA is enabled, dispatch the provenance workflow.
+	// This still targets GitHub's workflow-dispatch API even when the main pipeline runs in Depot CI.
 	if slsa {
 		ctr := dag.Gh().
 			Run(fmt.Sprintf(`api --method POST /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \

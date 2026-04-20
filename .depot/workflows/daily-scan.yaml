@@ -5,14 +5,14 @@ on:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
-permissions: {}  # Remove all permissions by default
+permissions: {}
 
 jobs:
   scan_filesystem:
-    runs-on: ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     permissions:
-      contents: read        # For checkout
-      security-events: write # For uploading SARIF results
+      contents: read
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -34,11 +34,11 @@ jobs:
 
   scan-release:
     name: Scan Current Release
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
-      contents: read        # For reading releases
-      security-events: write # For uploading SARIF results
-      
+      contents: read
+      security-events: write
+
     steps:
       - name: Get latest release
         id: get_release

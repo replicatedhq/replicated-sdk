@@ -38,25 +38,24 @@ on:
         default: 'container-scan-'
         description: 'Prefix to use for the SARIF category name'
 
-permissions: {}  # Remove all permissions by default
+permissions: {}
 
 jobs:
   validate:
     name: Validate Inputs
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Validate repository access
         run: |
-          # Extract organization from the repository name
           ORG_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1)
           EXPECTED_ORG="replicatedhq"
-          
+
           if [ "$ORG_NAME" != "$EXPECTED_ORG" ]; then
             echo "Error: This workflow can only be called from repositories within the $EXPECTED_ORG organization"
             echo "Current repository: ${{ github.repository }}"
             exit 1
           fi
-      
+
       - name: Validate severity-cutoff
         run: |
           valid_severities=("critical" "high" "medium" "low" "negligible")
@@ -65,7 +64,7 @@ jobs:
             echo "Valid values are: ${valid_severities[*]}"
             exit 1
           fi
-      
+
       - name: Validate timeout-minutes
         run: |
           if [[ ! "${{ inputs.timeout-minutes }}" =~ ^[0-9]+$ ]] || [ "${{ inputs.timeout-minutes }}" -lt 1 ] || [ "${{ inputs.timeout-minutes }}" -gt 360 ]; then
@@ -73,7 +72,7 @@ jobs:
             echo "Value must be a number between 1 and 360 minutes"
             exit 1
           fi
-      
+
       - name: Validate retention-days
         run: |
           if [[ ! "${{ inputs.retention-days }}" =~ ^[0-9]+$ ]] || [ "${{ inputs.retention-days }}" -lt 1 ] || [ "${{ inputs.retention-days }}" -gt 90 ]; then
@@ -81,7 +80,7 @@ jobs:
             echo "Value must be a number between 1 and 90 days"
             exit 1
           fi
-      
+
       - name: Validate category-prefix
         run: |
           if [[ -z "${{ inputs.category-prefix }}" ]]; then
@@ -96,15 +95,15 @@ jobs:
   scan:
     name: Scan Image Grype SARIF
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     timeout-minutes: ${{ inputs.timeout-minutes }}
     concurrency:
       group: ${{ inputs.image }}
       cancel-in-progress: false
     permissions:
-      security-events: write  # Needed to upload SARIF results
-      contents: read         # Needed to read workflow files
-    
+      security-events: write
+      contents: read
+
     steps:
       - name: Extract image details
         id: image_details
@@ -118,11 +117,11 @@ jobs:
             echo "image_tag=${IMAGE_TAG}"
             echo "safe_name=${SAFE_NAME}"
           } >> "$GITHUB_OUTPUT"
-      
+
       - name: Scan image with Grype
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
         id: scan
-        continue-on-error: true  # Allow workflow to continue even if scan fails
+        continue-on-error: true
         with:
           image: "${{ inputs.image }}"
           fail-build: "${{ inputs.fail-build }}"
@@ -130,7 +129,7 @@ jobs:
           output-format: sarif
           output-file: "${{ inputs.output-file }}"
           by-cve: true
-      
+
       - name: Check scan status
         if: steps.scan.outcome == 'failure'
         run: |
@@ -140,7 +139,7 @@ jobs:
             echo "::error::Build will fail due to scan failure and fail-build=true"
             exit 1
           fi
-      
+
       - name: Enrich or generate SARIF
         if: always()
         run: |
@@ -169,7 +168,6 @@ jobs:
 
           mv enriched-results.sarif results.sarif
 
-          # Add version-agnostic fingerprints to prevent duplicate alerts
           jq '.runs[0].results = [
             .runs[0].results[] |
             . + {
@@ -184,16 +182,16 @@ jobs:
           ]' results.sarif > fingerprinted-results.sarif
 
           mv fingerprinted-results.sarif results.sarif
-      
+
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
           category: "${{ inputs.category-prefix }}${{ steps.image_details.outputs.safe_name }}"
-      
+
       - name: Archive scan results
         uses: actions/upload-artifact@v7
         with:
           name: "sarif-${{ steps.image_details.outputs.safe_name }}"
           path: results.sarif
-          retention-days: ${{ inputs.retention-days }} 
+          retention-days: ${{ inputs.retention-days }}
