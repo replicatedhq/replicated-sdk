@@ -950,6 +950,23 @@ spec:
 	}
 	fmt.Println("Verified: replicated-support-metadata secret not created in read-only mode")
 
+	// Verify the support bundle secret was not created
+	ctr = dag.Container().From("bitnami/kubectl:latest").
+		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+		WithEnvVariable("KUBECONFIG", kubeconfigPath).
+		With(CacheBustingExec(
+			[]string{
+				"kubectl", "get", "secret", "replicated-ssl-test-supportbundle", "--ignore-not-found",
+			}))
+	out, err = ctr.Stdout(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check support bundle secret: %w", err)
+	}
+	if strings.Contains(out, "replicated-ssl-test-supportbundle") {
+		return fmt.Errorf("support bundle secret exists in read-only mode, expected it to not be created")
+	}
+	fmt.Println("Verified: support bundle secret not created in read-only mode")
+
 	// Verify the SDK is healthy by checking the license info endpoint
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
