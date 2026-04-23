@@ -26,7 +26,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - uses: replicatedhq/action-install-pact@main
+      - name: Install pact
+        run: ./scripts/install-pact.sh
       - name: Run pact tests
         run: make test-pact
       - name: Publish pact
