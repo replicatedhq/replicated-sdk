@@ -1,0 +1,139 @@
+# Depot CI Migration
+# Source: .github/workflows/validate.yml
+#
+# Changes made:
+# - Changed GitHub runs-on labels to their Depot equivalents
+
+name: PR/main branch CI
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+env:
+  APP_SLUG: replicated-sdk-e2e
+jobs:
+  test:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    env:
+      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: replicatedhq/action-install-pact@main
+      - name: Run unit and pact tests
+        run: make test
+  build:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    outputs:
+      distributions: ${{ steps.distributions.outputs.result }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        id: build
+        env:
+          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+        with:
+          version: "0.19.9"
+          verb: call
+          args: build-for-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT export --path=./build-info.json
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+      - name: Extract distributions for matrix
+        id: distributions
+        run: |
+          DISTRIBUTIONS=$(jq -c '.distributions' build-info.json)
+          echo "result=$DISTRIBUTIONS" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v7
+        with:
+          name: build-info
+          path: build-info.json
+          retention-days: 1
+  scan:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: build-info
+      - name: Extract image reference
+        id: image
+        run: |
+          IMAGE_REF="$(jq -r '"\(.imageRegistry)/\(.imageRepository):\(.imageTag)"' build-info.json)"
+          echo "ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+      - name: Scan image with Grype
+        uses: anchore/scan-action@latest
+        with:
+          image: "${{ steps.image.outputs.ref }}"
+          fail-build: "true"
+          severity-cutoff: "negligible"
+          only-fixed: "true"
+          output-format: "table"
+  e2e:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ${{ fromJson(needs.build.outputs.distributions) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: build-info
+      - uses: dagger/dagger-for-github@v8.4.1
+        env:
+          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+        with:
+          version: "0.19.9"
+          verb: call
+          args: run-single-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --distribution="${{ matrix.dist.Distribution }}" --version="${{ matrix.dist.Version }}" --build-info-file=./build-info.json
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+  publish-pact:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    needs: [test]
+    if: github.event_name == 'push'
+    env:
+      PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: replicatedhq/action-install-pact@main
+      - name: Run pact tests
+        run: make test-pact
+      - name: Publish pact
+        run: |
+          pact-broker publish ./pacts \
+            --consumer-app-version ${{ github.sha }} \
+            --branch main \
+            --verbose
+  validate:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    needs: [test, e2e, scan]
+    if: always()
+    steps:
+      - name: Check test, e2e, and scan results
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Unit/Pact tests failed or were cancelled"
+            exit 1
+          fi
+          if [ "${{ needs.e2e.result }}" != "success" ]; then
+            echo "E2E tests failed or were cancelled"
+            exit 1
+          fi
+          if [ "${{ needs.scan.result }}" != "success" ]; then
+            echo "Security scan failed or was cancelled"
+            exit 1
+          fi
+          echo "All tests passed successfully"

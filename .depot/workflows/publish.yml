@@ -1,0 +1,127 @@
+# Depot CI Migration
+# Source: .github/workflows/publish.yml
+#
+# Changes made:
+# - Changed GitHub runs-on labels to their Depot equivalents
+
+name: publish
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+\-beta'
+      - '[0-9]+.[0-9]+.[0-9]+\-beta\.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+\-alpha'
+      - '[0-9]+.[0-9]+.[0-9]+\-alpha\.[0-9]+'
+env:
+  PACT_VERSION: ${{ github.ref_name }}
+  PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
+  PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  GIT_TAG: ${{ github.ref_name }}
+jobs:
+  publish-pact:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: replicatedhq/action-install-pact@main
+      - name: Run pact tests
+        run: make test-pact
+      - name: Publish pact
+        run: |
+          pact-broker publish ./pacts \
+            --consumer-app-version ${{ github.ref_name }} \
+            --branch main \
+            --verbose
+      - name: Record release
+        run: |
+          pact-broker record-release \
+            --pacticipant replicated-sdk \
+            --version ${{ github.ref_name }} \
+            --environment production \
+            --verbose
+  get-tags:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    outputs:
+      previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Get tags
+        id: get-tags
+        uses: actions/github-script@v9
+        with:
+          script: |
+            try {
+              const {
+                data: [previous],
+              } = await github.rest.repos.listReleases({
+                ...context.repo,
+                per_page: 1,
+                page: 1,
+              });
+              core.setOutput("previous-tag", previous.tag_name.replace(/^v/, ''));
+            } catch (error) {
+              core.setFailed("Failed to get previous release tag: " + error.message);
+            }
+  generate-release-notes-pr:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    needs: [get-tags]
+    if: github.ref_type != 'branch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Generate Release Notes PR
+        env:
+          GIT_PREV_TAG: ${{ needs.get-tags.outputs.previous-tag }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          curl -H "Authorization: token $GH_PAT" \
+            -H 'Accept: application/json' \
+            -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
+            "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
+  staging:
+    runs-on:
+      labels: ReplicatedSDK
+    outputs:
+      digest: ${{ steps.dagger-publish.outputs.stdout }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64,amd64
+      - uses: dagger/dagger-for-github@v8.4.1
+        id: dagger-publish
+        env:
+          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+          OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+        with:
+          version: "0.19.9"
+          verb: call
+          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=true --version ${{ github.ref_name }}
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+  production:
+    runs-on:
+      labels: ReplicatedSDK
+    outputs:
+      digest: ${{ steps.dagger-publish.outputs.stdout }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64,amd64
+      - uses: dagger/dagger-for-github@v8.4.1
+        id: dagger-publish
+        env:
+          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+          OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: "0.19.9"
+          verb: call
+          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --production=true --version ${{ github.ref_name }} --github-token=env:GITHUB_TOKEN --slsa=true
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
