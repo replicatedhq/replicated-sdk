@@ -1,0 +1,53 @@
+# Depot CI Migration
+# Source: .github/workflows/daily-image-scans.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed GitHub runs-on labels to their Depot equivalents
+
+# Container Security Scans
+name: Image Security Scans
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs nightly at midnight (UTC)
+  workflow_dispatch: # Allows manual triggering through GitHub UI
+permissions: {} # Remove all permissions by default
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  # Get the latest release tag first
+  get-latest-tag:
+    name: Get Latest Release Tag
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
+    permissions:
+      contents: read # Needed to read releases
+    outputs:
+      tag_name: ${{ steps.get_release.outputs.tag_name }}
+    steps:
+      - name: Get latest release
+        id: get_release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const release = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            core.setOutput('tag_name', release.data.tag_name);
+  scan-replicated-sdk:
+    name: Scan Replicated SDK
+    needs: get-latest-tag # Wait for tag to be fetched
+    uses: ./.depot/workflows/scan-image-grype.yml
+    permissions:
+      contents: read # Needed to read workflow files
+      security-events: write # Needed to upload SARIF results
+      actions: read
+    with:
+      image: replicated/replicated-sdk:${{ needs.get-latest-tag.outputs.tag_name }}
+      severity-cutoff: negligible
+      fail-build: false
+      output-file: results.sarif
+      timeout-minutes: 30
+      retention-days: 90
+      category-prefix: container-scan-
