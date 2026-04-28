@@ -276,7 +276,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 	updates := store.GetStore().GetUpdates()
 
-	licenseData, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
+	licenseData, _, err := sdklicense.SyncLatestLicense(r.Context(), clientset, store.GetStore().GetNamespace(), license, store.GetStore().GetReplicatedAppEndpoint())
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get latest license"))
 		JSONCached(w, http.StatusOK, updates)

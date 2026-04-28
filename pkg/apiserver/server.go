@@ -16,8 +16,21 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
+	"github.com/replicatedhq/replicated-sdk/pkg/startupstate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	// bootstrapRetryInterval is how long the bootstrap retry loop waits
+	// between attempts when bootstrapCritical returns a transient error.
+	bootstrapRetryInterval = 10 * time.Second
+
+	// bootstrapCriticalDeadline bounds how long Start() will wait for
+	// bootstrapCritical before marking the pod Ready in the default
+	// resilient mode. Critical continues retrying in the background after
+	// this deadline; the deadline only governs when /healthz flips to 200.
+	bootstrapCriticalDeadline = 30 * time.Second
 )
 
 type APIServerParams struct {
@@ -42,22 +55,48 @@ type APIServerParams struct {
 	TlsCertSecretName     string
 	ReportAllImages       bool
 	ReadOnlyMode          bool
+
+	// RequireUpstreamOnStartup, when true, restores the pre-Phase-1
+	// behavior in which the pod does not become Ready until the full
+	// bootstrap (critical + background) succeeds, including a successful
+	// upstream license refresh and update fetch. Default false.
+	RequireUpstreamOnStartup bool
 }
 
 func Start(params APIServerParams) {
 	log.Println("Replicated version:", buildversion.Version())
 
-	backoffDuration := 10 * time.Second
-	bootstrapFn := func() error {
-		return bootstrap(params)
-	}
-	err := backoff.RetryNotify(bootstrapFn, backoff.NewConstantBackOff(backoffDuration), func(err error, d time.Duration) {
-		log.Printf("failed to bootstrap, retrying in %s: %v", d, err)
-	})
+	state := startupstate.New()
+	handlers.SetStartupState(state)
+
+	srv, err := buildServer(params)
 	if err != nil {
-		log.Fatalf("failed to bootstrap: %v", err)
+		logger.Error(err)
+		return
 	}
 
+	go func() {
+		if err := runBootstrap(params, state); err != nil {
+			log.Fatalf("%v", err)
+		}
+	}()
+
+	if params.TlsCertSecretName != "" {
+		log.Printf("Starting Replicated API on port %d with TLS...\n", 3000)
+		log.Fatal(srv.ListenAndServeTLS("", ""))
+	} else {
+		log.Printf("Starting Replicated API on port %d...\n", 3000)
+		log.Fatal(srv.ListenAndServe())
+	}
+}
+
+// buildServer constructs the HTTP server and registers all routes. It also
+// loads TLS material (from a kubernetes Secret) when configured.
+//
+// This is split out so the listener can be started in the foreground while
+// bootstrap runs concurrently, instead of bootstrap blocking listener
+// startup as it did pre-Phase-1.
+func buildServer(params APIServerParams) (*http.Server, error) {
 	r := mux.NewRouter()
 	r.Use(handlers.CorsMiddleware)
 
@@ -100,26 +139,143 @@ func Start(params APIServerParams) {
 		Addr:    ":3000",
 	}
 
-	// Configure TLS if certificate name is provided
 	if params.TlsCertSecretName != "" {
 		clientset, err := k8sutil.GetClientset()
 		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get clientset"))
-			return
+			return nil, errors.Wrap(err, "failed to get clientset")
 		}
-
 		tlsConfig, err := loadTLSConfig(clientset, params.Namespace, params.TlsCertSecretName)
 		if err != nil {
-			log.Fatalf("failed to load TLS config: %v", err)
+			return nil, errors.Wrap(err, "failed to load TLS config")
 		}
 		srv.TLSConfig = tlsConfig
-
-		log.Printf("Starting Replicated API on port %d with TLS...\n", 3000)
-		log.Fatal(srv.ListenAndServeTLS("", ""))
-	} else {
-		log.Printf("Starting Replicated API on port %d...\n", 3000)
-		log.Fatal(srv.ListenAndServe())
 	}
+
+	return srv, nil
+}
+
+// bootstrapDeps wires the orchestrator to its collaborators. The default
+// production deps are constructed by defaultBootstrapDeps; tests substitute
+// fakes by calling runBootstrapWithDeps directly.
+type bootstrapDeps struct {
+	critical      func(APIServerParams) error
+	background    func(APIServerParams) error
+	deadline      time.Duration
+	retryInterval time.Duration
+}
+
+func defaultBootstrapDeps() bootstrapDeps {
+	return bootstrapDeps{
+		critical:      bootstrapCritical,
+		background:    bootstrapBackground,
+		deadline:      bootstrapCriticalDeadline,
+		retryInterval: bootstrapRetryInterval,
+	}
+}
+
+// runBootstrap drives the bootstrap state machine. The behavior depends on
+// params.RequireUpstreamOnStartup:
+//
+//   - false (default): bootstrapCritical is retried with backoff; the pod
+//     is marked Ready as soon as critical succeeds OR the
+//     bootstrapCriticalDeadline elapses, whichever comes first. After the
+//     deadline, critical continues to retry; on eventual success the
+//     bootstrapBackground phase runs. bootstrapBackground errors are logged
+//     but never block readiness.
+//
+//   - true: the pre-Phase-1 contract is preserved. bootstrapCritical and
+//     bootstrapBackground are run in sequence with retry-with-backoff and
+//     the pod is not marked Ready until both succeed.
+//
+// A non-nil return value indicates the process should exit fatally; the
+// readiness state has already been transitioned to Failed when this happens
+// so a final scrape of /healthz reflects what occurred. Callers (typically
+// Start) map a non-nil error to log.Fatalf.
+//
+// runBootstrap blocks until the bootstrap pipeline has fully resolved (or
+// has resolved enough to know it must exit). It is intended to be invoked
+// from a goroutine while the HTTP listener runs in the foreground.
+func runBootstrap(params APIServerParams, state *startupstate.Tracker) error {
+	return runBootstrapWithDeps(params, state, defaultBootstrapDeps())
+}
+
+func runBootstrapWithDeps(params APIServerParams, state *startupstate.Tracker, deps bootstrapDeps) error {
+	if params.RequireUpstreamOnStartup {
+		return runBootstrapStrict(params, state, deps)
+	}
+	return runBootstrapResilient(params, state, deps)
+}
+
+func runBootstrapStrict(params APIServerParams, state *startupstate.Tracker, deps bootstrapDeps) error {
+	err := backoff.RetryNotify(
+		func() error {
+			if err := deps.critical(params); err != nil {
+				return err
+			}
+			return deps.background(params)
+		},
+		backoff.NewConstantBackOff(deps.retryInterval),
+		func(err error, d time.Duration) {
+			log.Printf("failed to bootstrap (requireUpstreamOnStartup=true), retrying in %s: %v", d, err)
+		},
+	)
+	if err != nil {
+		state.MarkFailed()
+		return errors.Wrap(err, "failed to bootstrap")
+	}
+	state.MarkReady()
+	return nil
+}
+
+func runBootstrapResilient(params APIServerParams, state *startupstate.Tracker, deps bootstrapDeps) error {
+	criticalDone := make(chan error, 1)
+	go func() {
+		criticalDone <- backoff.RetryNotify(
+			func() error { return deps.critical(params) },
+			backoff.NewConstantBackOff(deps.retryInterval),
+			func(err error, d time.Duration) {
+				log.Printf("failed to bootstrap critical, retrying in %s: %v", d, err)
+			},
+		)
+	}()
+
+	timer := time.NewTimer(deps.deadline)
+	defer timer.Stop()
+
+	select {
+	case criticalErr := <-criticalDone:
+		if criticalErr != nil {
+			state.MarkFailed()
+			return errors.Wrap(criticalErr, "failed to bootstrap critical")
+		}
+		state.MarkReady()
+
+	case <-timer.C:
+		// Critical hasn't completed in the readiness window. Mark Ready
+		// anyway — handlers will serve whatever the in-memory store has
+		// (likely empty until critical completes) but the pod won't be
+		// stuck in CrashLoopBackOff. Block here until critical does
+		// resolve so we can decide whether to advance to background.
+		logger.Warnf(
+			"sdk_ready_after_critical_timeout: bootstrapCritical did not complete within %s; marking pod Ready and continuing critical bootstrap in background",
+			deps.deadline,
+		)
+		state.MarkReady()
+		if criticalErr := <-criticalDone; criticalErr != nil {
+			state.MarkFailed()
+			return errors.Wrap(criticalErr, "failed to bootstrap critical (after readiness)")
+		}
+		// Symmetric counterpart to sdk_ready_after_critical_timeout —
+		// gives operators a closing log line when the deferred critical
+		// path eventually succeeds, instead of leaving them to infer it
+		// from the absence of further retry warnings.
+		logger.Infof("sdk_critical_succeeded_after_readiness: bootstrapCritical completed after the readiness deadline; advancing to background phase")
+	}
+
+	if err := deps.background(params); err != nil {
+		logger.Warnf("bootstrap background phase completed with errors (handlers continue serving from in-memory store): %v", err)
+	}
+	return nil
 }
 
 // loadTLSConfig loads TLS certificate and key from a Kubernetes secret

@@ -340,6 +340,18 @@ reportAllImages: false
 # See docs for feature availability in this mode.
 readOnlyMode: false
 
+# When true, the pod will not be marked Ready until the SDK has successfully
+# completed the full bootstrap, including a successful upstream license
+# refresh and update fetch against replicated.app. This is the pre-Phase-1
+# behavior and is provided as an opt-out for operators who require it.
+#
+# Default (false): the pod becomes Ready as soon as the local critical
+# bootstrap (license parse, signature verify, expiry check, store init)
+# succeeds — or after a 30s safety timeout, whichever comes first. Upstream
+# license refresh and update fetch run in the background and never block
+# readiness. Most users want this.
+requireUpstreamOnStartup: false
+
 # Proxy configuration for outbound connections
 # Configure HTTPS proxy settings for the Replicated SDK
 # These values can also be set via global.replicated.httpsProxy and global.replicated.noProxy

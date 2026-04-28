@@ -31,6 +31,11 @@ func APICmd() *cobra.Command {
 			namespace := v.GetString("namespace")
 			configFilePath := v.GetString("config-file")
 			integrationLicenseID := v.GetString("integration-license-id")
+			// require-upstream-on-startup auto-binds to
+			// REPLICATED_REQUIRE_UPSTREAM_ON_STARTUP via root.go's
+			// SetEnvPrefix("REPLICATED") + AutomaticEnv +
+			// SetEnvKeyReplacer("-", "_"); no explicit BindEnv needed.
+			requireUpstreamOnStartup := v.GetBool("require-upstream-on-startup")
 
 			if configFilePath == "" && integrationLicenseID == "" {
 				return errors.New("either config file or integration license id must be specified")
@@ -57,27 +62,28 @@ func APICmd() *cobra.Command {
 			}
 
 			params := apiserver.APIServerParams{
-				Context:               cmd.Context(),
-				LicenseBytes:          []byte(replicatedConfig.License),
-				IntegrationLicenseID:  integrationLicenseID,
-				LicenseFields:         replicatedConfig.LicenseFields,
-				AppName:               replicatedConfig.AppName,
-				ChannelID:             replicatedConfig.ChannelID,
-				ChannelName:           replicatedConfig.ChannelName,
-				ChannelSequence:       replicatedConfig.ChannelSequence,
-				ReleaseSequence:       replicatedConfig.ReleaseSequence,
-				ReleaseCreatedAt:      replicatedConfig.ReleaseCreatedAt,
-				ReleaseNotes:          replicatedConfig.ReleaseNotes,
-				VersionLabel:          replicatedConfig.VersionLabel,
-				ReplicatedAppEndpoint: replicatedConfig.ReplicatedAppEndpoint,
-				ReleaseImages:         replicatedConfig.ReleaseImages,
-				StatusInformers:       replicatedConfig.StatusInformers,
-				ReplicatedID:          replicatedConfig.ReplicatedID,
-				AppID:                 replicatedConfig.AppID,
-				TlsCertSecretName:     replicatedConfig.TlsCertSecretName,
-				ReportAllImages:       replicatedConfig.ReportAllImages,
-				ReadOnlyMode:          replicatedConfig.ReadOnlyMode,
-				Namespace:             namespace,
+				Context:                  cmd.Context(),
+				LicenseBytes:             []byte(replicatedConfig.License),
+				IntegrationLicenseID:     integrationLicenseID,
+				LicenseFields:            replicatedConfig.LicenseFields,
+				AppName:                  replicatedConfig.AppName,
+				ChannelID:                replicatedConfig.ChannelID,
+				ChannelName:              replicatedConfig.ChannelName,
+				ChannelSequence:          replicatedConfig.ChannelSequence,
+				ReleaseSequence:          replicatedConfig.ReleaseSequence,
+				ReleaseCreatedAt:         replicatedConfig.ReleaseCreatedAt,
+				ReleaseNotes:             replicatedConfig.ReleaseNotes,
+				VersionLabel:             replicatedConfig.VersionLabel,
+				ReplicatedAppEndpoint:    replicatedConfig.ReplicatedAppEndpoint,
+				ReleaseImages:            replicatedConfig.ReleaseImages,
+				StatusInformers:          replicatedConfig.StatusInformers,
+				ReplicatedID:             replicatedConfig.ReplicatedID,
+				AppID:                    replicatedConfig.AppID,
+				TlsCertSecretName:        replicatedConfig.TlsCertSecretName,
+				ReportAllImages:          replicatedConfig.ReportAllImages,
+				ReadOnlyMode:             replicatedConfig.ReadOnlyMode,
+				Namespace:                namespace,
+				RequireUpstreamOnStartup: requireUpstreamOnStartup,
 			}
 			apiserver.Start(params)
 

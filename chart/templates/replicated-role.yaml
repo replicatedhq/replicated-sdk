@@ -34,12 +34,18 @@ rules:
   - 'secrets'
   verbs:
   - 'update'
+  # The names below must match the SDK's runtime expectations. If you
+  # rename one, update the corresponding constant on the Go side:
+  #   replicated-license-cache → pkg/license/cache/cache.SecretName
+  #   replicated-meta-data     → pkg/meta/meta.ReplicatedMetadataSecretName
+  #   replicated-support-metadata → pkg/supportbundle.SupportBundleMetadataSecretName
   resourceNames:
   - {{ include "replicated.secretName" . }}
   - replicated-instance-report
   - replicated-custom-app-metrics-report
   - replicated-meta-data
   - replicated-support-metadata
+  - replicated-license-cache
 {{ end }}
 {{ if .Values.tlsCertSecretName }}
 - apiGroups:

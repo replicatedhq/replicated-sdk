@@ -1,6 +1,7 @@
 package heartbeat
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -52,8 +53,14 @@ func Start() error {
 	_, err := job.AddFunc(cronSpec, func() {
 		logger.Debugf("sending a heartbeat for app %s", appSlug)
 
+		clientset, err := k8sutil.GetClientset()
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get clientset"))
+			return
+		}
+
 		if !util.IsAirgap() {
-			licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+			licenseData, _, err := sdklicense.SyncLatestLicense(context.Background(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 			if err != nil {
 				logger.Error(errors.Wrap(err, "failed to get latest license"))
 			} else {
@@ -62,11 +69,6 @@ func Start() error {
 		}
 
 		go func() {
-			clientset, err := k8sutil.GetClientset()
-			if err != nil {
-				logger.Error(errors.Wrap(err, "failed to get clientset"))
-				return
-			}
 			if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
 				logger.Error(errors.Wrap(err, "failed to send instance data"))
 			}
