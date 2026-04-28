@@ -94,6 +94,7 @@ rules:
   - {{ include "replicated.secretName" . }}
   - replicated-meta-data
   - replicated-support-metadata
+  - replicated-license-cache
 # the legacy replicated-sdk configmap is required when the SDK secret is not found
 - apiGroups:
     - ''
