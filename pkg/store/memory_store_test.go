@@ -1,9 +1,13 @@
 package store
 
 import (
+	"sync"
 	"testing"
 
+	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
+	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -204,4 +208,67 @@ func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_DoesNotOvermatchSimil
 	got := s.GetRunningImages()
 	require.Nil(t, got["registry.example.com/team/myapp/mynginx:latest"])                                // not matched
 	require.ElementsMatch(t, []string{"sha256:ok"}, got["registry.example.com/team/myapp/nginx:latest"]) // matched
+}
+
+// TestInMemoryStore_ConcurrentReadWrite exercises the runtime-mutated
+// fields under simultaneous read and write pressure. Without the RWMutex
+// added in Phase 2, `go test -race` flags this as a data race.
+//
+// The scenario mirrors production: bootstrapBackground / heartbeat /
+// request handlers all calling Set* on license, license-fields, app
+// status, updates, and pod images while readers (request handlers,
+// reporters) call the corresponding Get*.
+func TestInMemoryStore_ConcurrentReadWrite(t *testing.T) {
+	s := &InMemoryStore{}
+
+	const goroutines = 32
+	const iterations = 50
+
+	license := licensewrapper.LicenseWrapper{V1: &kotsv1beta1.License{}}
+	fields := licensetypes.LicenseFields{
+		"f1": licensetypes.LicenseField{Title: "F1", Value: "v"},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 5)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				s.SetLicense(license)
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				_ = s.GetLicense()
+				_ = s.IsDevLicense()
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				s.SetLicenseFields(fields)
+				_ = s.GetLicenseFields()
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				s.SetAppStatus(appstatetypes.AppStatus{})
+				_ = s.GetAppStatus()
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				s.SetPodImages("ns", "pod", []appstatetypes.ImageInfo{{Name: "nginx", SHA: "sha256:x"}})
+				_ = s.GetRunningImages()
+				s.DeletePodImages("ns", "pod")
+			}
+		}()
+	}
+
+	wg.Wait()
 }

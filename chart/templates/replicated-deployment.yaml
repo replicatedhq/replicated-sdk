@@ -193,6 +193,10 @@ spec:
         - name: REPLICATED_HA_ENABLED
           value: "true"
         {{- end }}
+        {{- if .Values.requireUpstreamOnStartup }}
+        - name: REPLICATED_REQUIRE_UPSTREAM_ON_STARTUP
+          value: "true"
+        {{- end }}
         {{- if (.Values.integration).licenseID }}
         - name: REPLICATED_INTEGRATION_LICENSE_ID
           valueFrom:

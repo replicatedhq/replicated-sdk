@@ -9,12 +9,19 @@ import (
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	kotsv1beta2 "github.com/replicatedhq/kotskinds/apis/kots/v1beta2"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
+	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 )
+
+// LicenseCacheHeader signals to clients that a license response was
+// served from the local cache rather than a fresh upstream call. The
+// value `stale` is set whenever the request-time SyncLatest* call
+// returned SourceCache.
+const LicenseCacheHeader = "X-Replicated-License-Cache"
 
 type LicenseInfo struct {
 	LicenseID                      string      `json:"licenseID"`
@@ -37,11 +44,26 @@ type LicenseInfo struct {
 	Entitlements                   interface{} `json:"entitlements,omitempty"`
 }
 
+// markStaleIfCached sets the cache-stale header when the source indicates
+// the response came from the local cache rather than upstream.
+func markStaleIfCached(w http.ResponseWriter, source sdklicense.LicenseSource) {
+	if source == sdklicense.SourceCache {
+		w.Header().Set(LicenseCacheHeader, "stale")
+	}
+}
+
 func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 	wrapper := store.GetStore().GetLicense()
 
 	if !util.IsAirgap() {
-		l, err := sdklicense.GetLatestLicense(wrapper, store.GetStore().GetReplicatedAppEndpoint())
+		clientset, err := k8sutil.GetClientset()
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get clientset"))
+			JSONCached(w, http.StatusOK, licenseInfoFromWrapper(wrapper))
+			return
+		}
+
+		l, source, err := sdklicense.SyncLatestLicense(r.Context(), clientset, store.GetStore().GetNamespace(), wrapper, store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 			JSONCached(w, http.StatusOK, licenseInfoFromWrapper(wrapper))
@@ -50,6 +72,7 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 
 		wrapper = l.License
 		store.GetStore().SetLicense(wrapper)
+		markStaleIfCached(w, source)
 	}
 
 	JSON(w, http.StatusOK, licenseInfoFromWrapper(wrapper))
@@ -59,7 +82,14 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 	licenseFields := store.GetStore().GetLicenseFields()
 
 	if !util.IsAirgap() {
-		fields, err := sdklicense.GetLatestLicenseFields(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+		clientset, err := k8sutil.GetClientset()
+		if err != nil {
+			logger.Error(errors.Wrap(err, "failed to get clientset"))
+			JSONCached(w, http.StatusOK, licenseFields)
+			return
+		}
+
+		fields, source, err := sdklicense.SyncLatestLicenseFields(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
 			JSONCached(w, http.StatusOK, licenseFields)
@@ -68,11 +98,19 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 
 		licenseFields = fields
 		store.GetStore().SetLicenseFields(licenseFields)
+		markStaleIfCached(w, source)
 	}
 
 	JSON(w, http.StatusOK, licenseFields)
 }
 
+// GetLicenseField fetches a single license field. Unlike GetLicenseFields
+// this handler does NOT go through a cache wrapper for the singular call:
+// the in-memory store is repopulated from cache during bootstrap and on
+// every SyncLatestLicenseFields hit, so the existing fall-through to
+// licenseFields[fieldName] on upstream failure already serves the cached
+// value transparently. Wrapping the singular call would duplicate that
+// fallback path without adding cache coverage.
 func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 	fieldName := mux.Vars(r)["fieldName"]
 
@@ -88,6 +126,7 @@ func GetLicenseField(w http.ResponseWriter, r *http.Request) {
 			if lf, ok := licenseFields[fieldName]; !ok {
 				JSONCached(w, http.StatusNotFound, fmt.Sprintf("license field %q not found", fieldName))
 			} else {
+				w.Header().Set(LicenseCacheHeader, "stale")
 				JSONCached(w, http.StatusOK, lf)
 			}
 			return
