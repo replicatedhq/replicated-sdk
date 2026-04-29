@@ -63,7 +63,7 @@ func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		l, source, err := sdklicense.SyncLatestLicense(r.Context(), clientset, store.GetStore().GetNamespace(), wrapper, store.GetStore().GetReplicatedAppEndpoint())
+		l, source, err := sdklicense.SyncLatestLicense(r.Context(), clientset, store.GetStore().GetNamespace(), wrapper, store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetReadOnlyMode())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
 			JSONCached(w, http.StatusOK, licenseInfoFromWrapper(wrapper))
@@ -89,7 +89,7 @@ func GetLicenseFields(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fields, source, err := sdklicense.SyncLatestLicenseFields(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+		fields, source, err := sdklicense.SyncLatestLicenseFields(r.Context(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetReadOnlyMode())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license fields"))
 			JSONCached(w, http.StatusOK, licenseFields)

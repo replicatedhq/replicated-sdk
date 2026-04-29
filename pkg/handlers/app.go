@@ -286,7 +286,7 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	// seeing /api/v1/app/updates can't distinguish a genuinely
 	// up-to-date "no updates available" from a cache-fallback "we
 	// can't actually tell, here's what we knew before."
-	licenseData, source, err := sdklicense.SyncLatestLicense(r.Context(), clientset, store.GetStore().GetNamespace(), license, store.GetStore().GetReplicatedAppEndpoint())
+	licenseData, source, err := sdklicense.SyncLatestLicense(r.Context(), clientset, store.GetStore().GetNamespace(), license, store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetReadOnlyMode())
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get latest license"))
 		JSONCached(w, http.StatusOK, updates)

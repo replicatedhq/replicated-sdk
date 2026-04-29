@@ -101,7 +101,7 @@ func TestSyncLicenseByID_UpstreamSuccess_WritesThroughToCache(t *testing.T) {
 	f := newTestFixture(t)
 	srv := licenseServer(t)
 
-	data, source, err := SyncLicenseByID(context.Background(), f.clientset, syncTestNamespace, "license-id", srv.URL)
+	data, source, err := SyncLicenseByID(context.Background(), f.clientset, syncTestNamespace, "license-id", srv.URL, false)
 	require.NoError(t, err)
 	require.Equal(t, SourceUpstream, source)
 	require.NotEmpty(t, data.LicenseBytes)
@@ -115,9 +115,9 @@ func TestSyncLicenseByID_UpstreamFailure_CacheHit_ReturnsCached(t *testing.T) {
 	f := newTestFixture(t)
 	srv := brokenServer(t)
 
-	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML)))
+	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML), false))
 
-	data, source, err := SyncLicenseByID(context.Background(), f.clientset, syncTestNamespace, "license-id", srv.URL)
+	data, source, err := SyncLicenseByID(context.Background(), f.clientset, syncTestNamespace, "license-id", srv.URL, false)
 	require.NoError(t, err)
 	require.Equal(t, SourceCache, source)
 	require.Equal(t, []byte(validLicenseYAML), data.LicenseBytes)
@@ -127,7 +127,7 @@ func TestSyncLicenseByID_UpstreamFailure_CacheMiss_ReturnsWrappedError(t *testin
 	f := newTestFixture(t)
 	srv := brokenServer(t)
 
-	_, source, err := SyncLicenseByID(context.Background(), f.clientset, syncTestNamespace, "license-id", srv.URL)
+	_, source, err := SyncLicenseByID(context.Background(), f.clientset, syncTestNamespace, "license-id", srv.URL, false)
 	require.Error(t, err)
 	require.Equal(t, SourceUpstream, source, "no fallback available, source must reflect the failed attempt")
 	require.Contains(t, err.Error(), "license cache miss")
@@ -142,7 +142,7 @@ func TestSyncLatestLicense_UpstreamSuccess_WritesThroughToCache(t *testing.T) {
 	wrapper, err := LoadLicenseFromBytes([]byte(validLicenseYAML))
 	require.NoError(t, err)
 
-	data, source, err := SyncLatestLicense(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL)
+	data, source, err := SyncLatestLicense(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL, false)
 	require.NoError(t, err)
 	require.Equal(t, SourceUpstream, source)
 
@@ -158,9 +158,9 @@ func TestSyncLatestLicense_UpstreamFailure_CacheHit_ReturnsCached(t *testing.T) 
 	wrapper, err := LoadLicenseFromBytes([]byte(validLicenseYAML))
 	require.NoError(t, err)
 
-	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML)))
+	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML), false))
 
-	data, source, err := SyncLatestLicense(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL)
+	data, source, err := SyncLatestLicense(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL, false)
 	require.NoError(t, err)
 	require.Equal(t, SourceCache, source)
 	require.Equal(t, []byte(validLicenseYAML), data.LicenseBytes)
@@ -173,7 +173,7 @@ func TestSyncLatestLicense_UpstreamFailure_CacheMiss_ReturnsWrappedError(t *test
 	wrapper, err := LoadLicenseFromBytes([]byte(validLicenseYAML))
 	require.NoError(t, err)
 
-	_, source, err := SyncLatestLicense(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL)
+	_, source, err := SyncLatestLicense(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL, false)
 	require.Error(t, err)
 	require.Equal(t, SourceUpstream, source)
 	require.Contains(t, err.Error(), "license cache miss")
@@ -194,9 +194,9 @@ func TestSyncLatestLicenseFields_UpstreamSuccess_WritesThroughToCache(t *testing
 	// In production a license is always cached before fields are
 	// (bootstrapCritical → bootstrapBackground ordering), so seed that
 	// state before exercising the fields write-through.
-	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML)))
+	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML), false))
 
-	got, source, err := SyncLatestLicenseFields(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL)
+	got, source, err := SyncLatestLicenseFields(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL, false)
 	require.NoError(t, err)
 	require.Equal(t, SourceUpstream, source)
 	require.Equal(t, "v1", got["my_field"].Value)
@@ -217,10 +217,10 @@ func TestSyncLatestLicenseFields_UpstreamFailure_CacheHit_ReturnsCached(t *testi
 		"my_field": types.LicenseField{Title: "Cached", Value: "stale"},
 	}
 	// Seed the cache with both a license (so Read returns success) and fields.
-	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML)))
-	require.NoError(t, cache.WriteLicenseFields(context.Background(), f.clientset, syncTestNamespace, cached))
+	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML), false))
+	require.NoError(t, cache.WriteLicenseFields(context.Background(), f.clientset, syncTestNamespace, cached, false))
 
-	got, source, err := SyncLatestLicenseFields(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL)
+	got, source, err := SyncLatestLicenseFields(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL, false)
 	require.NoError(t, err)
 	require.Equal(t, SourceCache, source)
 	require.Equal(t, "stale", got["my_field"].Value)
@@ -234,9 +234,9 @@ func TestSyncLatestLicenseFields_UpstreamFailure_NoCachedFields_ReturnsWrappedEr
 	require.NoError(t, err)
 
 	// License cached but fields never written — fields fallback must miss.
-	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML)))
+	require.NoError(t, cache.WriteLicense(context.Background(), f.clientset, syncTestNamespace, []byte(validLicenseYAML), false))
 
-	_, source, err := SyncLatestLicenseFields(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL)
+	_, source, err := SyncLatestLicenseFields(context.Background(), f.clientset, syncTestNamespace, wrapper, srv.URL, false)
 	require.Error(t, err)
 	require.Equal(t, SourceUpstream, source)
 	require.Contains(t, err.Error(), "no cached license fields available")

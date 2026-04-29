@@ -1,6 +1,7 @@
 package store
 
 import (
+	"sync"
 	"sync/atomic"
 
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
@@ -25,6 +26,22 @@ import (
 // requires a pointer type. SetStore(nil) is preserved as "clear the
 // store" (used by test cleanup) by storing a nil *Store.
 var storePtr atomic.Pointer[Store]
+
+// fallbackStore is the single empty InMemoryStore that GetStore returns
+// when no real store has been installed yet. Lazily created on first
+// access so unused code paths (especially tests that never call any
+// store function) don't pay the allocation. We deliberately reuse the
+// same instance across all "store not yet installed" GetStore calls so
+// that a sequence like `store.GetStore().SetX(v); store.GetStore().GetX()`
+// observes its own write rather than seeing a fresh zero-value store on
+// the second call. This window is observable in the resilient-mode
+// timeout path, where the pod is marked Ready (and accepts traffic)
+// before bootstrapCritical has had a chance to install the real store
+// via InitInMemory.
+var (
+	fallbackStoreOnce sync.Once
+	fallbackStore     *InMemoryStore
+)
 
 var _ Store = (*InMemoryStore)(nil)
 
@@ -72,17 +89,25 @@ func SetStore(s Store) {
 	storePtr.Store(&s)
 }
 
-// GetStore returns the currently installed store. If no store has been
-// installed yet (or after SetStore(nil)), it returns a fresh empty
-// InMemoryStore so handlers always have a usable, non-panicking target.
-// Note that the empty-store fallback is per-call and not persisted: the
-// pod is briefly observable in this state if the listener accepts a
-// request before bootstrapCritical's InitInMemory completes, which is
-// the same window /healthz reports as Starting → 503.
+// GetStore returns the currently installed store, or a single shared
+// empty fallback InMemoryStore when none has been installed yet. The
+// fallback is process-wide (allocated lazily on first need) rather than
+// per-call so that mutations performed against it persist across
+// consecutive GetStore reads — handlers that do, e.g.,
+// `s := GetStore(); s.SetX(v); s2 := GetStore(); _ = s2.GetX()` must
+// observe their own writes even before InitInMemory installs the real
+// store. Once SetStore is called with a real store, GetStore returns
+// that real store and the fallback becomes orphaned; any writes that
+// landed on the fallback during the bootstrap window are lost. That is
+// an accepted trade-off: the alternative (blocking handlers behind
+// bootstrap) is exactly the CrashLoopBackOff regression Phase 1 set
+// out to fix.
 func GetStore() Store {
-	p := storePtr.Load()
-	if p == nil {
-		return &InMemoryStore{}
+	if p := storePtr.Load(); p != nil {
+		return *p
 	}
-	return *p
+	fallbackStoreOnce.Do(func() {
+		fallbackStore = &InMemoryStore{}
+	})
+	return fallbackStore
 }

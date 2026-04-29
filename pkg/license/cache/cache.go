@@ -12,8 +12,11 @@
 //
 // Writes serialize through a package-level mutex (matching pkg/meta and
 // pkg/supportbundle). Reads do not lock; concurrent reads of a Secret are
-// safe. Read-only mode (store.GetReadOnlyMode()) suppresses writes so the
-// SDK never attempts to create a Secret it doesn't have RBAC for.
+// safe. Read-only mode is honored via an explicit readOnlyMode argument
+// on the public Write* functions rather than by consulting a package-
+// level store, because some callers (notably bootstrapCritical) write to
+// the cache before the runtime store has been initialized — taking the
+// flag as a parameter eliminates that ordering hazard.
 package cache
 
 import (
@@ -25,7 +28,6 @@ import (
 	"github.com/pkg/errors"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
-	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	kuberneteserrors "k8s.io/apimachinery/pkg/api/errors"
@@ -108,35 +110,43 @@ func Read(ctx context.Context, clientset kubernetes.Interface, namespace string)
 // WriteLicense upserts the license bytes and refreshes the last-fetched
 // timestamp. License-fields, if previously cached, are preserved.
 //
-// In read-only mode this is a no-op so the SDK never attempts a write it
-// doesn't have RBAC for.
-func WriteLicense(ctx context.Context, clientset kubernetes.Interface, namespace string, licenseBytes []byte) error {
+// readOnlyMode must be passed in by the caller rather than read from the
+// package-level store: bootstrapCritical's loadAndVerifyLicense calls
+// this through SyncLicenseByID before store.InitInMemory has installed
+// the runtime config, so an empty fallback InMemoryStore would report
+// readOnlyMode=false and we'd attempt a write that an operator
+// explicitly opted out of. Passing the bool from the call site (params
+// at bootstrap, store getter elsewhere) eliminates that ordering trap.
+func WriteLicense(ctx context.Context, clientset kubernetes.Interface, namespace string, licenseBytes []byte, readOnlyMode bool) error {
 	if len(licenseBytes) == 0 {
 		return errors.New("refusing to cache empty license bytes")
 	}
 	return write(ctx, clientset, namespace, map[string][]byte{
 		KeyLicense: licenseBytes,
-	})
+	}, readOnlyMode)
 }
 
 // WriteLicenseFields upserts the license-fields map and refreshes the
 // last-fetched timestamp. The license document, if previously cached, is
 // preserved.
-func WriteLicenseFields(ctx context.Context, clientset kubernetes.Interface, namespace string, fields licensetypes.LicenseFields) error {
+//
+// See WriteLicense for why readOnlyMode is an explicit parameter rather
+// than read from the package-level store.
+func WriteLicenseFields(ctx context.Context, clientset kubernetes.Interface, namespace string, fields licensetypes.LicenseFields, readOnlyMode bool) error {
 	encoded, err := json.Marshal(fields)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal license fields")
 	}
 	return write(ctx, clientset, namespace, map[string][]byte{
 		KeyLicenseFields: encoded,
-	})
+	}, readOnlyMode)
 }
 
 // write performs a partial-update upsert: existing keys not in `data` are
 // preserved. A `last-fetched` timestamp is always refreshed alongside any
 // successful update.
-func write(ctx context.Context, clientset kubernetes.Interface, namespace string, data map[string][]byte) error {
-	if store.GetStore().GetReadOnlyMode() {
+func write(ctx context.Context, clientset kubernetes.Interface, namespace string, data map[string][]byte, readOnlyMode bool) error {
+	if readOnlyMode {
 		logger.Debugf("license cache: skipping write in read-only mode")
 		return nil
 	}

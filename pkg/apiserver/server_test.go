@@ -72,16 +72,49 @@ func TestRunBootstrapResilient_CriticalPermanentError_FailsFast(t *testing.T) {
 	require.False(t, bgRan.Load(), "background must not run after a permanent critical failure")
 }
 
-func TestRunBootstrapResilient_BackgroundFailureDoesNotAffectReady(t *testing.T) {
+func TestRunBootstrapResilient_BackgroundPermanentFailureDoesNotAffectReady(t *testing.T) {
 	state := startupstate.New()
 
 	deps := fastDeps(
 		func(APIServerParams) error { return nil },
-		func(APIServerParams) error { return errors.New("upstream sync failed") },
+		func(APIServerParams) error {
+			// Permanent so the resilient retry loop gives up quickly
+			// — otherwise this test would block forever, since the
+			// loop must keep retrying transient background errors
+			// (heartbeat startup, upstream sync) for the pod's
+			// entire lifetime.
+			return backoff.Permanent(errors.New("upstream sync permanently failed"))
+		},
 	)
 
 	require.NoError(t, runBootstrapResilient(APIServerParams{}, state, deps), "background failures should not bubble up")
 	require.True(t, state.IsReady(), "expected state Ready despite background failure")
+}
+
+// TestRunBootstrapResilient_BackgroundRetriesUntilSuccess verifies that
+// resilient mode keeps retrying bootstrapBackground after transient
+// failures rather than swallowing them. Without this retry, a momentary
+// hiccup on the first background attempt (e.g. heartbeat cron init,
+// upstream license sync) would silently disable the heartbeat job and
+// every subsequent license refresh for the entire pod lifetime.
+func TestRunBootstrapResilient_BackgroundRetriesUntilSuccess(t *testing.T) {
+	state := startupstate.New()
+	var bgCalls atomic.Int32
+
+	deps := fastDeps(
+		func(APIServerParams) error { return nil },
+		func(APIServerParams) error {
+			n := bgCalls.Add(1)
+			if n < 3 {
+				return errors.New("transient")
+			}
+			return nil
+		},
+	)
+
+	require.NoError(t, runBootstrapResilient(APIServerParams{}, state, deps))
+	require.True(t, state.IsReady())
+	require.GreaterOrEqual(t, bgCalls.Load(), int32(3), "resilient mode must retry transient background failures")
 }
 
 func TestRunBootstrapStrict_BlocksReadyUntilFullBootstrapSucceeds(t *testing.T) {

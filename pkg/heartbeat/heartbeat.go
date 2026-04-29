@@ -60,7 +60,7 @@ func Start() error {
 		}
 
 		if !util.IsAirgap() {
-			licenseData, _, err := sdklicense.SyncLatestLicense(context.Background(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
+			licenseData, _, err := sdklicense.SyncLatestLicense(context.Background(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetReadOnlyMode())
 			if err != nil {
 				logger.Error(errors.Wrap(err, "failed to get latest license"))
 			} else {

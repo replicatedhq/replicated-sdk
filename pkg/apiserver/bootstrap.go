@@ -172,7 +172,7 @@ func loadAndVerifyLicense(params APIServerParams, clientset kubernetes.Interface
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		data, _, err := sdklicense.SyncLicenseByID(ctx, clientset, params.Namespace, params.IntegrationLicenseID, params.ReplicatedAppEndpoint)
+		data, _, err := sdklicense.SyncLicenseByID(ctx, clientset, params.Namespace, params.IntegrationLicenseID, params.ReplicatedAppEndpoint, params.ReadOnlyMode)
 		if err != nil {
 			return licensewrapper.LicenseWrapper{}, backoff.Permanent(errors.Wrap(err, "integration mode requires either reachable upstream or a previously-cached license; neither was available"))
 		}
@@ -238,7 +238,7 @@ func bootstrapBackground(params APIServerParams) error {
 	var errs []error
 
 	if !util.IsAirgap() {
-		licenseData, _, err := sdklicense.SyncLatestLicense(ctx, clientset, params.Namespace, store.GetStore().GetLicense(), params.ReplicatedAppEndpoint)
+		licenseData, _, err := sdklicense.SyncLatestLicense(ctx, clientset, params.Namespace, store.GetStore().GetLicense(), params.ReplicatedAppEndpoint, params.ReadOnlyMode)
 		if err != nil {
 			errs = append(errs, errors.Wrap(err, "failed to get latest license"))
 		} else {

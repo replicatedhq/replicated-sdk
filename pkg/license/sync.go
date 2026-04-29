@@ -45,19 +45,23 @@ func warnStale(upstreamErr error) {
 // SourceCache. If the cache is missing or unusable, the original upstream
 // error is returned wrapped (so callers can inspect it).
 //
-// This wrapper is the entry point for the integration-mode boot path.
-// Production-mode boots use the chart-embedded license bytes and never
-// reach here.
+// readOnlyMode is propagated explicitly because this is the integration-
+// mode boot entry point — it runs before store.InitInMemory installs the
+// runtime config, so reading the read-only flag from the package-level
+// store would observe the empty fallback's zero-value (false) instead of
+// the operator's actual setting. Production-mode boots use the chart-
+// embedded license bytes and never reach here.
 func SyncLicenseByID(
 	ctx context.Context,
 	clientset kubernetes.Interface,
 	namespace string,
 	licenseID string,
 	endpoint string,
+	readOnlyMode bool,
 ) (*LicenseData, LicenseSource, error) {
 	data, upstreamErr := GetLicenseByID(licenseID, endpoint)
 	if upstreamErr == nil {
-		if writeErr := cache.WriteLicense(ctx, clientset, namespace, data.LicenseBytes); writeErr != nil {
+		if writeErr := cache.WriteLicense(ctx, clientset, namespace, data.LicenseBytes, readOnlyMode); writeErr != nil {
 			logger.Infof("license cache: write-through after GetLicenseByID failed, continuing: %v", writeErr)
 		}
 		return data, SourceUpstream, nil
@@ -87,16 +91,20 @@ func SyncLicenseByID(
 // The returned LicenseData.LicenseBytes is what gets persisted on the
 // success path. Cache hits return the bytes that were written by the most
 // recent successful upstream call.
+//
+// readOnlyMode is propagated explicitly so the cache layer never has to
+// consult a package-level store; see SyncLicenseByID for the rationale.
 func SyncLatestLicense(
 	ctx context.Context,
 	clientset kubernetes.Interface,
 	namespace string,
 	wrapper licensewrapper.LicenseWrapper,
 	endpoint string,
+	readOnlyMode bool,
 ) (*LicenseData, LicenseSource, error) {
 	data, upstreamErr := GetLatestLicense(wrapper, endpoint)
 	if upstreamErr == nil {
-		if writeErr := cache.WriteLicense(ctx, clientset, namespace, data.LicenseBytes); writeErr != nil {
+		if writeErr := cache.WriteLicense(ctx, clientset, namespace, data.LicenseBytes, readOnlyMode); writeErr != nil {
 			logger.Infof("license cache: write-through after GetLatestLicense failed, continuing: %v", writeErr)
 		}
 		return data, SourceUpstream, nil
@@ -129,16 +137,20 @@ func SyncLatestLicense(
 // failure, and the in-memory store is repopulated from the cache during
 // bootstrap. Wrapping it would duplicate that fallback path without
 // adding value.
+//
+// readOnlyMode is propagated explicitly so the cache layer never has to
+// consult a package-level store; see SyncLicenseByID for the rationale.
 func SyncLatestLicenseFields(
 	ctx context.Context,
 	clientset kubernetes.Interface,
 	namespace string,
 	wrapper licensewrapper.LicenseWrapper,
 	endpoint string,
+	readOnlyMode bool,
 ) (types.LicenseFields, LicenseSource, error) {
 	fields, upstreamErr := GetLatestLicenseFields(wrapper, endpoint)
 	if upstreamErr == nil {
-		if writeErr := cache.WriteLicenseFields(ctx, clientset, namespace, fields); writeErr != nil {
+		if writeErr := cache.WriteLicenseFields(ctx, clientset, namespace, fields, readOnlyMode); writeErr != nil {
 			logger.Infof("license cache: write-through after GetLatestLicenseFields failed, continuing: %v", writeErr)
 		}
 		return fields, SourceUpstream, nil

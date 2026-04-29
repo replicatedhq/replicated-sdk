@@ -34,11 +34,6 @@ func withDeployment(t *testing.T) kubernetes.Interface {
 	return clientset
 }
 
-func resetStore(t *testing.T) {
-	t.Helper()
-	store.SetStore(nil)
-}
-
 func TestRead_NoSecret_ReturnsNotFound(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 
@@ -59,13 +54,10 @@ func TestRead_SecretWithoutLicenseKey_ReturnsNotFound(t *testing.T) {
 }
 
 func TestWriteLicense_CreatesSecret(t *testing.T) {
-	store.InitInMemory(store.InitInMemoryStoreOptions{Namespace: testNamespace})
-	t.Cleanup(func() { resetStore(t) })
-
 	clientset := withDeployment(t)
 	licenseBytes := []byte("license-yaml-document")
 
-	require.NoError(t, WriteLicense(context.Background(), clientset, testNamespace, licenseBytes))
+	require.NoError(t, WriteLicense(context.Background(), clientset, testNamespace, licenseBytes, false))
 
 	secret, err := clientset.CoreV1().Secrets(testNamespace).Get(context.Background(), SecretName, metav1.GetOptions{})
 	require.NoError(t, err)
@@ -77,14 +69,11 @@ func TestWriteLicense_CreatesSecret(t *testing.T) {
 }
 
 func TestWriteLicenseFields_PreservesLicense(t *testing.T) {
-	store.InitInMemory(store.InitInMemoryStoreOptions{Namespace: testNamespace})
-	t.Cleanup(func() { resetStore(t) })
-
 	clientset := withDeployment(t)
 	ctx := context.Background()
 
 	licenseBytes := []byte("license-yaml-document")
-	require.NoError(t, WriteLicense(ctx, clientset, testNamespace, licenseBytes))
+	require.NoError(t, WriteLicense(ctx, clientset, testNamespace, licenseBytes, false))
 
 	fields := licensetypes.LicenseFields{
 		"my_field": licensetypes.LicenseField{
@@ -92,7 +81,7 @@ func TestWriteLicenseFields_PreservesLicense(t *testing.T) {
 			Value: "v1",
 		},
 	}
-	require.NoError(t, WriteLicenseFields(ctx, clientset, testNamespace, fields))
+	require.NoError(t, WriteLicenseFields(ctx, clientset, testNamespace, fields, false))
 
 	cached, err := Read(ctx, clientset, testNamespace)
 	require.NoError(t, err)
@@ -101,19 +90,16 @@ func TestWriteLicenseFields_PreservesLicense(t *testing.T) {
 }
 
 func TestWrite_RefreshesLastFetched(t *testing.T) {
-	store.InitInMemory(store.InitInMemoryStoreOptions{Namespace: testNamespace})
-	t.Cleanup(func() { resetStore(t) })
-
 	clientset := withDeployment(t)
 	ctx := context.Background()
 
-	require.NoError(t, WriteLicense(ctx, clientset, testNamespace, []byte("v1")))
+	require.NoError(t, WriteLicense(ctx, clientset, testNamespace, []byte("v1"), false))
 	cached1, err := Read(ctx, clientset, testNamespace)
 	require.NoError(t, err)
 
 	time.Sleep(1100 * time.Millisecond) // RFC3339 has 1s resolution.
 
-	require.NoError(t, WriteLicense(ctx, clientset, testNamespace, []byte("v2")))
+	require.NoError(t, WriteLicense(ctx, clientset, testNamespace, []byte("v2"), false))
 	cached2, err := Read(ctx, clientset, testNamespace)
 	require.NoError(t, err)
 
@@ -121,24 +107,35 @@ func TestWrite_RefreshesLastFetched(t *testing.T) {
 }
 
 func TestWrite_ReadOnlyMode_NoSecretCreated(t *testing.T) {
-	store.InitInMemory(store.InitInMemoryStoreOptions{Namespace: testNamespace, ReadOnlyMode: true})
-	t.Cleanup(func() { resetStore(t) })
-
 	clientset := fake.NewSimpleClientset()
 
-	require.NoError(t, WriteLicense(context.Background(), clientset, testNamespace, []byte("license")))
+	require.NoError(t, WriteLicense(context.Background(), clientset, testNamespace, []byte("license"), true))
 
 	_, err := clientset.CoreV1().Secrets(testNamespace).Get(context.Background(), SecretName, metav1.GetOptions{})
 	require.True(t, kuberneteserrors.IsNotFound(err), "no secret should be created in read-only mode")
 }
 
-func TestWriteLicense_RejectsEmpty(t *testing.T) {
-	store.InitInMemory(store.InitInMemoryStoreOptions{Namespace: testNamespace})
-	t.Cleanup(func() { resetStore(t) })
+// TestWrite_ReadOnlyMode_BeforeStoreInit verifies that the read-only
+// gate works during early bootstrap, before store.InitInMemory has run.
+// Pre-fix this would have observed the empty fallback InMemoryStore's
+// readOnlyMode=false default, attempted the write, and only failed via
+// RBAC (with a confusing log line). Now the read-only flag is passed
+// explicitly so no global-state observation is needed.
+func TestWrite_ReadOnlyMode_BeforeStoreInit(t *testing.T) {
+	store.SetStore(nil) // explicitly: no store installed.
+	clientset := fake.NewSimpleClientset()
 
+	require.NoError(t, WriteLicense(context.Background(), clientset, testNamespace, []byte("license"), true))
+	require.NoError(t, WriteLicenseFields(context.Background(), clientset, testNamespace, licensetypes.LicenseFields{}, true))
+
+	_, err := clientset.CoreV1().Secrets(testNamespace).Get(context.Background(), SecretName, metav1.GetOptions{})
+	require.True(t, kuberneteserrors.IsNotFound(err), "no secret should be created when caller declares read-only mode, regardless of store init state")
+}
+
+func TestWriteLicense_RejectsEmpty(t *testing.T) {
 	clientset := withDeployment(t)
 
-	require.Error(t, WriteLicense(context.Background(), clientset, testNamespace, nil),
+	require.Error(t, WriteLicense(context.Background(), clientset, testNamespace, nil, false),
 		"writing empty license bytes must be rejected to avoid corrupting the cache")
 }
 

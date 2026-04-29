@@ -307,8 +307,25 @@ func runBootstrapResilient(params APIServerParams, state *startupstate.Tracker, 
 		logger.Infof("sdk_critical_succeeded_after_readiness: bootstrapCritical completed after the readiness deadline; advancing to background phase")
 	}
 
-	if err := deps.background(params); err != nil {
-		logger.Warnf("bootstrap background phase completed with errors (handlers continue serving from in-memory store): %v", err)
+	// Retry bootstrapBackground until it succeeds or returns a
+	// permanent error. Without this loop, a transient failure on the
+	// first attempt (e.g. heartbeat.Start hitting a momentary cron
+	// init issue, or upstream being briefly unreachable while the
+	// pod was already marked Ready via the timeout path) would leave
+	// the heartbeat cron job and any subsequent license refreshes
+	// disabled for the entire pod lifetime. Strict mode already
+	// retries; resilient mode must too — the only difference between
+	// the two modes is whether retry blocks readiness, not whether
+	// it happens at all. Errors are still logged at Warn level on
+	// each attempt and never block the pod from staying Ready.
+	if err := backoff.RetryNotify(
+		func() error { return deps.background(params) },
+		backoff.NewConstantBackOff(deps.retryInterval),
+		func(err error, d time.Duration) {
+			logger.Warnf("bootstrap background phase failed, retrying in %s (handlers continue serving from in-memory store): %v", d, err)
+		},
+	); err != nil {
+		logger.Warnf("bootstrap background phase gave up with permanent error (handlers continue serving from in-memory store): %v", err)
 	}
 	return nil
 }
