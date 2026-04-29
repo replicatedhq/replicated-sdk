@@ -1540,15 +1540,14 @@ func upgradeChartAndRestart(
 	return nil
 }
 
-// Future: dagger e2e scenarios for the devOffline opt-in (Phase 3.5 of
-// proposals/sdk_local_dev_mode.md). Implemented in a separate PR; the
-// unit tests in pkg/apiserver/bootstrap_test.go (TestApplyDevOfflineGuard_*)
-// already cover both validation paths at the logic level. Scenario C
-// (default behavior unchanged, devOffline=false) is already covered by
-// the existing e2e flow above. Scenarios A and B need dagger plumbing
-// that does not exist yet — a dev-license fixture alongside the e2e
-// secrets, and a NetworkPolicy denying egress to replicated.app from
-// the SDK pod.
+// Future: dagger e2e scenarios for the devOffline opt-in. Tracked as a
+// follow-up PR. The unit tests in pkg/apiserver/bootstrap_test.go
+// (TestApplyDevOfflineGuard_*) already cover both validation paths at
+// the logic level. Scenario C (default behavior unchanged,
+// devOffline=false) is already covered by the existing e2e flow above.
+// Scenarios A and B need dagger plumbing that does not exist yet — a
+// dev-license fixture alongside the e2e secrets, and a NetworkPolicy
+// denying egress to replicated.app from the SDK pod.
 //
 // Scenario A (devOffline=true + dev license + blocked upstream):
 //

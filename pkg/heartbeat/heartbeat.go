@@ -52,12 +52,6 @@ func Start() error {
 	_, err := job.AddFunc(cronSpec, func() {
 		logger.Debugf("sending a heartbeat for app %s", appSlug)
 
-		clientset, err := k8sutil.GetClientset()
-		if err != nil {
-			logger.Error(errors.Wrap(err, "failed to get clientset"))
-			return
-		}
-
 		if !util.IsAirgap() {
 			licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 			if err != nil {
@@ -67,7 +61,18 @@ func Start() error {
 			}
 		}
 
+		// Clientset acquisition is scoped to the report call that needs
+		// it. License sync above no longer needs a clientset (it talks
+		// directly to the upstream Vendor Portal), so a transient k8s
+		// API hiccup must not gate it. Hoisting GetClientset above the
+		// license sync would couple the two and silently regress the
+		// per-tick resilience of license refresh.
 		go func() {
+			clientset, err := k8sutil.GetClientset()
+			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to get clientset"))
+				return
+			}
 			if err := report.SendInstanceData(clientset, store.GetStore()); err != nil {
 				logger.Error(errors.Wrap(err, "failed to send instance data"))
 			}
