@@ -118,9 +118,13 @@ func bootstrapCritical(params APIServerParams) error {
 		ReadOnlyMode:          params.ReadOnlyMode,
 	})
 
-	appStateOperator := appstate.InitOperator(clientset, params.Namespace)
-	appStateOperator.Start()
-
+	// Resolve informers BEFORE starting the appstate operator goroutine
+	// so a helm.GetRelease error on this attempt doesn't leave a
+	// runAppStateMonitor goroutine running that the next retry would
+	// duplicate. InitOperator overwrites the package-level `operator`
+	// pointer and Operator.Start unconditionally spawns a new goroutine
+	// without shutting down the previous monitor, so the start must be
+	// the last fallible-or-not step in the function.
 	informers := params.StatusInformers
 	if informers == nil && helm.IsHelmManaged() {
 		helmRelease, err := helm.GetRelease(helm.GetReleaseName())
@@ -132,6 +136,8 @@ func bootstrapCritical(params APIServerParams) error {
 		}
 	}
 
+	appStateOperator := appstate.InitOperator(clientset, params.Namespace)
+	appStateOperator.Start()
 	appStateOperator.ApplyAppInformers(appstatetypes.AppInformersArgs{
 		AppSlug:   store.GetStore().GetAppSlug(),
 		Sequence:  store.GetStore().GetReleaseSequence(),
@@ -210,10 +216,13 @@ func loadAndVerifyLicense(params APIServerParams, clientset kubernetes.Interface
 // (e.g. SyncLatestLicense when upstream is briefly unreachable) does not
 // silently disable downstream steps for the pod's lifetime in resilient
 // mode — most importantly, heartbeat.Start() always gets a chance to run
-// so the instance continues to check in. Strict mode still observes the
-// joined error and retries the whole function via backoff; all steps are
-// idempotent (heartbeat.Start clears and re-adds its cron entries; Set*
-// store writes are last-write-wins).
+// so the instance continues to check in. Strict mode observes the joined
+// error and retries this function via backoff; the steps here are safe
+// to retry (heartbeat.Start clears and re-adds its cron entries; Set*
+// store writes are last-write-wins). Critical-phase initializers that
+// would leak resources on retry (notably appstate.InitOperator) live in
+// bootstrapCritical and are retried by their own loop, which terminates
+// on the first success.
 func bootstrapBackground(params APIServerParams) error {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
@@ -236,12 +245,21 @@ func bootstrapBackground(params APIServerParams) error {
 		}
 	}
 
+	// integrationCheckOK distinguishes "we know the mode" from "we don't
+	// know yet". The zero value of isIntegrationModeEnabled is false, so
+	// without this flag a transient IsEnabled failure would silently fall
+	// into the !isIntegrationModeEnabled branch below and call
+	// upstream.GetUpdates against the Vendor Portal even when the pod is
+	// actually running in integration (dev) mode. We instead skip the
+	// updates fetch entirely on this turn and let the next bootstrap
+	// retry (strict) or the heartbeat-driven refresh (resilient) recover.
 	isIntegrationModeEnabled, err := integration.IsEnabled(ctx, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+	integrationCheckOK := err == nil
 	if err != nil {
 		errs = append(errs, errors.Wrap(err, "failed to check if integration mode is enabled"))
 	}
 
-	if !util.IsAirgap() && !isIntegrationModeEnabled {
+	if !util.IsAirgap() && integrationCheckOK && !isIntegrationModeEnabled {
 		currentCursor := upstreamtypes.ReplicatedCursor{
 			ChannelID:       store.GetStore().GetChannelID(),
 			ChannelName:     store.GetStore().GetChannelName(),

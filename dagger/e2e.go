@@ -267,24 +267,47 @@ spec:
 	}
 	fmt.Println(out)
 
-	// wait for the replicated-ssl-test deployment to be ready
+	// Wait for the replicated-ssl-test deployment to be ready. The probe
+	// inside the pod (curl -k https://replicated:3000/health) only passes
+	// once the replicated service has Ready endpoints AND TLS is serving,
+	// but the pod itself also has to be scheduled, image-pulled, and
+	// started. On slower CI clusters (notably GKE during image-pull
+	// contention) a 1m budget is not enough — observed failures show the
+	// alpine/curl pod still in ContainerCreating at the timeout. 3m gives
+	// the cluster room to schedule without masking real readiness failures.
 	ctr = dag.Container().From("bitnami/kubectl:latest").
 		WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
 		WithEnvVariable("KUBECONFIG", kubeconfigPath).
-		WithExec([]string{"kubectl", "wait", "--for=condition=available", "deployment/replicated-ssl-test", "--timeout=1m"})
+		WithExec([]string{"kubectl", "wait", "--for=condition=available", "deployment/replicated-ssl-test", "--timeout=3m"})
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
-		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", kubeconfigPath).
-			WithExec([]string{"kubectl", "logs", "-p", "-l", "app.kubernetes.io/name=replicated"})
-		out, err2 := ctr.Stdout(ctx)
-		if err2 != nil {
-			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+		// Best-effort diagnostics. None of these may individually fail
+		// the test — the original wait error is what we report. In
+		// particular, kubectl logs without -p must be used here: the
+		// previous use of "-p" returned BadRequest ("previous
+		// terminated container ... not found") whenever the replicated
+		// pod had not crashed, which masked the real wait timeout with
+		// a misleading "log fetch" error.
+		dumpCmd := func(args []string) {
+			c := dag.Container().From("bitnami/kubectl:latest").
+				WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+				WithEnvVariable("KUBECONFIG", kubeconfigPath).
+				With(CacheBustingExec(args))
+			if stdout, derr := c.Stdout(ctx); derr == nil {
+				fmt.Printf("$ %s\n%s\n", strings.Join(args, " "), stdout)
+			} else if stderr, _ := c.Stderr(ctx); stderr != "" {
+				fmt.Printf("$ %s\n(diagnostic command failed: %v)\n%s\n", strings.Join(args, " "), derr, stderr)
+			} else {
+				fmt.Printf("$ %s\n(diagnostic command failed: %v)\n", strings.Join(args, " "), derr)
+			}
 		}
-		fmt.Println(out)
+		dumpCmd([]string{"kubectl", "get", "pods", "-o", "wide"})
+		dumpCmd([]string{"kubectl", "describe", "deployment/replicated-ssl-test"})
+		dumpCmd([]string{"kubectl", "describe", "pods", "-l", "app=replicated-ssl-test"})
+		dumpCmd([]string{"kubectl", "logs", "-l", "app=replicated-ssl-test", "--tail=100"})
+		dumpCmd([]string{"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=100"})
 
-		return fmt.Errorf("failed to wait for replicated deployment to be ready: %w", err)
+		return fmt.Errorf("failed to wait for replicated-ssl-test deployment to be ready: %w", err)
 	}
 	fmt.Println(out)
 

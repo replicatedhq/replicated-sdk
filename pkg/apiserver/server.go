@@ -207,22 +207,36 @@ func runBootstrapWithDeps(params APIServerParams, state *startupstate.Tracker, d
 }
 
 func runBootstrapStrict(params APIServerParams, state *startupstate.Tracker, deps bootstrapDeps) error {
-	err := backoff.RetryNotify(
-		func() error {
-			if err := deps.critical(params); err != nil {
-				return err
-			}
-			return deps.background(params)
-		},
+	// Retry critical and background as separate retry loops rather than
+	// re-running both inside a single function. If we re-ran critical on
+	// a transient background failure, each retry would re-invoke
+	// appstate.InitOperator + Operator.Start, leaking the previously
+	// spawned runAppStateMonitor goroutine (Operator.Start does not call
+	// Shutdown on a prior instance, and InitOperator overwrites the
+	// package-level operator pointer). Splitting the loops ensures
+	// critical runs exactly once and background can retry independently.
+	if err := backoff.RetryNotify(
+		func() error { return deps.critical(params) },
 		backoff.NewConstantBackOff(deps.retryInterval),
 		func(err error, d time.Duration) {
-			log.Printf("failed to bootstrap (requireUpstreamOnStartup=true), retrying in %s: %v", d, err)
+			log.Printf("failed to bootstrap critical (requireUpstreamOnStartup=true), retrying in %s: %v", d, err)
 		},
-	)
-	if err != nil {
+	); err != nil {
 		state.MarkFailed()
-		return errors.Wrap(err, "failed to bootstrap")
+		return errors.Wrap(err, "failed to bootstrap critical")
 	}
+
+	if err := backoff.RetryNotify(
+		func() error { return deps.background(params) },
+		backoff.NewConstantBackOff(deps.retryInterval),
+		func(err error, d time.Duration) {
+			log.Printf("failed to bootstrap background (requireUpstreamOnStartup=true), retrying in %s: %v", d, err)
+		},
+	); err != nil {
+		state.MarkFailed()
+		return errors.Wrap(err, "failed to bootstrap background")
+	}
+
 	state.MarkReady()
 	return nil
 }
