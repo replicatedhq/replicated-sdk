@@ -71,8 +71,14 @@ func Start(params APIServerParams) {
 
 	srv, err := buildServer(params)
 	if err != nil {
-		logger.Error(err)
-		return
+		// Pre-Phase-1 this same condition (most commonly: TLS secret
+		// missing or malformed) terminated the process with exit code
+		// 1 via log.Fatalf. Returning early instead would cause the
+		// cobra RunE to return nil and the binary to exit 0, masking
+		// a misconfigured deployment as a "successful" run. Keep the
+		// fatal exit so the kubelet sees a CrashLoopBackOff signal
+		// and operators get an obvious failure mode.
+		log.Fatalf("failed to build server: %v", err)
 	}
 
 	go func() {
