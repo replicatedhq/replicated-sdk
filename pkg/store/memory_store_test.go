@@ -210,6 +210,36 @@ func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_DoesNotOvermatchSimil
 	require.ElementsMatch(t, []string{"sha256:ok"}, got["registry.example.com/team/myapp/nginx:latest"]) // matched
 }
 
+// TestInMemoryStore_GetLicenseFields_ReturnsCopy verifies that mutating
+// the map returned by GetLicenseFields does not affect the store's
+// internal state. This invariant is what lets handlers like
+// GetLicenseField (which `delete(m, k)` and `m[k] = v` on the result)
+// run concurrently with SetLicenseFields without corrupting either
+// goroutine's view of the map.
+func TestInMemoryStore_GetLicenseFields_ReturnsCopy(t *testing.T) {
+	s := &InMemoryStore{}
+	s.SetLicenseFields(licensetypes.LicenseFields{
+		"seats": {Name: "seats", Value: 10},
+		"name":  {Name: "name", Value: "acme"},
+	})
+
+	got := s.GetLicenseFields()
+	require.Len(t, got, 2)
+
+	delete(got, "seats")
+	got["injected"] = licensetypes.LicenseField{Name: "injected", Value: "should-not-leak"}
+
+	stillThere := s.GetLicenseFields()
+	require.Len(t, stillThere, 2, "store mutated by external map edit")
+	require.Contains(t, stillThere, "seats", "deletion on returned map leaked into store")
+	require.NotContains(t, stillThere, "injected", "insertion on returned map leaked into store")
+}
+
+func TestInMemoryStore_GetLicenseFields_NilWhenEmpty(t *testing.T) {
+	s := &InMemoryStore{}
+	require.Nil(t, s.GetLicenseFields(), "empty store should return nil, not an empty map, to preserve pre-PR semantics")
+}
+
 // TestInMemoryStore_ConcurrentReadWrite exercises the runtime-mutated
 // fields under simultaneous read and write pressure. Without the RWMutex
 // added in Phase 2, `go test -race` flags this as a data race.
@@ -230,7 +260,7 @@ func TestInMemoryStore_ConcurrentReadWrite(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(goroutines * 5)
+	wg.Add(goroutines * 6)
 
 	for i := 0; i < goroutines; i++ {
 		go func() {
@@ -251,6 +281,25 @@ func TestInMemoryStore_ConcurrentReadWrite(t *testing.T) {
 			for j := 0; j < iterations; j++ {
 				s.SetLicenseFields(fields)
 				_ = s.GetLicenseFields()
+			}
+		}()
+		// Mirror the handlers.GetLicenseField pattern: pull the
+		// fields map out, mutate it locally, then push it back. With
+		// the pre-fix GetLicenseFields (which returned the internal
+		// map by reference), this races against the SetLicenseFields
+		// goroutine above and `go test -race` flags it. With the
+		// defensive copy in place, the mutation operates on a local
+		// map and never touches the store's internal state.
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				m := s.GetLicenseFields()
+				if m == nil {
+					m = licensetypes.LicenseFields{}
+				}
+				m["transient"] = licensetypes.LicenseField{Name: "transient"}
+				delete(m, "transient")
+				s.SetLicenseFields(m)
 			}
 		}()
 		go func() {

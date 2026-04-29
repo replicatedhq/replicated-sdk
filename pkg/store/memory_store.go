@@ -133,10 +133,25 @@ func (s *InMemoryStore) SetLicense(license licensewrapper.LicenseWrapper) {
 	logger.Debugf("InMemoryStore.SetLicense called with empty wrapper; retaining previous license")
 }
 
+// GetLicenseFields returns a defensive copy of the license-fields map so
+// callers may safely mutate the returned map (e.g. handlers.GetLicenseField
+// does `delete(m, key)` and `m[key] = v` against this result, then writes
+// it back via SetLicenseFields). Returning the internal map by reference
+// would race with concurrent SetLicenseFields writers under mu, because
+// the RLock only guards the pointer load — not the map's contents — once
+// the function returns. A shallow copy is sufficient: LicenseField values
+// are stored by value, and no caller mutates the inner struct fields.
 func (s *InMemoryStore) GetLicenseFields() licensetypes.LicenseFields {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.licenseFields
+	if s.licenseFields == nil {
+		return nil
+	}
+	out := make(licensetypes.LicenseFields, len(s.licenseFields))
+	for k, v := range s.licenseFields {
+		out[k] = v
+	}
+	return out
 }
 
 func (s *InMemoryStore) SetLicenseFields(licenseFields licensetypes.LicenseFields) {
