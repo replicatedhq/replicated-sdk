@@ -4,6 +4,7 @@ import (
 	"context"
 	stderrors "errors"
 	"log"
+	"sync"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
@@ -277,13 +278,27 @@ func bootstrapBackground(params APIServerParams) error {
 		errs = append(errs, errors.Wrap(err, "failed to start heartbeat"))
 	}
 
+	// In strict mode bootstrapBackground is wrapped in a retry loop, so
+	// any goroutine launched here would otherwise be re-spawned on every
+	// retry and leak. The dev-version check is a one-time observability
+	// signal — gate it behind a package-level sync.Once so it runs at most
+	// once per process regardless of how many times bootstrapBackground
+	// is invoked.
 	if !util.IsAirgap() && store.GetStore().IsDevLicense() {
-		go func() {
-			if err := util.WarnOnOutdatedReplicatedVersion(); err != nil {
-				logger.Infof("Failed to check if running an outdated replicated version: %v", err)
-			}
-		}()
+		warnOnOutdatedReplicatedVersionOnce.Do(func() {
+			go func() {
+				if err := util.WarnOnOutdatedReplicatedVersion(); err != nil {
+					logger.Infof("Failed to check if running an outdated replicated version: %v", err)
+				}
+			}()
+		})
 	}
 
 	return stderrors.Join(errs...)
 }
+
+// warnOnOutdatedReplicatedVersionOnce ensures the dev-mode upstream-version
+// warning goroutine is launched at most once per process. bootstrapBackground
+// can be invoked multiple times (strict-mode retry loop) and we don't want
+// to spawn a fresh goroutine on every retry.
+var warnOnOutdatedReplicatedVersionOnce sync.Once

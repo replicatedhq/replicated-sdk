@@ -276,8 +276,23 @@ func runBootstrapResilient(params APIServerParams, state *startupstate.Tracker, 
 		)
 		state.MarkReady()
 		if criticalErr := <-criticalDone; criticalErr != nil {
-			state.MarkFailed()
-			return errors.Wrap(criticalErr, "failed to bootstrap critical (after readiness)")
+			// We have already signaled Ready, so the kubelet has
+			// (or is about to) added this pod to its Service
+			// endpoints. Flipping back to Failed → log.Fatalf would
+			// produce a Ready→crash→restart→Ready→crash loop where
+			// every cycle briefly exposes an under-initialized
+			// store to traffic. The resilient-mode contract is
+			// "serve degraded rather than flap" — log loudly and
+			// keep the pod alive. Background work below is skipped
+			// because it depends on store state that critical
+			// never populated; the heartbeat won't run, but
+			// existing endpoints will continue to answer with
+			// whatever defaults the in-memory store has.
+			logger.Errorf(
+				"sdk_critical_failed_after_readiness: bootstrapCritical failed after the readiness deadline; pod stays Ready to avoid a Ready→crash flap, but the in-memory store may be under-initialized and downstream handlers may return degraded data: %v",
+				criticalErr,
+			)
+			return nil
 		}
 		// Symmetric counterpart to sdk_ready_after_critical_timeout —
 		// gives operators a closing log line when the deferred critical
