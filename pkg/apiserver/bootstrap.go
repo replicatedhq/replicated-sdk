@@ -235,11 +235,6 @@ func applyDevOfflineGuard(wrapper licensewrapper.LicenseWrapper, devOffline bool
 // bootstrapCritical and are retried by their own loop, which terminates
 // on the first success.
 func bootstrapBackground(params APIServerParams) error {
-	clientset, err := k8sutil.GetClientset()
-	if err != nil {
-		return errors.Wrap(err, "failed to get clientset")
-	}
-
 	ctx := params.Context
 	if ctx == nil {
 		ctx = context.Background()
@@ -264,10 +259,23 @@ func bootstrapBackground(params APIServerParams) error {
 	// actually running in integration (dev) mode. We instead skip the
 	// updates fetch entirely on this turn and let the heartbeat-driven
 	// refresh recover.
-	isIntegrationModeEnabled, err := integration.IsEnabled(ctx, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
-	integrationCheckOK := err == nil
+	//
+	// Clientset is acquired here, scoped to the integration check that
+	// needs it. Hoisting GetClientset to the top of the function would
+	// gate license sync, heartbeat.Start, and the outdated-version check
+	// on a transient k8s API hiccup, contradicting the error-accumulation
+	// pattern this function commits to.
+	var isIntegrationModeEnabled bool
+	integrationCheckOK := false
+	clientset, err := k8sutil.GetClientset()
 	if err != nil {
-		errs = append(errs, errors.Wrap(err, "failed to check if integration mode is enabled"))
+		errs = append(errs, errors.Wrap(err, "failed to get clientset"))
+	} else {
+		isIntegrationModeEnabled, err = integration.IsEnabled(ctx, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
+		integrationCheckOK = err == nil
+		if err != nil {
+			errs = append(errs, errors.Wrap(err, "failed to check if integration mode is enabled"))
+		}
 	}
 
 	if !util.IsAirgap() && integrationCheckOK && !isIntegrationModeEnabled {
