@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	stderrors "errors"
 	"log"
 
 	"github.com/cenkalti/backoff/v4"
@@ -203,6 +204,16 @@ func loadAndVerifyLicense(params APIServerParams, clientset kubernetes.Interface
 // refresh writes through to the cache and an upstream failure transparently
 // falls back to cached data when available. The in-memory store ends up
 // populated either way.
+//
+// Each step runs independently and accumulates its error rather than
+// returning early. This guarantees that a transient failure in one step
+// (e.g. SyncLatestLicense when upstream is briefly unreachable) does not
+// silently disable downstream steps for the pod's lifetime in resilient
+// mode — most importantly, heartbeat.Start() always gets a chance to run
+// so the instance continues to check in. Strict mode still observes the
+// joined error and retries the whole function via backoff; all steps are
+// idempotent (heartbeat.Start clears and re-adds its cron entries; Set*
+// store writes are last-write-wins).
 func bootstrapBackground(params APIServerParams) error {
 	clientset, err := k8sutil.GetClientset()
 	if err != nil {
@@ -214,17 +225,20 @@ func bootstrapBackground(params APIServerParams) error {
 		ctx = context.Background()
 	}
 
+	var errs []error
+
 	if !util.IsAirgap() {
 		licenseData, _, err := sdklicense.SyncLatestLicense(ctx, clientset, params.Namespace, store.GetStore().GetLicense(), params.ReplicatedAppEndpoint)
 		if err != nil {
-			return errors.Wrap(err, "failed to get latest license")
+			errs = append(errs, errors.Wrap(err, "failed to get latest license"))
+		} else {
+			store.GetStore().SetLicense(licenseData.License)
 		}
-		store.GetStore().SetLicense(licenseData.License)
 	}
 
 	isIntegrationModeEnabled, err := integration.IsEnabled(ctx, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
 	if err != nil {
-		return errors.Wrap(err, "failed to check if integration mode is enabled")
+		errs = append(errs, errors.Wrap(err, "failed to check if integration mode is enabled"))
 	}
 
 	if !util.IsAirgap() && !isIntegrationModeEnabled {
@@ -235,13 +249,14 @@ func bootstrapBackground(params APIServerParams) error {
 		}
 		updates, err := upstream.GetUpdates(store.GetStore(), store.GetStore().GetLicense(), currentCursor)
 		if err != nil {
-			return errors.Wrap(err, "failed to get updates")
+			errs = append(errs, errors.Wrap(err, "failed to get updates"))
+		} else {
+			store.GetStore().SetUpdates(updates)
 		}
-		store.GetStore().SetUpdates(updates)
 	}
 
 	if err := heartbeat.Start(); err != nil {
-		return errors.Wrap(err, "failed to start heartbeat")
+		errs = append(errs, errors.Wrap(err, "failed to start heartbeat"))
 	}
 
 	if !util.IsAirgap() && store.GetStore().IsDevLicense() {
@@ -252,5 +267,5 @@ func bootstrapBackground(params APIServerParams) error {
 		}()
 	}
 
-	return nil
+	return stderrors.Join(errs...)
 }
