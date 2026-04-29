@@ -154,20 +154,35 @@ func (s *InMemoryStore) GetLicenseFields() licensetypes.LicenseFields {
 	return out
 }
 
+// SetLicenseFields stores the caller-provided map as the new authoritative
+// license-fields state, replacing whatever was there before.
+//
+// Replace (not merge) semantics matter for two callers in particular:
+//
+//   - handlers.GetLicenseField, which deletes a key from a copy returned by
+//     GetLicenseFields when the upstream Vendor Portal reports the field
+//     no longer exists, then calls SetLicenseFields with that copy. With
+//     merge semantics the deletion is silently lost.
+//   - handlers.GetLicenseFields, which assigns the full upstream-fetched
+//     map to its local variable and writes it back. With merge semantics a
+//     field removed upstream would persist forever in the local store.
+//
+// We also defensive-copy on the way in so that a caller mutating
+// `licenseFields` after this call cannot race with subsequent readers.
+// Combined with GetLicenseFields' returned-copy contract, this means the
+// store's internal map is never aliased outside this package.
 func (s *InMemoryStore) SetLicenseFields(licenseFields licensetypes.LicenseFields) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	// copy by value not reference
 	if licenseFields == nil {
 		s.licenseFields = nil
 		return
 	}
-	if s.licenseFields == nil {
-		s.licenseFields = licensetypes.LicenseFields{}
-	}
+	cp := make(licensetypes.LicenseFields, len(licenseFields))
 	for k, v := range licenseFields {
-		s.licenseFields[k] = v
+		cp[k] = v
 	}
+	s.licenseFields = cp
 }
 
 func (s *InMemoryStore) IsDevLicense() bool {

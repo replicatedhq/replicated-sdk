@@ -240,6 +240,60 @@ func TestInMemoryStore_GetLicenseFields_NilWhenEmpty(t *testing.T) {
 	require.Nil(t, s.GetLicenseFields(), "empty store should return nil, not an empty map, to preserve pre-PR semantics")
 }
 
+// TestInMemoryStore_SetLicenseFields_ReplacesNotMerges locks in
+// replace-not-merge semantics. handlers.GetLicenseField removes a key
+// from a copy of the map and writes it back to indicate the upstream
+// Vendor Portal has dropped that field; handlers.GetLicenseFields
+// likewise overwrites with the full upstream-fetched map. With merge
+// semantics, a field that was deleted on either side would persist
+// forever in the local store after the next handler write.
+func TestInMemoryStore_SetLicenseFields_ReplacesNotMerges(t *testing.T) {
+	s := &InMemoryStore{}
+	s.SetLicenseFields(licensetypes.LicenseFields{
+		"seats": {Name: "seats", Value: 10},
+		"tier":  {Name: "tier", Value: "gold"},
+	})
+
+	// Mirror handlers.GetLicenseField's removal pattern: pull a copy,
+	// drop a key, write it back.
+	m := s.GetLicenseFields()
+	delete(m, "seats")
+	s.SetLicenseFields(m)
+
+	got := s.GetLicenseFields()
+	require.NotContains(t, got, "seats", "deleted key persisted because SetLicenseFields merged instead of replacing")
+	require.Contains(t, got, "tier")
+	require.Len(t, got, 1)
+
+	// Replacing with a totally different shape must drop the old keys.
+	s.SetLicenseFields(licensetypes.LicenseFields{
+		"newField": {Name: "newField", Value: "x"},
+	})
+	got = s.GetLicenseFields()
+	require.Len(t, got, 1)
+	require.Contains(t, got, "newField")
+	require.NotContains(t, got, "tier")
+}
+
+// TestInMemoryStore_SetLicenseFields_DefensiveCopyOnWrite verifies the
+// store doesn't alias the caller's input map. Without the defensive
+// copy, a caller mutating its own variable after writing would corrupt
+// what subsequent readers see.
+func TestInMemoryStore_SetLicenseFields_DefensiveCopyOnWrite(t *testing.T) {
+	s := &InMemoryStore{}
+	input := licensetypes.LicenseFields{
+		"seats": {Name: "seats", Value: 10},
+	}
+	s.SetLicenseFields(input)
+
+	input["seats"] = licensetypes.LicenseField{Name: "seats", Value: 999}
+	input["leak"] = licensetypes.LicenseField{Name: "leak"}
+
+	got := s.GetLicenseFields()
+	require.Equal(t, 10, got["seats"].Value, "store aliased caller's input map")
+	require.NotContains(t, got, "leak", "store aliased caller's input map")
+}
+
 // TestInMemoryStore_ConcurrentReadWrite exercises the runtime-mutated
 // fields under simultaneous read and write pressure. Without the RWMutex
 // added in Phase 2, `go test -race` flags this as a data race.
