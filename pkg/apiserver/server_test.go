@@ -20,6 +20,7 @@ func fastDeps(critical, background func(APIServerParams) error) bootstrapDeps {
 		background:    background,
 		deadline:      50 * time.Millisecond,
 		retryInterval: 5 * time.Millisecond,
+		bgMaxRetries:  100, // generous; individual tests override when they want to exercise the cap
 	}
 }
 
@@ -114,6 +115,39 @@ func TestRunBootstrap_BackgroundRetriesUntilSuccess(t *testing.T) {
 	require.NoError(t, runBootstrapWithDeps(APIServerParams{}, state, deps))
 	require.True(t, state.IsReady())
 	require.GreaterOrEqual(t, bgCalls.Load(), int32(3), "must retry transient background failures")
+}
+
+// TestRunBootstrap_BackgroundGivesUpAfterMaxRetries verifies the retry
+// loop terminates in finite time when bootstrapBackground returns
+// transient errors that never resolve. bootstrapBackground in production
+// returns stderrors.Join(errs...), which strips backoff.Permanent
+// wrapping from inner steps; without an explicit max-retries cap, the
+// loop would log-spam every retryInterval forever and the give-up
+// branch in runBootstrapWithDeps would be dead code. This test exercises
+// the cap.
+func TestRunBootstrap_BackgroundGivesUpAfterMaxRetries(t *testing.T) {
+	state := startupstate.New()
+	var bgCalls atomic.Int32
+
+	deps := fastDeps(
+		func(APIServerParams) error { return nil },
+		func(APIServerParams) error {
+			bgCalls.Add(1)
+			// Plain transient error — never wrapped in
+			// backoff.Permanent. Without WithMaxRetries this
+			// would retry forever.
+			return errors.New("persistent transient failure")
+		},
+	)
+	deps.bgMaxRetries = 3
+
+	require.NoError(t, runBootstrapWithDeps(APIServerParams{}, state, deps),
+		"background give-up must not bubble up — pod stays Ready")
+	require.True(t, state.IsReady())
+	// WithMaxRetries(b, n) allows n retries AFTER the initial attempt,
+	// so total calls is n+1.
+	require.Equal(t, int32(deps.bgMaxRetries+1), bgCalls.Load(),
+		"loop must terminate after bgMaxRetries+1 total attempts, not retry forever")
 }
 
 // TestRunBootstrap_CriticalFailsAfterDeadline_StaysReadyButSkipsBackground

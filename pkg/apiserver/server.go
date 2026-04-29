@@ -31,6 +31,16 @@ const (
 	// resilient mode. Critical continues retrying in the background after
 	// this deadline; the deadline only governs when /healthz flips to 200.
 	bootstrapCriticalDeadline = 30 * time.Second
+
+	// bootstrapBackgroundMaxRetries caps how many times the background
+	// phase is retried before the orchestrator gives up. bootstrapBackground
+	// joins its step errors via stderrors.Join, which strips any
+	// backoff.Permanent wrapping from individual steps, so without an
+	// explicit cap the retry loop would spin forever on a persistent
+	// failure (log-spamming every retryInterval) instead of giving up.
+	// 30 attempts × 10s ≈ 5 minutes of recovery window; after that the
+	// heartbeat cron tick (every 4 hours) is the long-term refresh path.
+	bootstrapBackgroundMaxRetries = 30
 )
 
 type APIServerParams struct {
@@ -166,10 +176,11 @@ func buildServer(params APIServerParams) (*http.Server, error) {
 // production deps are constructed by defaultBootstrapDeps; tests substitute
 // fakes by calling runBootstrapWithDeps directly.
 type bootstrapDeps struct {
-	critical      func(APIServerParams) error
-	background    func(APIServerParams) error
-	deadline      time.Duration
-	retryInterval time.Duration
+	critical         func(APIServerParams) error
+	background       func(APIServerParams) error
+	deadline         time.Duration
+	retryInterval    time.Duration
+	bgMaxRetries     uint64
 }
 
 func defaultBootstrapDeps() bootstrapDeps {
@@ -178,6 +189,7 @@ func defaultBootstrapDeps() bootstrapDeps {
 		background:    bootstrapBackground,
 		deadline:      bootstrapCriticalDeadline,
 		retryInterval: bootstrapRetryInterval,
+		bgMaxRetries:  bootstrapBackgroundMaxRetries,
 	}
 }
 
@@ -260,23 +272,30 @@ func runBootstrapWithDeps(params APIServerParams, state *startupstate.Tracker, d
 		logger.Infof("sdk_critical_succeeded_after_readiness: bootstrapCritical completed after the readiness deadline; advancing to background phase")
 	}
 
-	// Retry bootstrapBackground until it succeeds or returns a
-	// permanent error. Without this loop, a transient failure on the
-	// first attempt (e.g. heartbeat.Start hitting a momentary cron
-	// init issue, or upstream being briefly unreachable while the
-	// pod was already marked Ready via the timeout path) would leave
-	// the heartbeat cron job and any subsequent license refreshes
-	// disabled for the entire pod lifetime. Errors are still logged
-	// at Warn level on each attempt and never block the pod from
-	// staying Ready.
+	// Retry bootstrapBackground for a bounded number of attempts. Without
+	// this loop, a transient failure on the first attempt (e.g.
+	// heartbeat.Start hitting a momentary cron init issue, or upstream
+	// being briefly unreachable while the pod was already marked Ready
+	// via the timeout path) would leave the heartbeat cron job and any
+	// subsequent license refreshes disabled for the entire pod lifetime.
+	//
+	// The cap matters because bootstrapBackground returns
+	// stderrors.Join(errs...), which strips any backoff.Permanent
+	// wrapping from inner steps; without WithMaxRetries, a persistent
+	// background failure would log-spam every retryInterval forever and
+	// the give-up branch below would be dead code. After the cap, the
+	// heartbeat cron tick (every 4 hours) takes over as the long-term
+	// refresh path. Errors are still logged at Warn level on each
+	// attempt and never block the pod from staying Ready.
+	bgBackoff := backoff.WithMaxRetries(backoff.NewConstantBackOff(deps.retryInterval), deps.bgMaxRetries)
 	if err := backoff.RetryNotify(
 		func() error { return deps.background(params) },
-		backoff.NewConstantBackOff(deps.retryInterval),
+		bgBackoff,
 		func(err error, d time.Duration) {
 			logger.Warnf("bootstrap background phase failed, retrying in %s (handlers continue serving from in-memory store): %v", d, err)
 		},
 	); err != nil {
-		logger.Warnf("bootstrap background phase gave up with permanent error (handlers continue serving from in-memory store): %v", err)
+		logger.Warnf("bootstrap background phase gave up (handlers continue serving from in-memory store; heartbeat cron will retry on next tick): %v", err)
 	}
 	return nil
 }
