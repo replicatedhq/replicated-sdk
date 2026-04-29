@@ -36,7 +36,6 @@ rules:
   - 'update'
   # The names below must match the SDK's runtime expectations. If you
   # rename one, update the corresponding constant on the Go side:
-  #   replicated-license-cache → pkg/license/cache/cache.SecretName
   #   replicated-meta-data     → pkg/meta/meta.ReplicatedMetadataSecretName
   #   replicated-support-metadata → pkg/supportbundle.SupportBundleMetadataSecretName
   resourceNames:
@@ -45,7 +44,6 @@ rules:
   - replicated-custom-app-metrics-report
   - replicated-meta-data
   - replicated-support-metadata
-  - replicated-license-cache
 {{ end }}
 {{ if .Values.tlsCertSecretName }}
 - apiGroups:
@@ -94,7 +92,6 @@ rules:
   - {{ include "replicated.secretName" . }}
   - replicated-meta-data
   - replicated-support-metadata
-  - replicated-license-cache
 # the legacy replicated-sdk configmap is required when the SDK secret is not found
 - apiGroups:
     - ''

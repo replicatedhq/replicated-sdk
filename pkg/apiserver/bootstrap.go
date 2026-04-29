@@ -24,7 +24,6 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/upstream"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
-	"k8s.io/client-go/kubernetes"
 )
 
 // bootstrapCritical performs the bootstrap work that must succeed before the
@@ -33,17 +32,17 @@ import (
 // initializes the local appstate operator so app/* endpoints can begin
 // reporting status as soon as the pod is Ready.
 //
-// In production mode (LicenseBytes provided by the chart), this path is
-// fully local. In integration mode it consults the upstream Vendor Portal
-// with cache fallback: a previously-cached license satisfies critical even
-// when replicated.app is unreachable, so subsequent boots after one
-// successful sync survive offline conditions. First-boot offline (no
-// cache, unreachable upstream) returns backoff.Permanent — the SDK refuses
-// to start rather than silently run with empty data.
+// In production mode (LicenseBytes provided by the chart) this path is
+// fully local — no upstream call is made. In integration mode the
+// license document is fetched from the Vendor Portal by ID, so an
+// unreachable upstream on first boot causes critical to retry. The
+// devOffline opt-in (production mode + a dev license) flips the runtime
+// airgap flag here so subsequent !util.IsAirgap() gates skip their
+// upstream calls; it does not change the license source.
 //
 // Permanent failures (license parse error, signature invalid, expired,
-// first-boot-offline-with-no-cache) are returned as backoff.Permanent so
-// the retry loop above gives up immediately. Transient failures bubble up
+// devOffline + non-dev license) are returned as backoff.Permanent so the
+// retry loop above gives up immediately. Transient failures bubble up
 // unwrapped and the caller will retry.
 func bootstrapCritical(params APIServerParams) error {
 	clientset, err := k8sutil.GetClientset()
@@ -77,17 +76,25 @@ func bootstrapCritical(params APIServerParams) error {
 		}
 	}
 
-	verifiedWrapper, err := loadAndVerifyLicense(params, clientset)
+	verifiedWrapper, err := loadAndVerifyLicense(params)
 	if err != nil {
 		return err
 	}
 
+	// Expiry is unconditional and has no side effects, so check it
+	// before applyDevOfflineGuard — which flips the process-global
+	// airgap override on success. Reordering keeps that side effect
+	// from landing on a license we are about to reject anyway.
 	expired, err := sdklicense.LicenseIsExpired(verifiedWrapper)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if license is expired")
 	}
 	if expired {
 		return backoff.Permanent(errors.New("License is expired"))
+	}
+
+	if err := applyDevOfflineGuard(verifiedWrapper, params.DevOffline); err != nil {
+		return err
 	}
 
 	channelID := params.ChannelID
@@ -150,14 +157,8 @@ func bootstrapCritical(params APIServerParams) error {
 
 // loadAndVerifyLicense loads the license from chart-embedded bytes
 // (production) or from the upstream Vendor Portal by integration-license
-// ID with cache fallback, then signature-verifies it.
-//
-// Integration mode goes through SyncLicenseByID: a successful upstream
-// call writes through to the cache; an upstream failure with a populated
-// cache transparently uses the cached license; an upstream failure with
-// no cache returns a permanent error so the pod refuses to start with no
-// usable license.
-func loadAndVerifyLicense(params APIServerParams, clientset kubernetes.Interface) (licensewrapper.LicenseWrapper, error) {
+// ID, then signature-verifies it.
+func loadAndVerifyLicense(params APIServerParams) (licensewrapper.LicenseWrapper, error) {
 	var unverifiedWrapper licensewrapper.LicenseWrapper
 
 	switch {
@@ -168,18 +169,14 @@ func loadAndVerifyLicense(params APIServerParams, clientset kubernetes.Interface
 		}
 		unverifiedWrapper = wrapper
 	case params.IntegrationLicenseID != "":
-		ctx := params.Context
-		if ctx == nil {
-			ctx = context.Background()
-		}
-		data, _, err := sdklicense.SyncLicenseByID(ctx, clientset, params.Namespace, params.IntegrationLicenseID, params.ReplicatedAppEndpoint, params.ReadOnlyMode)
+		wrapper, err := sdklicense.GetLicenseByID(params.IntegrationLicenseID, params.ReplicatedAppEndpoint)
 		if err != nil {
-			return licensewrapper.LicenseWrapper{}, backoff.Permanent(errors.Wrap(err, "integration mode requires either reachable upstream or a previously-cached license; neither was available"))
+			return licensewrapper.LicenseWrapper{}, errors.Wrap(err, "failed to get license by id")
 		}
-		if data.License.GetLicenseType() != "dev" {
+		if wrapper.GetLicenseType() != "dev" {
 			return licensewrapper.LicenseWrapper{}, backoff.Permanent(errors.New("integration license must be a dev license"))
 		}
-		unverifiedWrapper = data.License
+		unverifiedWrapper = wrapper
 	default:
 		return licensewrapper.LicenseWrapper{}, backoff.Permanent(errors.New("no license source configured: either LicenseBytes or IntegrationLicenseID is required"))
 	}
@@ -198,30 +195,43 @@ func loadAndVerifyLicense(params APIServerParams, clientset kubernetes.Interface
 	return unverifiedWrapper, nil
 }
 
+// applyDevOfflineGuard enforces the dev-only contract of the devOffline
+// opt-in: when the operator sets replicated.devOffline=true, the loaded
+// license must be a dev license, and on success the runtime airgap flag
+// is flipped so all !util.IsAirgap() gates skip their upstream calls.
+//
+// A non-dev license with devOffline=true returns backoff.Permanent so
+// the bootstrap retry loop gives up immediately — the install is
+// misconfigured and no amount of retrying will fix it. Production
+// licenses cannot silently end up running offline this way; operators
+// who want true airgap must use the existing isAirgap chart value with
+// its accompanying ops requirements.
+func applyDevOfflineGuard(wrapper licensewrapper.LicenseWrapper, devOffline bool) error {
+	if !devOffline {
+		return nil
+	}
+	if wrapper.GetLicenseType() != "dev" {
+		return backoff.Permanent(errors.New("devOffline=true requires a dev license"))
+	}
+	util.SetAirgapOverride(true)
+	log.Println("devOffline enabled: SDK will not call replicated.app for this install")
+	return nil
+}
+
 // bootstrapBackground performs upstream-dependent bootstrap work whose
-// failure must not prevent the SDK from being marked Ready in the default
-// configuration. The caller decides how to interpret returned errors:
-//
-//   - In default (resilient) mode, errors are logged and ignored; handlers
-//     continue serving from whatever bootstrapCritical placed in the store.
-//   - With requireUpstreamOnStartup=true, the caller treats any error here
-//     as fatal and the pod will not be marked Ready.
-//
-// Upstream calls go through the cache-aware Sync* wrappers so a successful
-// refresh writes through to the cache and an upstream failure transparently
-// falls back to cached data when available. The in-memory store ends up
-// populated either way.
+// failure must not prevent the SDK from being marked Ready. Errors are
+// logged and the call is retried by the caller; handlers continue serving
+// from whatever bootstrapCritical placed in the store.
 //
 // Each step runs independently and accumulates its error rather than
 // returning early. This guarantees that a transient failure in one step
-// (e.g. SyncLatestLicense when upstream is briefly unreachable) does not
-// silently disable downstream steps for the pod's lifetime in resilient
-// mode — most importantly, heartbeat.Start() always gets a chance to run
-// so the instance continues to check in. Strict mode observes the joined
-// error and retries this function via backoff; the steps here are safe
-// to retry (heartbeat.Start clears and re-adds its cron entries; Set*
-// store writes are last-write-wins). Critical-phase initializers that
-// would leak resources on retry (notably appstate.InitOperator) live in
+// (e.g. GetLatestLicense when upstream is briefly unreachable) does not
+// silently disable downstream steps for the pod's lifetime — most
+// importantly, heartbeat.Start() always gets a chance to run so the
+// instance continues to check in. The steps here are safe to retry
+// (heartbeat.Start clears and re-adds its cron entries; Set* store writes
+// are last-write-wins). Critical-phase initializers that would leak
+// resources on retry (notably appstate.InitOperator) live in
 // bootstrapCritical and are retried by their own loop, which terminates
 // on the first success.
 func bootstrapBackground(params APIServerParams) error {
@@ -238,7 +248,7 @@ func bootstrapBackground(params APIServerParams) error {
 	var errs []error
 
 	if !util.IsAirgap() {
-		licenseData, _, err := sdklicense.SyncLatestLicense(ctx, clientset, params.Namespace, store.GetStore().GetLicense(), params.ReplicatedAppEndpoint, params.ReadOnlyMode)
+		licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), params.ReplicatedAppEndpoint)
 		if err != nil {
 			errs = append(errs, errors.Wrap(err, "failed to get latest license"))
 		} else {
@@ -252,8 +262,8 @@ func bootstrapBackground(params APIServerParams) error {
 	// into the !isIntegrationModeEnabled branch below and call
 	// upstream.GetUpdates against the Vendor Portal even when the pod is
 	// actually running in integration (dev) mode. We instead skip the
-	// updates fetch entirely on this turn and let the next bootstrap
-	// retry (strict) or the heartbeat-driven refresh (resilient) recover.
+	// updates fetch entirely on this turn and let the heartbeat-driven
+	// refresh recover.
 	isIntegrationModeEnabled, err := integration.IsEnabled(ctx, clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense())
 	integrationCheckOK := err == nil
 	if err != nil {
@@ -278,12 +288,12 @@ func bootstrapBackground(params APIServerParams) error {
 		errs = append(errs, errors.Wrap(err, "failed to start heartbeat"))
 	}
 
-	// In strict mode bootstrapBackground is wrapped in a retry loop, so
-	// any goroutine launched here would otherwise be re-spawned on every
-	// retry and leak. The dev-version check is a one-time observability
-	// signal — gate it behind a package-level sync.Once so it runs at most
-	// once per process regardless of how many times bootstrapBackground
-	// is invoked.
+	// bootstrapBackground is wrapped in a retry loop, so any goroutine
+	// launched here would otherwise be re-spawned on every retry and
+	// leak. The dev-version check is a one-time observability signal —
+	// gate it behind a package-level sync.Once so it runs at most once
+	// per process regardless of how many times bootstrapBackground is
+	// invoked.
 	if !util.IsAirgap() && store.GetStore().IsDevLicense() {
 		warnOnOutdatedReplicatedVersionOnce.Do(func() {
 			go func() {
@@ -299,6 +309,6 @@ func bootstrapBackground(params APIServerParams) error {
 
 // warnOnOutdatedReplicatedVersionOnce ensures the dev-mode upstream-version
 // warning goroutine is launched at most once per process. bootstrapBackground
-// can be invoked multiple times (strict-mode retry loop) and we don't want
-// to spawn a fresh goroutine on every retry.
+// can be invoked multiple times by the retry loop and we don't want to
+// spawn a fresh goroutine on every retry.
 var warnOnOutdatedReplicatedVersionOnce sync.Once

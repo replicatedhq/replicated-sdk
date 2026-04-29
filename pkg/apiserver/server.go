@@ -56,11 +56,13 @@ type APIServerParams struct {
 	ReportAllImages       bool
 	ReadOnlyMode          bool
 
-	// RequireUpstreamOnStartup, when true, restores the pre-Phase-1
-	// behavior in which the pod does not become Ready until the full
-	// bootstrap (critical + background) succeeds, including a successful
-	// upstream license refresh and update fetch. Default false.
-	RequireUpstreamOnStartup bool
+	// DevOffline, when true, instructs bootstrapCritical to validate
+	// the loaded license is a dev license and then flip the runtime
+	// airgap flag so all !util.IsAirgap() gates skip their upstream
+	// calls. Production licenses are rejected at bootstrap with a
+	// permanent error so this opt-in cannot silently disable upstream
+	// behavior in production. Default false.
+	DevOffline bool
 }
 
 func Start(params APIServerParams) {
@@ -179,19 +181,12 @@ func defaultBootstrapDeps() bootstrapDeps {
 	}
 }
 
-// runBootstrap drives the bootstrap state machine. The behavior depends on
-// params.RequireUpstreamOnStartup:
-//
-//   - false (default): bootstrapCritical is retried with backoff; the pod
-//     is marked Ready as soon as critical succeeds OR the
-//     bootstrapCriticalDeadline elapses, whichever comes first. After the
-//     deadline, critical continues to retry; on eventual success the
-//     bootstrapBackground phase runs. bootstrapBackground errors are logged
-//     but never block readiness.
-//
-//   - true: the pre-Phase-1 contract is preserved. bootstrapCritical and
-//     bootstrapBackground are run in sequence with retry-with-backoff and
-//     the pod is not marked Ready until both succeed.
+// runBootstrap drives the bootstrap state machine. bootstrapCritical is
+// retried with backoff; the pod is marked Ready as soon as critical
+// succeeds OR the bootstrapCriticalDeadline elapses, whichever comes
+// first. After the deadline, critical continues to retry; on eventual
+// success the bootstrapBackground phase runs. bootstrapBackground errors
+// are logged but never block readiness.
 //
 // A non-nil return value indicates the process should exit fatally; the
 // readiness state has already been transitioned to Failed when this happens
@@ -206,48 +201,6 @@ func runBootstrap(params APIServerParams, state *startupstate.Tracker) error {
 }
 
 func runBootstrapWithDeps(params APIServerParams, state *startupstate.Tracker, deps bootstrapDeps) error {
-	if params.RequireUpstreamOnStartup {
-		return runBootstrapStrict(params, state, deps)
-	}
-	return runBootstrapResilient(params, state, deps)
-}
-
-func runBootstrapStrict(params APIServerParams, state *startupstate.Tracker, deps bootstrapDeps) error {
-	// Retry critical and background as separate retry loops rather than
-	// re-running both inside a single function. If we re-ran critical on
-	// a transient background failure, each retry would re-invoke
-	// appstate.InitOperator + Operator.Start, leaking the previously
-	// spawned runAppStateMonitor goroutine (Operator.Start does not call
-	// Shutdown on a prior instance, and InitOperator overwrites the
-	// package-level operator pointer). Splitting the loops ensures
-	// critical runs exactly once and background can retry independently.
-	if err := backoff.RetryNotify(
-		func() error { return deps.critical(params) },
-		backoff.NewConstantBackOff(deps.retryInterval),
-		func(err error, d time.Duration) {
-			log.Printf("failed to bootstrap critical (requireUpstreamOnStartup=true), retrying in %s: %v", d, err)
-		},
-	); err != nil {
-		state.MarkFailed()
-		return errors.Wrap(err, "failed to bootstrap critical")
-	}
-
-	if err := backoff.RetryNotify(
-		func() error { return deps.background(params) },
-		backoff.NewConstantBackOff(deps.retryInterval),
-		func(err error, d time.Duration) {
-			log.Printf("failed to bootstrap background (requireUpstreamOnStartup=true), retrying in %s: %v", d, err)
-		},
-	); err != nil {
-		state.MarkFailed()
-		return errors.Wrap(err, "failed to bootstrap background")
-	}
-
-	state.MarkReady()
-	return nil
-}
-
-func runBootstrapResilient(params APIServerParams, state *startupstate.Tracker, deps bootstrapDeps) error {
 	criticalDone := make(chan error, 1)
 	go func() {
 		criticalDone <- backoff.RetryNotify(
@@ -287,13 +240,13 @@ func runBootstrapResilient(params APIServerParams, state *startupstate.Tracker, 
 			// endpoints. Flipping back to Failed → log.Fatalf would
 			// produce a Ready→crash→restart→Ready→crash loop where
 			// every cycle briefly exposes an under-initialized
-			// store to traffic. The resilient-mode contract is
-			// "serve degraded rather than flap" — log loudly and
-			// keep the pod alive. Background work below is skipped
-			// because it depends on store state that critical
-			// never populated; the heartbeat won't run, but
-			// existing endpoints will continue to answer with
-			// whatever defaults the in-memory store has.
+			// store to traffic. The contract is "serve degraded
+			// rather than flap" — log loudly and keep the pod
+			// alive. Background work below is skipped because it
+			// depends on store state that critical never populated;
+			// the heartbeat won't run, but existing endpoints will
+			// continue to answer with whatever defaults the
+			// in-memory store has.
 			logger.Errorf(
 				"sdk_critical_failed_after_readiness: bootstrapCritical failed after the readiness deadline; pod stays Ready to avoid a Ready→crash flap, but the in-memory store may be under-initialized and downstream handlers may return degraded data: %v",
 				criticalErr,
@@ -313,11 +266,9 @@ func runBootstrapResilient(params APIServerParams, state *startupstate.Tracker, 
 	// init issue, or upstream being briefly unreachable while the
 	// pod was already marked Ready via the timeout path) would leave
 	// the heartbeat cron job and any subsequent license refreshes
-	// disabled for the entire pod lifetime. Strict mode already
-	// retries; resilient mode must too — the only difference between
-	// the two modes is whether retry blocks readiness, not whether
-	// it happens at all. Errors are still logged at Warn level on
-	// each attempt and never block the pod from staying Ready.
+	// disabled for the entire pod lifetime. Errors are still logged
+	// at Warn level on each attempt and never block the pod from
+	// staying Ready.
 	if err := backoff.RetryNotify(
 		func() error { return deps.background(params) },
 		backoff.NewConstantBackOff(deps.retryInterval),

@@ -276,23 +276,12 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 	license := store.GetStore().GetLicense()
 	updates := store.GetStore().GetUpdates()
 
-	// The updates response is driven by the just-refreshed license
-	// (channel ID/name/sequence pulled from the wrapper). When the
-	// underlying SyncLatestLicense fell back to the cache because
-	// upstream was unreachable, the channel/cursor info we use to
-	// compute updates is stale by definition — surface that to clients
-	// the same way GetLicenseInfo and GetLicenseFields do, via the
-	// X-Replicated-License-Cache: stale header. Without this, a client
-	// seeing /api/v1/app/updates can't distinguish a genuinely
-	// up-to-date "no updates available" from a cache-fallback "we
-	// can't actually tell, here's what we knew before."
-	licenseData, source, err := sdklicense.SyncLatestLicense(r.Context(), clientset, store.GetStore().GetNamespace(), license, store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetReadOnlyMode())
+	licenseData, err := sdklicense.GetLatestLicense(license, store.GetStore().GetReplicatedAppEndpoint())
 	if err != nil {
 		logger.Error(errors.Wrap(err, "failed to get latest license"))
 		JSONCached(w, http.StatusOK, updates)
 		return
 	}
-	markStaleIfCached(w, source)
 
 	license = licenseData.License
 	store.GetStore().SetLicense(license)

@@ -193,8 +193,8 @@ spec:
         - name: REPLICATED_HA_ENABLED
           value: "true"
         {{- end }}
-        {{- if .Values.requireUpstreamOnStartup }}
-        - name: REPLICATED_REQUIRE_UPSTREAM_ON_STARTUP
+        {{- if .Values.devOffline }}
+        - name: REPLICATED_DEV_OFFLINE
           value: "true"
         {{- end }}
         {{- if (.Values.integration).licenseID }}

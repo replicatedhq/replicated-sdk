@@ -13,9 +13,8 @@ import "sync/atomic"
 type State int32
 
 const (
-	// Starting indicates the API server is up but bootstrap has not yet
-	// completed (or, with requireUpstreamOnStartup, has not yet completed
-	// the full critical+background path).
+	// Starting indicates the API server is up but bootstrapCritical has
+	// not yet completed.
 	Starting State = iota
 	// Ready indicates the SDK is ready to serve requests. With the default
 	// configuration this fires after bootstrapCritical succeeds or after

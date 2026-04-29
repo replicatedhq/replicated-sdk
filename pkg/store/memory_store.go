@@ -127,10 +127,10 @@ func (s *InMemoryStore) SetLicense(license licensewrapper.LicenseWrapper) {
 	}
 	// Both V1 and V2 are nil — the previous license is preserved
 	// rather than overwritten with a zero value. Production callers go
-	// through loadAndVerifyLicense / Sync* which never return an
-	// empty wrapper alongside a nil error, so reaching this branch is
-	// a contract violation worth surfacing.
-	logger.Debugf("InMemoryStore.SetLicense called with empty wrapper; retaining previous license")
+	// through loadAndVerifyLicense / GetLatestLicense which never
+	// return an empty wrapper alongside a nil error, so reaching this
+	// branch is a contract violation worth surfacing.
+	logger.Warnf("InMemoryStore.SetLicense called with empty wrapper; retaining previous license")
 }
 
 // GetLicenseFields returns a defensive copy of the license-fields map so

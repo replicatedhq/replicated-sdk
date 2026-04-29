@@ -1,7 +1,6 @@
 package heartbeat
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -60,7 +59,7 @@ func Start() error {
 		}
 
 		if !util.IsAirgap() {
-			licenseData, _, err := sdklicense.SyncLatestLicense(context.Background(), clientset, store.GetStore().GetNamespace(), store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint(), store.GetStore().GetReadOnlyMode())
+			licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 			if err != nil {
 				logger.Error(errors.Wrap(err, "failed to get latest license"))
 			} else {

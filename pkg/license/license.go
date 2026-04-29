@@ -23,10 +23,7 @@ type LicenseData struct {
 	License      licensewrapper.LicenseWrapper
 }
 
-// GetLicenseByID fetches the license document by ID from the upstream
-// Vendor Portal. Returns the parsed wrapper alongside the raw signed
-// bytes so callers can persist them (e.g. to the cache).
-func GetLicenseByID(licenseID string, endpoint string) (*LicenseData, error) {
+func GetLicenseByID(licenseID string, endpoint string) (licensewrapper.LicenseWrapper, error) {
 	if endpoint == "" {
 		endpoint = defaultReplicatedAppEndpoint
 	}
@@ -34,10 +31,10 @@ func GetLicenseByID(licenseID string, endpoint string) (*LicenseData, error) {
 
 	licenseData, err := getLicenseFromAPI(url, licenseID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get license from api")
+		return licensewrapper.LicenseWrapper{}, errors.Wrap(err, "failed to get license from api")
 	}
 
-	return licenseData, nil
+	return licenseData.License, nil
 }
 
 func GetLatestLicense(wrapper licensewrapper.LicenseWrapper, endpoint string) (*LicenseData, error) {

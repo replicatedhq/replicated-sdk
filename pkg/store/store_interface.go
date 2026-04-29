@@ -78,9 +78,9 @@ type Store interface {
 }
 
 // SetStore atomically installs s as the package-level store. Passing nil
-// clears the store; subsequent GetStore calls will return a fresh empty
-// InMemoryStore until a non-nil value is installed. Test cleanup paths
-// rely on the nil-clear behavior.
+// clears the store; subsequent GetStore calls will return the shared
+// fallback InMemoryStore (see GetStore) until a non-nil value is
+// installed. Test cleanup paths rely on the nil-clear behavior.
 func SetStore(s Store) {
 	if s == nil {
 		storePtr.Store(nil)

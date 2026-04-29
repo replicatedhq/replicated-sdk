@@ -23,7 +23,7 @@ func fastDeps(critical, background func(APIServerParams) error) bootstrapDeps {
 	}
 }
 
-func TestRunBootstrapResilient_CriticalTimesOutThenSucceeds(t *testing.T) {
+func TestRunBootstrap_CriticalTimesOutThenSucceeds(t *testing.T) {
 	state := startupstate.New()
 	var bgRan atomic.Bool
 	criticalCalls := 0
@@ -47,7 +47,7 @@ func TestRunBootstrapResilient_CriticalTimesOutThenSucceeds(t *testing.T) {
 	deps.deadline = 30 * time.Millisecond
 
 	start := time.Now()
-	require.NoError(t, runBootstrapResilient(APIServerParams{}, state, deps))
+	require.NoError(t, runBootstrapWithDeps(APIServerParams{}, state, deps))
 	elapsed := time.Since(start)
 
 	require.True(t, state.IsReady(), "expected state Ready, got %s", state.Get())
@@ -55,7 +55,7 @@ func TestRunBootstrapResilient_CriticalTimesOutThenSucceeds(t *testing.T) {
 	require.GreaterOrEqual(t, elapsed, deps.deadline, "expected to wait at least the deadline")
 }
 
-func TestRunBootstrapResilient_CriticalPermanentError_FailsFast(t *testing.T) {
+func TestRunBootstrap_CriticalPermanentError_FailsFast(t *testing.T) {
 	state := startupstate.New()
 	var bgRan atomic.Bool
 
@@ -66,38 +66,37 @@ func TestRunBootstrapResilient_CriticalPermanentError_FailsFast(t *testing.T) {
 		func(APIServerParams) error { bgRan.Store(true); return nil },
 	)
 
-	err := runBootstrapResilient(APIServerParams{}, state, deps)
+	err := runBootstrapWithDeps(APIServerParams{}, state, deps)
 	require.Error(t, err)
 	require.Equal(t, startupstate.Failed, state.Get())
 	require.False(t, bgRan.Load(), "background must not run after a permanent critical failure")
 }
 
-func TestRunBootstrapResilient_BackgroundPermanentFailureDoesNotAffectReady(t *testing.T) {
+func TestRunBootstrap_BackgroundPermanentFailureDoesNotAffectReady(t *testing.T) {
 	state := startupstate.New()
 
 	deps := fastDeps(
 		func(APIServerParams) error { return nil },
 		func(APIServerParams) error {
-			// Permanent so the resilient retry loop gives up quickly
-			// — otherwise this test would block forever, since the
-			// loop must keep retrying transient background errors
-			// (heartbeat startup, upstream sync) for the pod's
-			// entire lifetime.
+			// Permanent so the retry loop gives up quickly — otherwise
+			// this test would block forever, since the loop must keep
+			// retrying transient background errors (heartbeat startup,
+			// upstream sync) for the pod's entire lifetime.
 			return backoff.Permanent(errors.New("upstream sync permanently failed"))
 		},
 	)
 
-	require.NoError(t, runBootstrapResilient(APIServerParams{}, state, deps), "background failures should not bubble up")
+	require.NoError(t, runBootstrapWithDeps(APIServerParams{}, state, deps), "background failures should not bubble up")
 	require.True(t, state.IsReady(), "expected state Ready despite background failure")
 }
 
-// TestRunBootstrapResilient_BackgroundRetriesUntilSuccess verifies that
-// resilient mode keeps retrying bootstrapBackground after transient
+// TestRunBootstrap_BackgroundRetriesUntilSuccess verifies that the
+// orchestrator keeps retrying bootstrapBackground after transient
 // failures rather than swallowing them. Without this retry, a momentary
 // hiccup on the first background attempt (e.g. heartbeat cron init,
 // upstream license sync) would silently disable the heartbeat job and
 // every subsequent license refresh for the entire pod lifetime.
-func TestRunBootstrapResilient_BackgroundRetriesUntilSuccess(t *testing.T) {
+func TestRunBootstrap_BackgroundRetriesUntilSuccess(t *testing.T) {
 	state := startupstate.New()
 	var bgCalls atomic.Int32
 
@@ -112,49 +111,55 @@ func TestRunBootstrapResilient_BackgroundRetriesUntilSuccess(t *testing.T) {
 		},
 	)
 
-	require.NoError(t, runBootstrapResilient(APIServerParams{}, state, deps))
+	require.NoError(t, runBootstrapWithDeps(APIServerParams{}, state, deps))
 	require.True(t, state.IsReady())
-	require.GreaterOrEqual(t, bgCalls.Load(), int32(3), "resilient mode must retry transient background failures")
+	require.GreaterOrEqual(t, bgCalls.Load(), int32(3), "must retry transient background failures")
 }
 
-func TestRunBootstrapStrict_BlocksReadyUntilFullBootstrapSucceeds(t *testing.T) {
+// TestRunBootstrap_CriticalFailsAfterDeadline_StaysReadyButSkipsBackground
+// pins the deliberate "false-readiness over Ready→crash flap" trade-off
+// in runBootstrapWithDeps: when bootstrapCritical outlasts the readiness
+// timer (so the pod has already been marked Ready) and then ultimately
+// returns a permanent error, the pod stays Ready and the background
+// phase is intentionally skipped. The orchestrator returns nil because
+// flipping back to Failed → log.Fatalf would produce a
+// Ready→crash→restart→Ready→crash loop where every cycle briefly exposes
+// an under-initialized store to traffic.
+//
+// A future change that "fixes" this perceived false-Ready by transitioning
+// to Failed, by running background anyway, or by returning a non-nil
+// error from runBootstrap would silently alter a documented contract.
+// This test should fail in that case so the change is conscious.
+func TestRunBootstrap_CriticalFailsAfterDeadline_StaysReadyButSkipsBackground(t *testing.T) {
 	state := startupstate.New()
-	var phase atomic.Int32
+	var bgRan atomic.Bool
+	var criticalCalls atomic.Int32
+
+	criticalSlowThenPermanent := func(APIServerParams) error {
+		n := criticalCalls.Add(1)
+		if n == 1 {
+			// First attempt: sleep past the deadline so the timer
+			// fires and the orchestrator marks Ready before we
+			// return. The returned error must be transient so
+			// RetryNotify schedules a second attempt.
+			time.Sleep(40 * time.Millisecond)
+			return errors.New("transient first failure outlasting deadline")
+		}
+		// Second attempt: permanent so RetryNotify gives up and the
+		// orchestrator observes a non-nil criticalErr post-deadline.
+		return backoff.Permanent(errors.New("license is unrecoverable"))
+	}
 
 	deps := fastDeps(
-		func(APIServerParams) error {
-			phase.Store(1)
-			return nil
-		},
-		func(APIServerParams) error {
-			if !state.IsReady() && phase.Load() == 1 {
-				// We deliberately observe state HERE — strict mode must
-				// not have flipped Ready before background returns.
-				phase.Store(2)
-			}
-			return nil
-		},
+		criticalSlowThenPermanent,
+		func(APIServerParams) error { bgRan.Store(true); return nil },
 	)
-	params := APIServerParams{RequireUpstreamOnStartup: true}
+	deps.deadline = 30 * time.Millisecond
 
-	require.NoError(t, runBootstrapWithDeps(params, state, deps))
-	require.Equal(t, int32(2), phase.Load(), "background did not observe pre-Ready state")
-	require.True(t, state.IsReady(), "expected state Ready after strict bootstrap")
-}
-
-func TestRunBootstrapStrict_BackgroundFailure_BlocksReady(t *testing.T) {
-	state := startupstate.New()
-
-	deps := fastDeps(
-		func(APIServerParams) error { return nil },
-		func(APIServerParams) error {
-			// Permanent so the retry loop gives up quickly.
-			return backoff.Permanent(errors.New("upstream sync permanently failed"))
-		},
-	)
-	params := APIServerParams{RequireUpstreamOnStartup: true}
-
-	err := runBootstrapWithDeps(params, state, deps)
-	require.Error(t, err, "expected an error when strict-mode background fails")
-	require.Equal(t, startupstate.Failed, state.Get())
+	require.NoError(t, runBootstrapWithDeps(APIServerParams{}, state, deps),
+		"post-deadline critical failure must not bubble up — pod stays Ready")
+	require.True(t, state.IsReady(),
+		"pod must stay Ready after the Ready→fail transition; flipping to Failed would cause a Ready→crash flap")
+	require.False(t, bgRan.Load(),
+		"background must be skipped when critical permanently fails after the readiness deadline")
 }
