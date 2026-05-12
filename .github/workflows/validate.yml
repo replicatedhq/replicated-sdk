@@ -41,7 +41,7 @@ jobs:
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
         with:
-          version: "0.19.9"
+          version: "0.20.8"
           verb: call
           args: build-for-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT export --path=./build-info.json
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
@@ -99,7 +99,7 @@ jobs:
         env:
           OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
         with:
-          version: "0.19.9"
+          version: "0.20.8"
           verb: call
           args: run-single-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --distribution="${{ matrix.dist.Distribution }}" --version="${{ matrix.dist.Version }}" --build-info-file=./build-info.json
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
