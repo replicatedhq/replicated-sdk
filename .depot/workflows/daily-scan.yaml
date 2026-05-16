@@ -1,0 +1,67 @@
+# Depot CI Migration
+# Source: .github/workflows/daily-scan.yaml
+#
+# Changes made:
+# - Changed GitHub runs-on labels to their Depot equivalents
+
+name: Scan vulnerabilities
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+permissions: {} # Remove all permissions by default
+jobs:
+  scan_filesystem:
+    runs-on: depot-ubuntu-22.04 # was: ubuntu-22.04. Mapped standard GitHub runner to Depot equivalent.
+    permissions:
+      contents: read # For checkout
+      security-events: write # For uploading SARIF results
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Run Grype vulnerability scanner in repo mode
+        uses: anchore/scan-action@v7
+        id: fs_scan
+        with:
+          path: '.'
+          only-fixed: true
+          output-format: 'sarif'
+          severity-cutoff: 'medium'
+      - name: Upload Grype scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.fs_scan.outputs.sarif }}
+    timeout-minutes: 30
+  scan-release:
+    name: Scan Current Release
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
+    permissions:
+      contents: read # For reading releases
+      security-events: write # For uploading SARIF results
+    steps:
+      - name: Get latest release
+        id: get_release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const release = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            core.setOutput('tag_name', release.data.tag_name);
+      - name: Run Grype vulnerability scanner
+        uses: anchore/scan-action@v7
+        id: image_scan
+        with:
+          image: 'index.docker.io/replicated/replicated-sdk:${{ steps.get_release.outputs.tag_name }}'
+          output-format: 'sarif'
+          severity-cutoff: 'high'
+      - name: Upload Grype scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.image_scan.outputs.sarif }}
+          category: 'release-cve-scan'
+    timeout-minutes: 30
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
