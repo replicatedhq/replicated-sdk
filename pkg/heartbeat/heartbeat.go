@@ -61,6 +61,12 @@ func Start() error {
 			}
 		}
 
+		// Clientset acquisition is scoped to the report call that needs
+		// it. License sync above no longer needs a clientset (it talks
+		// directly to the upstream Vendor Portal), so a transient k8s
+		// API hiccup must not gate it. Hoisting GetClientset above the
+		// license sync would couple the two and silently regress the
+		// per-tick resilience of license refresh.
 		go func() {
 			clientset, err := k8sutil.GetClientset()
 			if err != nil {

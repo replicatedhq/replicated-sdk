@@ -340,6 +340,13 @@ reportAllImages: false
 # See docs for feature availability in this mode.
 readOnlyMode: false
 
+# When true (and license type is "dev"), the SDK treats the install as
+# airgap — it never calls replicated.app and serves the license from the
+# chart-embedded bytes. Intended for local development with a dev license
+# when working offline (VPN, flaky network, air-gapped lab). Setting this
+# with a non-dev license causes the SDK to refuse to start.
+devOffline: false
+
 # Proxy configuration for outbound connections
 # Configure HTTPS proxy settings for the Replicated SDK
 # These values can also be set via global.replicated.httpsProxy and global.replicated.noProxy

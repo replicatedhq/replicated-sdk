@@ -2,18 +2,30 @@ package store
 
 import (
 	"strings"
+	"sync"
 
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
-	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 )
 
+// InMemoryStore is the SDK's process-local source of truth for license and
+// app state.
+//
+// Concurrency: fields written outside of InitInMemory are protected by mu
+// (an RWMutex). The fields broken out below as "set once at init" are
+// written exclusively by InitInMemory, which runs single-threaded before
+// the HTTP listener accepts traffic, so they intentionally do not take
+// the lock. Adding a setter for any of those fields requires moving it
+// under the mu-protected group.
 type InMemoryStore struct {
+	mu sync.RWMutex
+
+	// Set once at init (no locking required for read).
 	replicatedID          string
 	appID                 string
-	license               licensewrapper.LicenseWrapper
-	licenseFields         licensetypes.LicenseFields
 	appSlug               string
 	appName               string
 	channelID             string
@@ -26,12 +38,18 @@ type InMemoryStore struct {
 	replicatedAppEndpoint string
 	releaseImages         []string
 	namespace             string
-	appStatus             appstatetypes.AppStatus
-	updates               []upstreamtypes.ChannelRelease
+	reportAllImages       bool
+	readOnlyMode          bool
+
+	// Mutated at runtime by background goroutines (heartbeat, appstate
+	// operator) and request handlers concurrently with each other. All
+	// reads and writes of these fields go through mu.
+	license       licensewrapper.LicenseWrapper
+	licenseFields licensetypes.LicenseFields
+	appStatus     appstatetypes.AppStatus
+	updates       []upstreamtypes.ChannelRelease
 	// podImages holds namespace -> podUID -> []ImageInfo
-	podImages       map[string]map[string][]appstatetypes.ImageInfo
-	reportAllImages bool
-	readOnlyMode    bool
+	podImages map[string]map[string][]appstatetypes.ImageInfo
 }
 
 type InitInMemoryStoreOptions struct {
@@ -86,41 +104,90 @@ func (s *InMemoryStore) GetAppID() string {
 }
 
 func (s *InMemoryStore) GetLicense() licensewrapper.LicenseWrapper {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.license
 }
 
 func (s *InMemoryStore) SetLicense(license licensewrapper.LicenseWrapper) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	// DeepCopy appropriate version
 	if license.V1 != nil {
 		s.license = licensewrapper.LicenseWrapper{
 			V1: license.V1.DeepCopy(),
 		}
-	} else if license.V2 != nil {
+		return
+	}
+	if license.V2 != nil {
 		s.license = licensewrapper.LicenseWrapper{
 			V2: license.V2.DeepCopy(),
 		}
+		return
 	}
+	// Both V1 and V2 are nil — the previous license is preserved
+	// rather than overwritten with a zero value. Production callers go
+	// through loadAndVerifyLicense / GetLatestLicense which never
+	// return an empty wrapper alongside a nil error, so reaching this
+	// branch is a contract violation worth surfacing.
+	logger.Warnf("InMemoryStore.SetLicense called with empty wrapper; retaining previous license")
 }
 
+// GetLicenseFields returns a defensive copy of the license-fields map so
+// callers may safely mutate the returned map (e.g. handlers.GetLicenseField
+// does `delete(m, key)` and `m[key] = v` against this result, then writes
+// it back via SetLicenseFields). Returning the internal map by reference
+// would race with concurrent SetLicenseFields writers under mu, because
+// the RLock only guards the pointer load — not the map's contents — once
+// the function returns. A shallow copy is sufficient: LicenseField values
+// are stored by value, and no caller mutates the inner struct fields.
 func (s *InMemoryStore) GetLicenseFields() licensetypes.LicenseFields {
-	return s.licenseFields
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.licenseFields == nil {
+		return nil
+	}
+	out := make(licensetypes.LicenseFields, len(s.licenseFields))
+	for k, v := range s.licenseFields {
+		out[k] = v
+	}
+	return out
 }
 
+// SetLicenseFields stores the caller-provided map as the new authoritative
+// license-fields state, replacing whatever was there before.
+//
+// Replace (not merge) semantics matter for two callers in particular:
+//
+//   - handlers.GetLicenseField, which deletes a key from a copy returned by
+//     GetLicenseFields when the upstream Vendor Portal reports the field
+//     no longer exists, then calls SetLicenseFields with that copy. With
+//     merge semantics the deletion is silently lost.
+//   - handlers.GetLicenseFields, which assigns the full upstream-fetched
+//     map to its local variable and writes it back. With merge semantics a
+//     field removed upstream would persist forever in the local store.
+//
+// We also defensive-copy on the way in so that a caller mutating
+// `licenseFields` after this call cannot race with subsequent readers.
+// Combined with GetLicenseFields' returned-copy contract, this means the
+// store's internal map is never aliased outside this package.
 func (s *InMemoryStore) SetLicenseFields(licenseFields licensetypes.LicenseFields) {
-	// copy by value not reference
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if licenseFields == nil {
 		s.licenseFields = nil
 		return
 	}
-	if s.licenseFields == nil {
-		s.licenseFields = licensetypes.LicenseFields{}
-	}
+	cp := make(licensetypes.LicenseFields, len(licenseFields))
 	for k, v := range licenseFields {
-		s.licenseFields[k] = v
+		cp[k] = v
 	}
+	s.licenseFields = cp
 }
 
 func (s *InMemoryStore) IsDevLicense() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.license.GetLicenseType() == "dev"
 }
 
@@ -173,14 +240,20 @@ func (s *InMemoryStore) GetNamespace() string {
 }
 
 func (s *InMemoryStore) GetAppStatus() appstatetypes.AppStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.appStatus
 }
 
 func (s *InMemoryStore) SetAppStatus(status appstatetypes.AppStatus) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.appStatus = status
 }
 
 func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []appstatetypes.ImageInfo) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.podImages == nil {
 		s.podImages = make(map[string]map[string][]appstatetypes.ImageInfo)
 	}
@@ -280,6 +353,8 @@ func canonicalNameTag(s string) string {
 }
 
 func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.podImages == nil {
 		return
 	}
@@ -293,6 +368,8 @@ func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {
 }
 
 func (s *InMemoryStore) GetRunningImages() map[string][]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	// Aggregate image -> unique SHA set across all namespaces/pods
 	resultSet := make(map[string]map[string]struct{})
 	for _, pods := range s.podImages {
@@ -320,10 +397,14 @@ func (s *InMemoryStore) GetRunningImages() map[string][]string {
 }
 
 func (s *InMemoryStore) GetUpdates() []upstreamtypes.ChannelRelease {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.updates
 }
 
 func (s *InMemoryStore) SetUpdates(updates []upstreamtypes.ChannelRelease) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.updates = updates
 }
 

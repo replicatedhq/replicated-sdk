@@ -31,6 +31,10 @@ func APICmd() *cobra.Command {
 			namespace := v.GetString("namespace")
 			configFilePath := v.GetString("config-file")
 			integrationLicenseID := v.GetString("integration-license-id")
+			// dev-offline auto-binds to REPLICATED_DEV_OFFLINE via
+			// root.go's SetEnvPrefix("REPLICATED") + AutomaticEnv +
+			// SetEnvKeyReplacer("-", "_"); no explicit BindEnv needed.
+			devOffline := v.GetBool("dev-offline")
 
 			if configFilePath == "" && integrationLicenseID == "" {
 				return errors.New("either config file or integration license id must be specified")
@@ -78,6 +82,7 @@ func APICmd() *cobra.Command {
 				ReportAllImages:       replicatedConfig.ReportAllImages,
 				ReadOnlyMode:          replicatedConfig.ReadOnlyMode,
 				Namespace:             namespace,
+				DevOffline:            devOffline,
 			}
 			apiserver.Start(params)
 
