@@ -1,6 +1,6 @@
 {
   "name": "replicated-sdk",
-  "engineVersion": "v0.19.9",
+  "engineVersion": "v0.20.8",
   "sdk": {
     "source": "go"
   },
