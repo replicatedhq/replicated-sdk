@@ -24,6 +24,9 @@ func mustGetItemUUID(ctx context.Context, opServiceAccount *dagger.Secret, itemN
 		onepassword.WithServiceAccountToken(opServiceAccountPlaintext),
 		onepassword.WithIntegrationInfo("Dagger Workflow", "v0.0.1"),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	items, err := client.Items.ListAll(ctx, string(vault))
 	if err != nil {
@@ -91,6 +94,9 @@ func mustGetNonSensitiveSecret(ctx context.Context, opServiceAccount *dagger.Sec
 		onepassword.WithServiceAccountToken(opServiceAccountPlaintext),
 		onepassword.WithIntegrationInfo("Dagger Workflow", "v0.0.1"),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	onePasswordURI := fmt.Sprintf("op://%s/%s/%s", vault, opItemUUID, field)
 	item, err := client.Secrets.Resolve(context.Background(), onePasswordURI)
