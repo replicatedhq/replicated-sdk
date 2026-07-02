@@ -1,0 +1,22 @@
+contents:
+  repositories:
+    - https://apk.cve0.io
+  keyring:
+    - https://apk.cve0.io/key/cve0-signing.rsa.pub
+  packages:
+    - busybox
+    - replicated-sdk-fips
+    - curl
+
+accounts:
+  groups:
+    - groupname: replicated
+      gid: 1001
+  users:
+    - username: replicated
+      uid: 1001
+      gid: 1001
+  run-as: replicated
+
+entrypoint:
+  command: /usr/bin/replicated api

@@ -1,0 +1,69 @@
+package:
+  name: replicated-sdk
+  version: "0.0.1"
+  epoch: 0
+  description: replicated sdk package
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    provides:
+      - replicated-sdk=${{package.full-version}}
+
+environment:
+  contents:
+    repositories:
+      - https://apk.cve0.io
+    keyring:
+      - https://apk.cve0.io/key/cve0-signing.rsa.pub
+    packages:
+      - busybox
+      - build-base
+      - ca-certificates-bundle
+      - go
+      - git
+  environment:
+    CGO_ENABLED: '0'
+    GOMODCACHE: '/var/cache/melange'
+    GOPROXY: 'https://proxy.golang.org,direct'
+    GOSUMDB: 'sum.golang.org'
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/replicatedhq/replicated-sdk
+      tag: ${{package.version}}
+
+  - uses: go/build
+    with:
+      go-package: go
+      modroot: .
+      packages: ./cmd/replicated
+      output: replicated
+      ldflags: '-X github.com/replicatedhq/replicated-sdk/pkg/buildversion.version=${{package.version}}'
+
+subpackages:
+  - name: "${{package.name}}-fips"
+    dependencies:
+      provides:
+        - replicated-sdk-fips=${{package.full-version}}
+    pipeline:
+      - uses: go/build
+        with:
+          go-package: go-boring
+          modroot: .
+          packages: ./cmd/replicated
+          output: replicated
+          ldflags: '-X github.com/replicatedhq/replicated-sdk/pkg/buildversion.version=${{package.version}}'
+
+test:
+  environment:
+    contents:
+      packages:
+        - ${{package.name}}=${{package.full-version}}
+        - busybox
+  pipeline:
+    - name: Verify replicated installation
+      runs: |
+        replicated version
+        test -x /usr/bin/replicated
+        echo "replicated installed successfully"
