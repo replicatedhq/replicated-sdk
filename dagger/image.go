@@ -32,7 +32,7 @@ func buildImage(
 	for _, arch := range archs {
 		packages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
 			SourceDir: source,
-			Arch:      arch,
+			Arch:      []dagger.Platform{dagger.Platform(arch)},
 		})
 		switch arch {
 		case "x86_64":

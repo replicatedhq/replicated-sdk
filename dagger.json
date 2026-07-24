@@ -1,14 +1,14 @@
 {
   "name": "replicated-sdk",
-  "engineVersion": "v0.20.8",
+  "engineVersion": "v0.21.7",
   "sdk": {
     "source": "go"
   },
   "dependencies": [
     {
       "name": "apko",
-      "source": "github.com/opopops/daggerverse/apko@apko/v1.12.1",
-      "pin": "182a7f073ae270ad14e161e68ab478471f0bd81f"
+      "source": "github.com/opopops/daggerverse/apko@apko/v1.18.3",
+      "pin": "d07e0252feb5ac99985b630d8501ecf3d9f7c082"
     },
     {
       "name": "gh",
@@ -27,8 +27,8 @@
     },
     {
       "name": "melange",
-      "source": "github.com/opopops/daggerverse/melange@melange/v1.3.5",
-      "pin": "078d3e017bd37e1efc26da3ac41c11cbfe8a1829"
+      "source": "github.com/opopops/daggerverse/melange@melange/v1.11.0",
+      "pin": "8acc58ada3d0eba36fee740769232a8d6068c4d4"
     },
     {
       "name": "cosign",
