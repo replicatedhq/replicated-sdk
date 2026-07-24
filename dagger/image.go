@@ -29,22 +29,24 @@ func buildImage(
 	var armPackages *dagger.Directory
 	var melangeKey *dagger.File
 
+	melange := dag.Melange().WithKeygen()
+
 	for _, arch := range archs {
-		packages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
+		packages := melange.Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
 			SourceDir: source,
 			Arch:      []dagger.Platform{dagger.Platform(arch)},
 		})
 		switch arch {
 		case "x86_64":
 			amdPackages = packages
-			// Get the signing key from the first build
+			// Get the signing key from the melange instance on the first build
 			if melangeKey == nil {
-				melangeKey = packages.File("melange.rsa.pub")
+				melangeKey = melange.PublicKey()
 			}
 		case "aarch64":
 			armPackages = packages
 			if melangeKey == nil {
-				melangeKey = packages.File("melange.rsa.pub")
+				melangeKey = melange.PublicKey()
 			}
 		}
 	}
