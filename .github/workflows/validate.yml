@@ -22,7 +22,7 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
       PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -35,7 +35,7 @@ jobs:
     outputs:
       distributions: ${{ steps.distributions.outputs.result }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dagger/dagger-for-github@v8.4.1
         id: build
         env:
@@ -89,7 +89,7 @@ jobs:
       matrix:
         dist: ${{ fromJson(needs.build.outputs.distributions) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v8
         with:
@@ -112,7 +112,7 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
       PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
