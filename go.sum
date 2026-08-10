@@ -327,8 +327,8 @@ github.com/redis/go-redis/extra/redisotel/v9 v9.0.5 h1:EfpWLLCyXw8PSM2/XNJLjI3Pb
 github.com/redis/go-redis/extra/redisotel/v9 v9.0.5/go.mod h1:WZjPDy7VNzn77AAfnAfVjZNvfJTYfPetfZk5yoSTLaQ=
 github.com/redis/go-redis/v9 v9.7.3 h1:YpPyAayJV+XErNsatSElgRZZVCwXX9QzkKYNvO7x0wM=
 github.com/redis/go-redis/v9 v9.7.3/go.mod h1:bGUrSggJ9X9GUmZpZNEOQKaANxSGgOEBRltRTZHSvrA=
-github.com/replicatedhq/kotskinds v0.0.0-20260513164854-d3c205b56eb4 h1:mNbDXHmdVIHuZLngJy0rWaQVl+koA9UIXbxlXvKylTY=
-github.com/replicatedhq/kotskinds v0.0.0-20260513164854-d3c205b56eb4/go.mod h1:oewPZAOsQ5c1owWz8cj7T62BtdZIySIHOQtFpl4omd4=
+github.com/replicatedhq/kotskinds v0.1.0 h1:FkFAExFH+kfDLXV2fZFVNtdXR02GkpDAGlUcoBcsjdU=
+github.com/replicatedhq/kotskinds v0.1.0/go.mod h1:8sswH8+cIoOVQdFtUfzOri+SEHIKw8YYwJvGOG9yYgI=
 github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=
 github.com/robfig/cron/v3 v3.0.1/go.mod h1:eQICP3HwyT7UooqI/z+Ov+PtYAWygg1TEWWzGIFLtro=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
