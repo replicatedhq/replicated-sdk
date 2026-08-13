@@ -4,7 +4,10 @@ import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
 	"fmt"
+	"regexp"
 )
+
+var stableReleaseVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 
 // Publish publishes the Replicated SDK images and chart
 // to staging and production registries
@@ -35,6 +38,10 @@ func (m *ReplicatedSdk) Publish(
 	// +default=false
 	slsa bool,
 
+	// Skip container image publishing when SecureBuild owns the release images.
+	// +default=false
+	skipImage bool,
+
 	// +optional
 	githubToken *dagger.Secret,
 
@@ -44,6 +51,29 @@ func (m *ReplicatedSdk) Publish(
 	// +optional
 	cosignPassword *dagger.Secret,
 ) error {
+	if (staging || production) && stableReleaseVersion.MatchString(version) && !skipImage {
+		return fmt.Errorf("container images for stable release %s must be published by SecureBuild", version)
+	}
+
+	if skipImage {
+		if err := buildAndPublishChart(ctx, dag, source, version, staging, production, opServiceAccountProduction); err != nil {
+			return err
+		}
+
+		if production {
+			if err := dag.Gh().
+				WithToken(githubToken).
+				WithRepo("replicatedhq/replicated-sdk").
+				WithSource(source).
+				Release().
+				Create(ctx, version, version); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	// version must be passed in, it will be used to tag the image
 	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version, []string{"x86_64", "aarch64"})
 	if err != nil {

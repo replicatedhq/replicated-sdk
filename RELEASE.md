@@ -53,62 +53,21 @@ Note: While older beta releases used a 'v' prefix (e.g., v1.0.0-beta.28), curren
 
 ### Build and Publish Process
 
-The release process is handled by the `Publish` function in `dagger/publish.go`. Here's how it works:
+The release workflow uses the specs in `securebuild/package` and `securebuild/image` as the single source of truth:
 
-1. **Package Building (Melange)**:
-   - The process starts by building packages using Chainguard's melange
-   - Version strings are sanitized for Alpine/Wolfi compatibility (e.g., `1.6.0-beta.5` becomes `1.6.0_beta.5-r0`)
-   - Packages are built for both AMD64 and ARM64 architectures
-   - The melange build process:
-     ```go
-     // Updates melange.yaml with correct version
-     melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", packageVersion), 1)
-     
-     // Builds packages for both architectures
-     amdPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
-         SourceDir: source,
-         Arch:      "x86_64",
-     })
-     armPackages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
-         SourceDir: source,
-         Arch:      "aarch64",
-     })
-     ```
+1. **Stable image releases** call `.github/workflows/publish-securebuild.yml`. SecureBuild builds the `replicated-sdk` package and the `replicated-sdk` and `replicated-sdk-fips` images.
+2. **Prerelease images** are built locally by Dagger, which adapts those same specs in memory. This preserves the existing prerelease registry credentials while following the KOTS stable-service/prerelease-local split.
+3. **Development and E2E images** use that same Dagger adapter; there are no separate Melange or APKO specs under `deploy/`.
+4. **Registry destinations** previously used by the release pipeline were:
+   - Public Docker Hub: `index.docker.io/replicated/replicated-sdk:${VERSION}`
+   - Staging Replicated registry: `registry.staging.replicated.com/library/replicated-sdk-image:${VERSION}`
+   - Production Replicated registry: `registry.replicated.com/library/replicated-sdk-image:${VERSION}`
 
-2. **Container Image Building (Apko)**:
-   - Uses Chainguard's apko to build the final container image
-   - The apko.yaml is updated with:
-     - The correct package version constraint
-     - Environment variables
-   - Images are built and published to multiple registries:
-     ```go
-     // Updates apko.yaml with package version
-     apkoYaml = strings.Replace(
-         apkoYaml,
-         "    - replicated\n",
-         fmt.Sprintf("    - replicated=%s-r0\n", sanitizeVersionForMelange(version)),
-         1,
-     )
-     ```
+   SecureBuild also publishes the FIPS variants using the same repositories with a `${VERSION}-fips` tag.
 
-3. **Image Publishing**:
-   The process publishes images to three different registries based on the build type:
-   - Development (if enabled):
-     ```
-     ttl.sh/replicated/replicated-sdk:${VERSION}
-     ```
-   - Staging (if enabled):
-     ```
-     index.docker.io/replicated/replicated-sdk:${VERSION}
-     registry.staging.replicated.com/library/replicated-sdk-image:${VERSION}
-     ```
-   - Production (if enabled):
-     ```
-     index.docker.io/replicated/replicated-sdk:${VERSION}
-     registry.replicated.com/library/replicated-sdk-image:${VERSION}
-     ```
+   Configure the SecureBuild `replicated-sdk` image to publish to all three destinations. Configure an additional destination for `replicated-sdk-fips` wherever that new image should be distributed; the legacy pipeline did not publish a FIPS image.
 
-4. **Helm Chart Publishing**:
+5. **Helm Chart Publishing**:
    The process builds and publishes Helm charts to both staging and production registries:
    - Updates values.yaml with correct version and registry information
    - Publishes to:
@@ -128,26 +87,7 @@ The release process is handled by the `Publish` function in `dagger/publish.go`.
        WithExec([]string{"helm", "push", helmChartFilename, "oci://registry.replicated.com/library"})
    ```
 
-5. **SLSA Provenance**:
-   If SLSA provenance is enabled, the process triggers a GitHub workflow:
-   ```go
-   if slsa {
-       ctr := dag.Gh().
-           Run(fmt.Sprintf(`api /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
-               -f ref=main \
-               -f inputs[digest]=%s`, digest),
-               dagger.GhRunOpts{
-                   Token: githubToken,
-               },
-           )
-   }
-   ```
-
-   Important notes about SLSA provenance:
-   - This step is automatically triggered by the Dagger pipeline during production releases
-   - Requires a GitHub token with permissions to trigger the SLSA workflow (`slsa.yml`)
-   - The workflow is triggered via GitHub API to generate and attach provenance to the image
-   - This step is skipped for development and staging releases
+6. **Image provenance** is produced by SecureBuild for stable release images. The legacy Dagger SLSA dispatch is bypassed when `--skip-image=true` because Dagger no longer owns those image digests.
 
 ### Security and Attestations
 

@@ -3,10 +3,10 @@ on:
   push:
     tags:
     - '[0-9]+.[0-9]+.[0-9]+'
-    - '[0-9]+.[0-9]+.[0-9]+\-beta'
-    - '[0-9]+.[0-9]+.[0-9]+\-beta\.[0-9]+'
-    - '[0-9]+.[0-9]+.[0-9]+\-alpha'
-    - '[0-9]+.[0-9]+.[0-9]+\-alpha\.[0-9]+'
+    - '[0-9]+.[0-9]+.[0-9]+-beta'
+    - '[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+    - '[0-9]+.[0-9]+.[0-9]+-alpha'
+    - '[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+'
 
 env:
   PACT_VERSION: ${{ github.ref_name }}
@@ -83,7 +83,16 @@ jobs:
           -d "{\"event_type\": \"replicated-sdk-release-notes\", \"client_payload\": {\"version\": \"${GIT_TAG}\", \"prev_version\": \"${GIT_PREV_TAG}\" }}" \
           "https://api.github.com/repos/replicatedhq/replicated-docs/dispatches"
 
+  build-securebuild:
+    if: ${{ !contains(github.ref_name, '-') }}
+    uses: ./.github/workflows/publish-securebuild.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
   staging:
+    needs: build-securebuild
+    if: ${{ !cancelled() && (contains(github.ref_name, '-') || needs.build-securebuild.result == 'success') }}
     runs-on:
       labels: ReplicatedSDK
     outputs:
@@ -104,10 +113,12 @@ jobs:
         with:
           version: "0.21.7"
           verb: call
-          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=true --version ${{ github.ref_name }}
+          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=true --skip-image=${{ !contains(github.ref_name, '-') }} --version ${{ github.ref_name }}
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
   production:
+    needs: build-securebuild
+    if: ${{ !cancelled() && (contains(github.ref_name, '-') || needs.build-securebuild.result == 'success') }}
     runs-on:
       labels: ReplicatedSDK
     outputs:
@@ -129,5 +140,5 @@ jobs:
         with:
           version: "0.21.7"
           verb: call
-          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --production=true --version ${{ github.ref_name }} --github-token=env:GITHUB_TOKEN --slsa=true
+          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --production=true --skip-image=${{ !contains(github.ref_name, '-') }} --version ${{ github.ref_name }} --github-token=env:GITHUB_TOKEN --slsa=${{ contains(github.ref_name, '-') }}
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
