@@ -44,7 +44,6 @@ jobs:
           version: "0.21.7"
           verb: call
           args: build-for-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT export --path=./build-info.json
-          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
       - name: Extract distributions for matrix
         id: distributions
@@ -102,7 +101,6 @@ jobs:
           version: "0.21.7"
           verb: call
           args: run-single-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --distribution="${{ matrix.dist.Distribution }}" --version="${{ matrix.dist.Version }}" --build-info-file=./build-info.json
-          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
   publish-pact:
     runs-on: ubuntu-22.04
