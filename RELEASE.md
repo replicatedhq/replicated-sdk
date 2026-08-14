@@ -87,7 +87,8 @@ The release workflow uses the specs in `securebuild/package` and `securebuild/im
        WithExec([]string{"helm", "push", helmChartFilename, "oci://registry.replicated.com/library"})
    ```
 
-6. **Image provenance** is produced by SecureBuild for stable release images. The legacy Dagger SLSA dispatch is bypassed when `--skip-image=true` because Dagger no longer owns those image digests.
+6. **Image provenance** is produced and published by SecureBuild for stable
+   release images.
 
 ### Security and Attestations
 
