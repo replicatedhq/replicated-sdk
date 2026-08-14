@@ -102,7 +102,7 @@ After a release is published, verify:
 
 1. Docker Image:
    ```bash
-   docker pull registry.replicated/replicated-sdk-image:X.Y.Z
+   docker pull registry.replicated.com/library/replicated-sdk-image:X.Y.Z
    ```
 
 2. Helm Charts:
@@ -115,21 +115,57 @@ After a release is published, verify:
    helm pull oci://registry.replicated.com/library/replicated --version X.Y.Z
    ```
 
-3. Image Attestations:
-   Use the verification script in the `certs` directory to verify SLSA provenance, image signatures, and SBOM:
+3. Image signatures and attestations:
+
+   Releases starting with `1.19.9` are signed for production by SecureBuild
+   using Sigstore keyless signing. A tag can be used to verify the image it
+   currently references:
+
    ```bash
-   ./certs/verify-image.sh --env <dev|stage|prod> --version X.Y.Z --digest <image-digest>
+   cosign verify \
+     --certificate-identity='sb-attestor@cve0-issuer.iam.gserviceaccount.com' \
+     --certificate-oidc-issuer='https://accounts.google.com' \
+     registry.replicated.com/library/replicated-sdk-image:X.Y.Z
    ```
 
-   The script verifies:
-   - SLSA provenance attestation
-   - Image signatures using environment-specific public keys
-   - SBOM content and signatures
+   For immutable verification, use the image digest instead:
 
-   To view the full SBOM content:
    ```bash
-   ./certs/verify-image.sh --env <dev|stage|prod> --version X.Y.Z --digest <image-digest> --show-sbom
+   cosign verify \
+     --certificate-identity='sb-attestor@cve0-issuer.iam.gserviceaccount.com' \
+     --certificate-oidc-issuer='https://accounts.google.com' \
+     registry.replicated.com/library/replicated-sdk-image@sha256:DIGEST
    ```
+
+   Append `-fips` to the version tag to verify the FIPS image. For the
+   attestation commands below, replace `IMAGE_REFERENCE` with either the tagged
+   or digest-qualified image reference.
+
+   Verify the SLSA provenance attestation:
+
+   ```bash
+   cosign verify-attestation \
+     --certificate-identity='sb-attestor@cve0-issuer.iam.gserviceaccount.com' \
+     --certificate-oidc-issuer='https://accounts.google.com' \
+     --type='https://slsa.dev/provenance/v1' \
+     IMAGE_REFERENCE
+   ```
+
+   Verify the SPDX SBOM attestation:
+
+   ```bash
+   cosign verify-attestation \
+     --certificate-identity='sb-attestor@cve0-issuer.iam.gserviceaccount.com' \
+     --certificate-oidc-issuer='https://accounts.google.com' \
+     --type='https://spdx.dev/Document' \
+     IMAGE_REFERENCE
+   ```
+
+   Cosign uses the Sigstore Public Good trust root by default. No public key
+   file is required for these releases.
+
+   For releases prior to `1.19.9`, use the legacy verification procedure in
+   [`certs/README.md`](certs/README.md).
 
 ## Troubleshooting
 
