@@ -42,9 +42,16 @@ jobs:
           echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
 
       - name: Install securebuild CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_TAG=$(curl -s https://api.github.com/repos/securebuildhq/securebuild/releases/latest | jq -r .tag_name)
-          curl -sL "https://github.com/securebuildhq/securebuild/releases/download/${LATEST_TAG}/securebuild-cli-linux-amd64" -o securebuild
+          LATEST_TAG=$(curl -sf -H "Authorization: Bearer ${GH_TOKEN}" https://api.github.com/repos/securebuildhq/securebuild/releases/latest | jq -r .tag_name)
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+            echo "::error::Failed to determine latest securebuild release tag"
+            exit 1
+          fi
+          curl -sfL "https://github.com/securebuildhq/securebuild/releases/download/${LATEST_TAG}/securebuild-cli-linux-amd64" -o securebuild
+          file securebuild | grep -q 'ELF' || { echo "::error::Downloaded file is not a valid binary"; cat securebuild; exit 1; }
           chmod +x securebuild
 
       - name: Build package
@@ -65,9 +72,16 @@ jobs:
           - replicated-sdk-fips
     steps:
       - name: Install securebuild CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_TAG=$(curl -s https://api.github.com/repos/securebuildhq/securebuild/releases/latest | jq -r .tag_name)
-          curl -sL "https://github.com/securebuildhq/securebuild/releases/download/${LATEST_TAG}/securebuild-cli-linux-amd64" -o securebuild
+          LATEST_TAG=$(curl -sf -H "Authorization: Bearer ${GH_TOKEN}" https://api.github.com/repos/securebuildhq/securebuild/releases/latest | jq -r .tag_name)
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+            echo "::error::Failed to determine latest securebuild release tag"
+            exit 1
+          fi
+          curl -sfL "https://github.com/securebuildhq/securebuild/releases/download/${LATEST_TAG}/securebuild-cli-linux-amd64" -o securebuild
+          file securebuild | grep -q 'ELF' || { echo "::error::Downloaded file is not a valid binary"; cat securebuild; exit 1; }
           chmod +x securebuild
 
       - name: Build image
