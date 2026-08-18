@@ -25,24 +25,18 @@ func mustGetItemUUID(ctx context.Context, opServiceAccount *dagger.Secret, itemN
 		onepassword.WithIntegrationInfo("Dagger Workflow", "v0.0.1"),
 	)
 
-	items, err := client.Items.ListAll(ctx, string(vault))
+	items, err := client.Items().List(ctx, string(vault))
 	if err != nil {
 		panic(err)
 	}
 
-	for {
-		item, err := items.Next()
-		if err != nil {
-			if err == onepassword.ErrorIteratorDone {
-				panic(fmt.Errorf("item %s not found", itemName))
-			}
-			panic(err)
-		}
-
+	for _, item := range items {
 		if item.Title == itemName {
 			return item.ID
 		}
 	}
+
+	panic(fmt.Errorf("item %s not found", itemName))
 }
 
 func mustGetSecretAsPlaintext(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string, vault Vault) string {
@@ -72,12 +66,12 @@ func mustGetSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemNam
 	}
 
 	onePasswordURI := fmt.Sprintf("op://%s/%s/%s", vault, opItemUUID, field)
-	item, err := client.Secrets.Resolve(context.Background(), onePasswordURI)
+	secretValue, err := client.Secrets().Resolve(context.Background(), onePasswordURI)
 	if err != nil {
 		panic(fmt.Errorf("failed to get field %s from item %s: %w", field, itemName, err))
 	}
 
-	return dagger.Connect().SetSecret(itemName, item)
+	return dagger.Connect().SetSecret(itemName, secretValue)
 }
 
 func mustGetNonSensitiveSecret(ctx context.Context, opServiceAccount *dagger.Secret, itemName string, field string, vault Vault) string {
@@ -93,10 +87,10 @@ func mustGetNonSensitiveSecret(ctx context.Context, opServiceAccount *dagger.Sec
 	)
 
 	onePasswordURI := fmt.Sprintf("op://%s/%s/%s", vault, opItemUUID, field)
-	item, err := client.Secrets.Resolve(context.Background(), onePasswordURI)
+	secretValue, err := client.Secrets().Resolve(context.Background(), onePasswordURI)
 	if err != nil {
 		panic(fmt.Errorf("failed to get field %s from item %s: %w", field, itemName, err))
 	}
 
-	return item
+	return secretValue
 }
