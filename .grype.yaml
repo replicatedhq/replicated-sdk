@@ -1,0 +1,22 @@
+# Temporary ignore for libssl3 CVEs in the Securebuild base image.
+#
+# The replicated-sdk image is built from the Securebuild mirror at
+# https://apk.cve0.io. The latest libssl3 published there is 3.5.4-r10,
+# which Grype now flags with several fixed CVEs (the fixes are in
+# libssl3 3.5.7-r0 / 3.5.5-r0, which have not been published to the
+# mirror yet).
+#
+# The replicated Go binary is built with CGO_ENABLED=0 and does not link
+# against libssl3. The only runtime consumer of libssl3 in this image is
+# curl, used by the support-bundle collectors to call the local HTTP
+# endpoints on :3000 inside the same pod, so the attack surface is very
+# limited.
+#
+# Remove this rule once apk.cve0.io ships libssl3 >= 3.5.7-r0 and the
+# image is rebuilt with the updated package.
+ignore:
+  - package:
+      name: libssl3
+      type: apk
+      version: "3.5.4-r10"
+    note: "libssl3 3.5.4-r10 is the latest version available in https://apk.cve0.io; Securebuild has not published 3.5.7-r0+ yet."
