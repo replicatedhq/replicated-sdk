@@ -210,7 +210,7 @@ func publishImage(
 	}
 
 	manifest, err := craneContainer.
-		WithExec([]string{"/crane", "manifest", fmt.Sprintf("%s:%s", imagePath, tag)}).
+		WithExec([]string{"/ko-app/crane", "manifest", fmt.Sprintf("%s:%s", imagePath, tag)}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get manifest: %w", err)
