@@ -18,7 +18,7 @@ jobs:
   publish-pact:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -45,7 +45,7 @@ jobs:
       previous-tag: ${{ steps.get-tags.outputs.previous-tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Get tags
         id: get-tags
@@ -102,7 +102,7 @@ jobs:
     outputs:
       digest: ${{ steps.dagger-publish.outputs.stdout }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -127,7 +127,7 @@ jobs:
     outputs:
       digest: ${{ steps.dagger-publish.outputs.stdout }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
