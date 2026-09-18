@@ -10,9 +10,9 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
+	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	discoveryfake "k8s.io/client-go/discovery/fake"
 )
 
 func mockClientsetK8sVersion(expectedMajor string, expectedMinor string) kubernetes.Interface {
