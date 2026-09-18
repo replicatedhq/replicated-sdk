@@ -17,45 +17,51 @@ func buildImage(
 	// archs is the list of melange architectures to build (e.g. "x86_64", "aarch64")
 	archs []string,
 ) (*dagger.Directory, *dagger.Directory, *dagger.File, error) {
-	// Update melange.yaml with correct version
-	melangeYaml, err := source.File("deploy/melange.yaml").Contents(ctx)
+	// SecureBuild replaces the package version and checks out the release tag when
+	// it runs this spec remotely. Dagger already has the exact source mounted, so
+	// adapt that same spec for a local build instead of maintaining a second one.
+	melangeYaml, err := source.File("securebuild/package/melange.yaml").Contents(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	melangeYaml = strings.Replace(melangeYaml, "version: 1.0.0", fmt.Sprintf("version: %s", sanitizeVersionForMelange(version)), 1)
-	source = source.WithNewFile("deploy/melange.yaml", melangeYaml)
+	melangeYaml = strings.Replace(melangeYaml, `  - uses: git-checkout
+    with:
+      repository: https://github.com/replicatedhq/replicated-sdk
+      tag: ${{package.version}}
+
+`, "", 1)
+	const localMelangeConfigPath = "securebuild/package/melange-local.yaml"
+	source = source.WithNewFile(localMelangeConfigPath, melangeYaml)
 
 	var amdPackages *dagger.Directory
 	var armPackages *dagger.Directory
 	var melangeKey *dagger.File
 
+	// Use the latest available melange package from the Chainguard Wolfi
+	// repository. The pinned default in the upstream Dagger module
+	// (v0.43.6) is no longer available, which causes apk to fail with:
+	//   melange-0.60.0-r0: breaks: world[melange~0.43.6]
+	melange := dag.Melange(dagger.MelangeOpts{Version: "latest"}).WithKeygen()
+
 	for _, arch := range archs {
-		packages := dag.Melange().Build(source.File("deploy/melange.yaml"), dagger.MelangeBuildOpts{
+		packages := melange.Build(source.File(localMelangeConfigPath), dagger.MelangeBuildOpts{
 			SourceDir: source,
-			Arch:      arch,
+			Arch:      []dagger.Platform{dagger.Platform(arch)},
 		})
 		switch arch {
 		case "x86_64":
 			amdPackages = packages
-			// Get the signing key from the first build
+			// Get the signing key from the melange instance on the first build
 			if melangeKey == nil {
-				melangeKey = packages.File("melange.rsa.pub")
+				melangeKey = melange.PublicKey()
 			}
 		case "aarch64":
 			armPackages = packages
 			if melangeKey == nil {
-				melangeKey = packages.File("melange.rsa.pub")
+				melangeKey = melange.PublicKey()
 			}
 		}
 	}
-
-	// Update apko.yaml with just the VERSION environment variable
-	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	apkoYaml = strings.Replace(apkoYaml, "VERSION: 1.0.0", fmt.Sprintf("VERSION: %s", version), 1)
-	source = source.WithNewFile("deploy/apko.yaml", apkoYaml)
 
 	return amdPackages, armPackages, melangeKey, nil
 }
@@ -89,21 +95,17 @@ func publishImage(
 	}
 
 	// Update apko.yaml to set the package version constraint
-	apkoYaml, err := source.File("deploy/apko.yaml").Contents(ctx)
+	apkoYaml, err := source.File("securebuild/image/apko.yaml").Contents(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	// Update the package list to include version constraint
-	apkoYaml = strings.Replace(
-		apkoYaml,
-		"    - replicated\n",
-		fmt.Sprintf("    - replicated=%s-r0\n", sanitizeVersionForMelange(version)),
-		1,
-	)
+	apkoYaml = strings.Replace(apkoYaml, "  repositories:\n", "  repositories:\n    - ./packages/\n", 1)
+	apkoYaml = strings.Replace(apkoYaml, "  keyring:\n", "  keyring:\n    - ./melange.rsa.pub\n", 1)
 
-	// Create a new source directory with the updated apko.yaml
-	updatedSource := source.WithNewFile("deploy/apko.yaml", apkoYaml)
+	// Create a new source directory with a local adaptation of the SecureBuild spec.
+	const localApkoConfig = "securebuild/image/apko-local.yaml"
+	updatedSource := source.WithNewFile(localApkoConfig, apkoYaml)
 
 	// get the registry address from the image path
 	registry := strings.Split(imagePath, "/")[0]
@@ -136,12 +138,12 @@ func publishImage(
 
 	image := apkoWithAuth.
 		Publish(
-			updatedSource.File("deploy/apko.yaml"),
+			updatedSource.File(localApkoConfig),
 			[]string{fmt.Sprintf("%s:%s", imagePath, tag)},
 			dagger.ApkoPublishOpts{
 				Arch:   platforms,
 				Source: packageSource,
-				Sbom: true,
+				Sbom:   true,
 			},
 		)
 
@@ -212,7 +214,7 @@ func publishImage(
 	}
 
 	manifest, err := craneContainer.
-		WithExec([]string{"crane", "manifest", fmt.Sprintf("%s:%s", imagePath, tag)}).
+		WithExec([]string{"/ko-app/crane", "manifest", fmt.Sprintf("%s:%s", imagePath, tag)}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get manifest: %w", err)
@@ -341,11 +343,4 @@ func publishImage(
 	}
 
 	return mainDigest, nil
-}
-
-func sanitizeVersionForMelange(version string) string {
-	v := strings.ReplaceAll(version, "-beta.", "_beta")
-	v = strings.ReplaceAll(v, "-alpha.", "_alpha")
-	v = strings.ReplaceAll(v, "-", "_") // catch any remaining dashes
-	return v
 }

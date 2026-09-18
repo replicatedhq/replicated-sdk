@@ -20,8 +20,7 @@ dagger call publish --progress=plain \
     --op-service-account=env:OP_SERVICE_ACCOUNT \
     --dev=true \
     --staging=false \
-    --version=1.6.0-dev.1 \
-    --slsa=false
+    --version=1.6.0-dev.1
 ```
 
 ### Staging Release
@@ -33,9 +32,7 @@ dagger call publish --progress=plain \
     --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION \
     --dev=false \
     --staging=true \
-    --version=1.6.0-beta.5 \
-    --slsa=true \
-    --github-token=env:GITHUB_TOKEN
+    --version=1.6.0-beta.5
 ```
 
 ### Production Release
@@ -48,7 +45,6 @@ dagger call publish --progress=plain \
     --dev=false \
     --staging=false \
     --version=1.6.0 \
-    --slsa=true \
     --github-token=env:GITHUB_TOKEN
 ```
 
@@ -60,10 +56,7 @@ dagger call publish --progress=plain \
 - `--dev`: (boolean) Use development environment (ttl.sh)
 - `--staging`: (boolean) Use staging environment
 - `--version`: Version string for the release
-- `--slsa`: (boolean) Enable SLSA provenance generation
-- `--github-token`: GitHub token for SLSA workflow access
-
-Note: SLSA provenance generation requires both `--slsa=true` and a valid `--github-token`.
+- `--github-token`: GitHub token used to create production GitHub releases
 
 ## SBOM Generation
 
@@ -108,8 +101,6 @@ Software Bill of Materials (SBOM) is automatically generated during the build pr
   - Build provenance
   - Image signatures
 
-For production releases, SLSA provenance is automatically generated:
-- Triggered by the Dagger pipeline during production releases
-- Requires a GitHub token with permissions to trigger the SLSA workflow (`slsa.yml`)
-- The workflow is triggered via GitHub API to generate and attach provenance to the image
-- This step is skipped for development and staging releases
+For stable production releases, SecureBuild generates and publishes the image
+signature, SLSA provenance, and SPDX SBOM attestation. Dagger does not publish
+stable release images or their provenance.

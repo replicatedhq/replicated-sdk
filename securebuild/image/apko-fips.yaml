@@ -1,15 +1,13 @@
 contents:
   repositories:
     - https://apk.cve0.io
-    - ./packages/
   keyring:
     - https://apk.cve0.io/key/cve0-signing.rsa.pub
-    - ./melange.rsa.pub
   packages:
-    - replicated
-    - bash
     - busybox
+    - replicated-sdk-fips
     - curl
+    - securebuild-baselayout
 
 accounts:
   groups:
@@ -21,8 +19,7 @@ accounts:
       gid: 1001
   run-as: replicated
 
-environment:
-  VERSION: 1.0.0
-
 entrypoint:
-  command: /replicated api
+  command: /usr/bin/replicated
+
+cmd: api

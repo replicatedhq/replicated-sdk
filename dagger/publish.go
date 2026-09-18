@@ -4,7 +4,10 @@ import (
 	"context"
 	"dagger/replicated-sdk/internal/dagger"
 	"fmt"
+	"regexp"
 )
+
+var stableReleaseVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 
 // Publish publishes the Replicated SDK images and chart
 // to staging and production registries
@@ -32,8 +35,9 @@ func (m *ReplicatedSdk) Publish(
 	// +default=true
 	dev bool,
 
+	// Skip container image publishing when SecureBuild owns the release images.
 	// +default=false
-	slsa bool,
+	skipImage bool,
 
 	// +optional
 	githubToken *dagger.Secret,
@@ -44,13 +48,35 @@ func (m *ReplicatedSdk) Publish(
 	// +optional
 	cosignPassword *dagger.Secret,
 ) error {
+	if (staging || production) && stableReleaseVersion.MatchString(version) && !skipImage {
+		return fmt.Errorf("container images for stable release %s must be published by SecureBuild", version)
+	}
+
+	if skipImage {
+		if err := buildAndPublishChart(ctx, dag, source, version, staging, production, opServiceAccountProduction); err != nil {
+			return err
+		}
+
+		if production {
+			if err := dag.Gh().
+				WithToken(githubToken).
+				WithRepo("replicatedhq/replicated-sdk").
+				WithSource(source).
+				Release().
+				Create(ctx, version, version); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	// version must be passed in, it will be used to tag the image
 	amdPackages, armPackages, melangeKey, err := buildImage(ctx, dag, source, version, []string{"x86_64", "aarch64"})
 	if err != nil {
 		return err
 	}
 
-	digest := ""
 	if dev {
 		// In dev mode, get cosign key from dev vault if not provided
 		if cosignKey == nil {
@@ -58,7 +84,7 @@ func (m *ReplicatedSdk) Publish(
 			cosignPassword = mustGetSecret(ctx, opServiceAccount, "Replicated-SDK-Dev-Cosign.info", "password", VaultDeveloperAutomation)
 		}
 		// in dev mode we don't have username/password for the registry
-		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey, cosignPassword)
+		_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "ttl.sh/replicated/replicated-sdk", "", nil, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -82,7 +108,7 @@ func (m *ReplicatedSdk) Publish(
 			return err
 		}
 
-		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
+		_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "registry.staging.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -106,7 +132,7 @@ func (m *ReplicatedSdk) Publish(
 			return err
 		}
 
-		digest, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
+		_, err = publishImage(ctx, dag, source, amdPackages, armPackages, melangeKey, version, "", "registry.replicated.com/library/replicated-sdk-image", libraryUsername, libraryPassword, cosignKey, cosignPassword)
 		if err != nil {
 			return err
 		}
@@ -115,24 +141,6 @@ func (m *ReplicatedSdk) Publish(
 	err = buildAndPublishChart(ctx, dag, source, version, staging, production, opServiceAccountProduction)
 	if err != nil {
 		return err
-	}
-
-	// if we are running in CI we trigger the SLSA provenance workflow
-	if slsa {
-		ctr := dag.Gh().
-			Run(fmt.Sprintf(`api --method POST /repos/replicatedhq/replicated-sdk/actions/workflows/slsa.yml/dispatches \
-				-f ref=%s \
-				-f inputs[digest]=%s \
-				-f inputs[production]=%t`, version, digest, production),
-				dagger.GhRunOpts{
-					Token: githubToken,
-				},
-			)
-		stdOut, err := ctr.Stdout(ctx)
-		if err != nil {
-			return err
-		}
-		fmt.Println(stdOut)
 	}
 
 	if production {

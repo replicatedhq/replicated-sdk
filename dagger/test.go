@@ -130,7 +130,7 @@ func testSBOMGeneration(
 	// Use crane to inspect the published image
 	ctr := dag.Container().
 		From("gcr.io/go-containerregistry/crane:latest").
-		WithExec([]string{"manifest", fmt.Sprintf("%s:%s", testRegistry, version)})
+		WithExec([]string{"/ko-app/crane", "manifest", fmt.Sprintf("%s:%s", testRegistry, version)})
 
 	manifest, err := ctr.Stdout(ctx)
 	if err != nil {

@@ -9,7 +9,15 @@ Thanks for sending a pull request!
 If no, just write "NONE" in the release-note block below.
 If yes, a release note is required:
 -->
-```release-note
-
-```
-
+New features:
+ ```release-notes-features
+ 
+ ```
+ Bug fixes:
+ ```release-notes-fixes
+ 
+ ```
+ Improvements:
+ ```release-notes-improvements
+ 
+ ```
