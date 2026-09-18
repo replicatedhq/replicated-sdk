@@ -42,6 +42,10 @@ type APIServerParams struct {
 	TlsCertSecretName     string
 	ReportAllImages       bool
 	ReadOnlyMode          bool
+	StateSecretName       string
+	ImagePullSecretName   string
+	RegistryDomains       []string
+	BootstrapSecretName   string
 }
 
 func Start(params APIServerParams) {
@@ -56,6 +60,11 @@ func Start(params APIServerParams) {
 	})
 	if err != nil {
 		log.Fatalf("failed to bootstrap: %v", err)
+	}
+	if params.StateSecretName != "" && params.ReplicatedAppEndpoint != "" {
+		// The rotation check itself rides the heartbeat schedule; this only
+		// supplies the endpoint the explicit sync endpoint calls.
+		handlers.ConfigureSDKAPIEndpoint(params.ReplicatedAppEndpoint)
 	}
 
 	r := mux.NewRouter()
@@ -73,6 +82,13 @@ func Start(params APIServerParams) {
 
 	// license
 	r.HandleFunc("/api/v1/license/info", handlers.GetLicenseInfo).Methods("GET")
+	if params.StateSecretName != "" {
+		// Only an SDK-managed installation has a license to report on or
+		// replace. A legacy installation keeps returning 404 for these.
+		r.HandleFunc("/api/v1/license/status", handlers.GetLicenseStatus).Methods("GET")
+		r.HandleFunc("/api/v1/license/synchronize", handlers.SyncLicense).Methods("POST")
+		r.HandleFunc("/api/v1/license/apply", handlers.ApplyLicense).Methods("POST")
+	}
 	r.HandleFunc("/api/v1/license/fields", handlers.GetLicenseFields).Methods("GET")
 	r.HandleFunc("/api/v1/license/fields/{fieldName}", handlers.GetLicenseField).Methods("GET")
 

@@ -48,7 +48,7 @@ func APICmd() *cobra.Command {
 				}
 			}
 
-			if replicatedConfig.License == "" && integrationLicenseID == "" {
+			if replicatedConfig.License == "" && integrationLicenseID == "" && replicatedConfig.StateSecretName == "" {
 				return errors.New("either license in the config file or integration license id must be specified")
 			}
 
@@ -77,6 +77,10 @@ func APICmd() *cobra.Command {
 				TlsCertSecretName:     replicatedConfig.TlsCertSecretName,
 				ReportAllImages:       replicatedConfig.ReportAllImages,
 				ReadOnlyMode:          replicatedConfig.ReadOnlyMode,
+				StateSecretName:       replicatedConfig.StateSecretName,
+				ImagePullSecretName:   replicatedConfig.ImagePullSecretName,
+				RegistryDomains:       replicatedConfig.RegistryDomains,
+				BootstrapSecretName:   replicatedConfig.BootstrapSecretName,
 				Namespace:             namespace,
 			}
 			apiserver.Start(params)

@@ -14,6 +14,7 @@ import (
 	"github.com/replicatedhq/replicated-sdk/pkg/integration"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
+	"github.com/replicatedhq/replicated-sdk/pkg/licensestate"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	reporttypes "github.com/replicatedhq/replicated-sdk/pkg/report/types"
@@ -28,6 +29,9 @@ func bootstrap(params APIServerParams) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get clientset")
 	}
+	// nil for every installation that did not opt in to the SDK-managed
+	// license. See managed_license.go; all of it is inert when this is nil.
+	licenseState := configureManagedLicense(clientset, params)
 
 	replicatedID, appID := params.ReplicatedID, params.AppID
 	if replicatedID == "" || appID == "" {
@@ -55,6 +59,16 @@ func bootstrap(params APIServerParams) error {
 			reportAllImages = true
 			log.Println("Detected Embedded Cluster installation, enabling reportAllImages")
 		}
+	}
+
+	// An SDK-managed installation runs from its own saved license instead of
+	// the one Helm rendered. This is nil for every other installation.
+	managedLicense, err := managedLicenseBytes(licenseState, params)
+	if err != nil {
+		return err
+	}
+	if len(managedLicense) > 0 {
+		params.LicenseBytes = managedLicense
 	}
 
 	var unverifiedWrapper licensewrapper.LicenseWrapper
@@ -87,13 +101,16 @@ func bootstrap(params APIServerParams) error {
 	}
 	verifiedWrapper := unverifiedWrapper
 
-	if !util.IsAirgap() {
+	// A managed installation already holds the license Portal issued it, and
+	// receives successors through rotation rather than this refresh.
+	if !util.IsAirgap() && !licensestate.SDKManaged() {
 		// sync license
 		licenseData, err := sdklicense.GetLatestLicense(verifiedWrapper, params.ReplicatedAppEndpoint)
 		if err != nil {
 			return errors.Wrap(err, "failed to get latest license")
 		}
 		verifiedWrapper = licenseData.License
+		params.LicenseBytes = licenseData.LicenseBytes
 	}
 
 	// check license expiration
@@ -103,6 +120,10 @@ func bootstrap(params APIServerParams) error {
 	}
 	if expired {
 		return backoff.Permanent(errors.New("License is expired"))
+	}
+	if err := persistManagedLicense(licenseState, params, params.LicenseBytes,
+		verifiedWrapper.GetAppSlug(), verifiedWrapper.GetCustomerID()); err != nil {
+		return err
 	}
 
 	channelID := params.ChannelID
