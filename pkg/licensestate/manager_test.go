@@ -13,15 +13,24 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
 
+// testManager builds a manager for the given namespace with the registry
+// domains EC supplies in practice. Tests that care about a specific set of
+// domains configure them explicitly instead.
+func testManager(client kubernetes.Interface, namespace string) *Manager {
+	manager := NewManager(client, namespace, "sdk-state", "managed-pull")
+	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	return manager
+}
+
 func TestWriteStateAndLoadRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset()
-	manager := NewManager(client, "app", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "app")
 	now := time.Date(2026, 9, 8, 1, 2, 3, 0, time.UTC)
 	want := &State{
 		Version:                  1,
@@ -49,8 +58,7 @@ func TestWriteStateAndLoadRoundTrip(t *testing.T) {
 
 func TestPrepareBindingPersistsOneInstallationIdentity(t *testing.T) {
 	ctx := context.Background()
-	manager := NewManager(fake.NewSimpleClientset(), "app", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "app")
 	first, err := manager.PrepareBinding(ctx, "portal-installation")
 	require.NoError(t, err)
 	require.Equal(t, StatusUnbound, first.Status)
@@ -72,8 +80,7 @@ func TestPrepareBindingPersistsOneInstallationIdentity(t *testing.T) {
 
 func TestMissingBootstrapDoesNotCreateReplacementKey(t *testing.T) {
 	client := fake.NewSimpleClientset()
-	manager := NewManager(client, "app", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "app")
 	_, err := manager.BindFromBootstrapSecret(t.Context(), "https://portal.example", "bootstrap")
 	require.Error(t, err)
 	_, err = client.CoreV1().Secrets("app").Get(t.Context(), "sdk-state", metav1.GetOptions{})
@@ -86,8 +93,7 @@ func TestLostOnlineIdentityRequiresManualRecoveryWithoutRecreatingState(t *testi
 			state, _ := portalTestState(t)
 			client := fake.NewSimpleClientset(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "managed-pull", Namespace: "app"},
 				Data: map[string][]byte{ActiveLicenseDataKey: state.ActiveLicense}})
-			manager := NewManager(client, "app", "sdk-state", "managed-pull")
-			manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+			manager := testManager(client, "app")
 			if !missingState {
 				state.PrivateKey = nil
 				_, err := manager.writeState(t.Context(), nil, state)
@@ -125,8 +131,7 @@ func TestBootstrapTokenDoesNotLookLikeLostSDKState(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "managed-pull", Namespace: "app"},
 		Data:       map[string][]byte{InstallationTokenDataKey: []byte(token)},
 	})
-	manager := NewManager(client, "app", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "app")
 	state, err := manager.LoadOnlineState(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, StatusUnbound, state.Status)
@@ -136,8 +141,7 @@ func TestBootstrapTokenDoesNotLookLikeLostSDKState(t *testing.T) {
 }
 
 func TestLoadMissingStateIsUnboundWithoutIdentity(t *testing.T) {
-	manager := NewManager(fake.NewSimpleClientset(), "app", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "app")
 	state, err := manager.Load(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, StatusUnbound, state.Status)
@@ -165,8 +169,7 @@ func TestUpdateImagePullSecretUpdatesExistingSecretInPlace(t *testing.T) {
 		Type:       corev1.SecretTypeDockerConfigJson,
 		Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte("old")},
 	})
-	manager := NewManager(client, "app", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "app")
 	_, err := manager.stageImagePullSecretUpdate(ctx, []byte("new"), nil)
 	require.NoError(t, err)
 	secret, err := client.CoreV1().Secrets("app").Get(ctx, "managed-pull", metav1.GetOptions{})
@@ -177,8 +180,7 @@ func TestUpdateImagePullSecretUpdatesExistingSecretInPlace(t *testing.T) {
 func TestUpdateImagePullSecretUsesOnlySDKNamespace(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset()
-	manager := NewManager(client, "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "sdk")
 	_, err := manager.stageImagePullSecretUpdate(ctx, []byte("new"), nil)
 	require.NoError(t, err)
 	for _, action := range client.Actions() {
@@ -205,8 +207,7 @@ func TestStageImagePullSecretUpdateFailurePreservesExistingCredentials(t *testin
 		}
 		return false, nil, nil
 	})
-	manager := NewManager(client, "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "sdk")
 
 	_, err := manager.stageImagePullSecretUpdate(ctx, []byte("successor"), nil)
 	require.Error(t, err)
@@ -220,8 +221,7 @@ func TestStageImagePullSecretUpdateFailurePreservesExistingCredentials(t *testin
 func TestRestoreImagePullSecretDeletesSecretCreatedByFailedActivation(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset()
-	manager := NewManager(client, "app", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "app")
 
 	snapshot, err := manager.stageImagePullSecretUpdate(ctx, []byte("successor"), nil)
 	require.NoError(t, err)
@@ -241,8 +241,7 @@ func TestPullSecretRollbackDoesNotOverwriteAnotherWriter(t *testing.T) {
 				}, metav1.CreateOptions{})
 				require.NoError(t, err)
 			}
-			manager := NewManager(client, "app", "sdk-state", "managed-pull")
-			manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+			manager := testManager(client, "app")
 			snapshot, err := manager.stageImagePullSecretUpdate(t.Context(), []byte("candidate"), nil)
 			require.NoError(t, err)
 			current, err := client.CoreV1().Secrets("app").Get(t.Context(), "managed-pull", metav1.GetOptions{})

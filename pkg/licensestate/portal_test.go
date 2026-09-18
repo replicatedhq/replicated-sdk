@@ -56,8 +56,7 @@ func TestBindResumesStagedInitialLicenseWithTheSameKey(t *testing.T) {
 		}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "managed-pull", Namespace: "sdk"}, Data: map[string][]byte{corev1.DockerConfigJsonKey: docker}},
 	)
-	manager := NewManager(client, "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "sdk")
 	state, err := manager.PrepareBinding(t.Context(), "installation")
 	require.NoError(t, err)
 	state.Status = StatusStaging
@@ -80,8 +79,7 @@ func TestBindResumesStagedInitialLicenseWithTheSameKey(t *testing.T) {
 	previous := store.GetStore()
 	store.SetStore(&store.InMemoryStore{})
 	t.Cleanup(func() { store.SetStore(previous) })
-	restarted := NewManager(client, "sdk", "sdk-state", "managed-pull")
-	restarted.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	restarted := testManager(client, "sdk")
 	active, err := restarted.BindFromBootstrapSecret(t.Context(), portal.URL, "bootstrap")
 	require.NoError(t, err)
 	require.Equal(t, StatusCurrent, active.Status)
@@ -131,8 +129,7 @@ func TestLicenseImageCredentialsUseInstallationTokenWithoutExchange(t *testing.T
 		Type:       corev1.SecretTypeDockerConfigJson,
 		Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte("old")},
 	})
-	manager := NewManager(client, "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(client, "sdk")
 	_, err = manager.stageImagePullSecretUpdate(ctx, config, state.ActiveLicense)
 	require.NoError(t, err)
 	secret, err := client.CoreV1().Secrets("sdk").Get(ctx, "managed-pull", metav1.GetOptions{})
@@ -150,8 +147,7 @@ func TestLicenseImageCredentialsUseInstallationTokenWithoutExchange(t *testing.T
 func TestReportPortalRotationStatusSignsStatusAndUsesCurrentToken(t *testing.T) {
 	ctx := context.Background()
 	state, encoded := portalTestState(t)
-	manager := NewManager(fake.NewSimpleClientset(), "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "sdk")
 	_, err := manager.writeState(ctx, nil, state)
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,8 +164,7 @@ func TestReportPortalRotationStatusSignsStatusAndUsesCurrentToken(t *testing.T) 
 func TestSynchronizePortalRotationMarksManualReplacementRequiredAfterOverlap(t *testing.T) {
 	ctx := context.Background()
 	state, encoded := portalTestState(t)
-	manager := NewManager(fake.NewSimpleClientset(), "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "sdk")
 	_, err := manager.writeState(ctx, nil, state)
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -192,8 +187,7 @@ func TestSynchronizePortalRotationMarksManualReplacementRequiredAfterOverlap(t *
 
 func TestSuccessfulCheckInClearsTemporaryAuthenticationWarning(t *testing.T) {
 	state, encoded := portalTestState(t)
-	manager := NewManager(fake.NewSimpleClientset(), "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "sdk")
 	_, err := manager.writeState(t.Context(), nil, state)
 	require.NoError(t, err)
 	response := http.StatusUnauthorized
@@ -224,8 +218,7 @@ func TestSynchronizeRetriesSavedSuccessorAcknowledgement(t *testing.T) {
 	ctx := context.Background()
 	state, encoded := portalTestState(t)
 	state.Status, state.RotationID = StatusActivated, "rotation-1"
-	manager := NewManager(fake.NewSimpleClientset(), "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "sdk")
 	_, err := manager.writeState(ctx, nil, state)
 	require.NoError(t, err)
 	attempts := 0
@@ -259,8 +252,7 @@ func TestSynchronizeRetriesSavedSuccessorAcknowledgement(t *testing.T) {
 func TestInvalidReplacementLeavesCurrentLicenseAndCredentials(t *testing.T) {
 	ctx := context.Background()
 	state, _ := portalTestState(t)
-	manager := NewManager(fake.NewSimpleClientset(), "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "sdk")
 	_, err := manager.writeState(ctx, nil, state)
 	require.NoError(t, err)
 	// A parseable but unsigned replacement cannot alter active state.
@@ -278,8 +270,7 @@ func TestManuallyAppliedSuccessorConfirmsOnCheckIn(t *testing.T) {
 	t.Cleanup(func() { store.SetStore(previous) })
 	store.SetStore(&store.InMemoryStore{})
 	client := fake.NewSimpleClientset()
-	m := NewManager(client, "app", "sdk-state", "managed-pull")
-	m.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	m := testManager(client, "app")
 	_, err := m.PrepareBinding(t.Context(), "installation")
 	require.NoError(t, err)
 	_, err = m.ApplyLicense(t.Context(), sign(1), ApplyOptions{})
@@ -338,8 +329,7 @@ func TestManuallyAppliedSuccessorConfirmsOnCheckIn(t *testing.T) {
 func TestSynchronizeRecordsTheCheckInEvenWhenNothingChanged(t *testing.T) {
 	ctx := context.Background()
 	state, _ := portalTestState(t)
-	manager := NewManager(fake.NewSimpleClientset(), "sdk", "sdk-state", "managed-pull")
-	manager.SetRegistryDomains([]string{"proxy.replicated.com", "registry.replicated.com"})
+	manager := testManager(fake.NewSimpleClientset(), "sdk")
 	_, err := manager.writeState(ctx, nil, state)
 	require.NoError(t, err)
 
