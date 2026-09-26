@@ -32,13 +32,15 @@ func SendCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, 
 }
 
 func SendAirgapCustomAppMetrics(clientset kubernetes.Interface, sdkStore store.Store, data map[string]interface{}) error {
+	licenseID, installationID := reportLicenseIdentity(sdkStore.GetLicense().GetLicenseID())
 	report := &CustomAppMetricsReport{
 		Events: []CustomAppMetricsReportEvent{
 			{
-				ReportedAt: time.Now().UTC().UnixMilli(),
-				LicenseID:  sdkStore.GetLicense().GetLicenseID(),
-				InstanceID: sdkStore.GetAppID(),
-				Data:       data,
+				ReportedAt:     time.Now().UTC().UnixMilli(),
+				LicenseID:      licenseID,
+				InstallationID: installationID,
+				InstanceID:     sdkStore.GetAppID(),
+				Data:           data,
 			},
 		},
 	}

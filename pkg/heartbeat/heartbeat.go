@@ -1,6 +1,7 @@
 package heartbeat
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
+	"github.com/replicatedhq/replicated-sdk/pkg/licensestate"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/report"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
@@ -52,12 +54,23 @@ func Start() error {
 	_, err := job.AddFunc(cronSpec, func() {
 		logger.Debugf("sending a heartbeat for app %s", appSlug)
 
-		if !util.IsAirgap() {
+		// A managed installation receives successors through the signed rotation
+		// protocol instead. The legacy refresh must not race it or replace the
+		// installation-targeted license it saved.
+		if !util.IsAirgap() && !licensestate.SDKManaged() {
 			licenseData, err := sdklicense.GetLatestLicense(store.GetStore().GetLicense(), store.GetStore().GetReplicatedAppEndpoint())
 			if err != nil {
 				logger.Error(errors.Wrap(err, "failed to get latest license"))
 			} else {
 				store.GetStore().SetLicense(licenseData.License)
+			}
+		}
+		// Checking for a credential rotation is the same kind of check-in on
+		// the same cadence, so it rides this schedule rather than running a
+		// second timer with its own, unjittered, interval.
+		if manager := licensestate.Current(); manager != nil {
+			if _, _, err := manager.SynchronizePortalRotation(context.Background(), store.GetStore().GetReplicatedAppEndpoint()); err != nil {
+				logger.Infof("SDK managed license synchronization failed: %v", err)
 			}
 		}
 
