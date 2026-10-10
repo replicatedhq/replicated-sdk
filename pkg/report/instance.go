@@ -52,9 +52,11 @@ func SendInstanceData(clientset kubernetes.Interface, sdkStore store.Store) erro
 }
 
 func SendAirgapInstanceData(clientset kubernetes.Interface, namespace string, licenseID string, instanceData *types.InstanceData) error {
+	licenseID, installationID := reportLicenseIdentity(licenseID)
 	event := InstanceReportEvent{
 		ReportedAt:                time.Now().UTC().UnixMilli(),
 		LicenseID:                 licenseID,
+		InstallationID:            installationID,
 		InstanceID:                instanceData.InstanceID,
 		ClusterID:                 instanceData.ClusterID,
 		UserAgent:                 buildversion.GetUserAgent(),
