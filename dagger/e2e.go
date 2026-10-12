@@ -123,7 +123,7 @@ func e2e(
 				"kubectl", "wait",
 				"--for=condition=available",
 				"deployment/replicated",
-				"--timeout=1m",
+				"--timeout=5m",
 			})
 
 	out, err = ctr.Stdout(ctx)
@@ -1475,27 +1475,32 @@ func upgradeChartAndRestart(
 			[]string{
 				"kubectl", "rollout", "status",
 				"deploy/replicated",
-				"--timeout=1m",
+				"--timeout=5m",
 			}))
 
 	out, err = ctr.Stdout(ctx)
 	if err != nil {
 		fmt.Printf("failed to wait for replicated deployment to rollout: %v\n", err)
 
-		// Get logs to help debug if replicated didn't start properly
-		ctr = dag.Container().From("bitnami/kubectl:latest").
-			WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
-			WithEnvVariable("KUBECONFIG", kubeconfigPath).
-			With(CacheBustingExec(
-				[]string{
-					"kubectl", "logs", "-l", "app.kubernetes.io/name=replicated", "--tail=50",
-				}))
-		out, err2 := ctr.Stdout(ctx)
-		if err2 != nil {
-			return fmt.Errorf("failed to get logs for replicated deployment: %w", err2)
+		// A pod may still be pulling or creating its container, in which case
+		// kubectl logs fails with a misleading BadRequest. Capture pod and
+		// deployment state instead so the actual startup failure is visible.
+		for _, args := range [][]string{
+			{"kubectl", "get", "pods", "-o", "wide"},
+			{"kubectl", "describe", "deployment", "replicated"},
+			{"kubectl", "describe", "pods", "-l", "app.kubernetes.io/name=replicated"},
+		} {
+			ctr = dag.Container().From("bitnami/kubectl:latest").
+				WithFile(kubeconfigPath, kubeconfigSource.File("/kubeconfig")).
+				WithEnvVariable("KUBECONFIG", kubeconfigPath).
+				With(CacheBustingExec(args))
+			diagnostic, diagnosticErr := ctr.Stdout(ctx)
+			if diagnosticErr != nil {
+				fmt.Printf("failed to collect diagnostic output for %q: %v\n", args, diagnosticErr)
+				continue
+			}
+			fmt.Printf("Diagnostic output for %q:\n%s\n", args, diagnostic)
 		}
-		fmt.Println("Replicated logs:")
-		fmt.Println(out)
 
 		return fmt.Errorf("failed to wait for replicated deployment to rollout: %w", err)
 	}

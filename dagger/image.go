@@ -37,7 +37,11 @@ func buildImage(
 	var armPackages *dagger.Directory
 	var melangeKey *dagger.File
 
-	melange := dag.Melange().WithKeygen()
+	// Use the latest available melange package from the Chainguard Wolfi
+	// repository. The pinned default in the upstream Dagger module
+	// (v0.43.6) is no longer available, which causes apk to fail with:
+	//   melange-0.60.0-r0: breaks: world[melange~0.43.6]
+	melange := dag.Melange(dagger.MelangeOpts{Version: "latest"}).WithKeygen()
 
 	for _, arch := range archs {
 		packages := melange.Build(source.File(localMelangeConfigPath), dagger.MelangeBuildOpts{
