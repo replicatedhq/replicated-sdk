@@ -13,9 +13,8 @@ func buildAndPushImageToTTL(
 	source *dagger.Directory,
 ) (string, string, string, string, error) {
 	now := time.Now().Format("20060102150405")
-	// Use a valid melange version for package building and apko package pinning.
-	// No dashes allowed — sanitizeVersionForMelange converts them to underscores
-	// which melange then rejects. Dots are safe.
+	// Use a unique version for the ephemeral image tag and build metadata. Local
+	// APKs use the high placeholder declared by the SecureBuild Melange spec.
 	// The image tag is "24h" (ttl.sh expiry duration), separate from the build version.
 	version := fmt.Sprintf("0.0.%s", now)
 

@@ -1,6 +1,9 @@
 package:
-  name: replicated-sdk
-  version: "0.0.1"
+  name: replicated-sdk-head
+  # SecureBuild replaces this for stable releases. Local prerelease/CI builds
+  # retain a deliberately high APK version so this package wins over released
+  # versions already available from apk.cve0.io.
+  version: "1000.0.0"
   epoch: 0
   description: replicated sdk package
   copyright:

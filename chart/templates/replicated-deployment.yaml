@@ -93,7 +93,7 @@ spec:
         {{- include "replicated.podSecurityContext" . | nindent 8 }}
       {{- end }}
       volumes:
-      - name: replicated
+      - name: {{ include "replicated.name" . }}
         secret:
           secretName: {{ include "replicated.secretName" . }}
       {{- if .Values.privateCAConfigmap }}
@@ -118,7 +118,7 @@ spec:
       {{- toYaml .Values.initContainers | nindent 6 }}
       {{- end }}
       containers:
-      - name: replicated
+      - name: {{ include "replicated.name" . }}
         image: {{ include "replicated.containerImage" . }}
         imagePullPolicy: {{ include "replicated.imagePullPolicy" . }}
         {{- if .Values.containerSecurityContext }}
@@ -126,7 +126,7 @@ spec:
           {{- include "replicated.containerSecurityContext" . | nindent 12 }}
         {{- end }}
         volumeMounts:
-        - name: replicated
+        - name: {{ include "replicated.name" . }}
           mountPath: /etc/replicated/config.yaml
           readOnly: true
           subPath: config.yaml
