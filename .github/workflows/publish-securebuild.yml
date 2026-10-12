@@ -43,8 +43,7 @@ jobs:
 
       - name: Install securebuild CLI
         run: |
-          LATEST_TAG=$(curl -s https://api.github.com/repos/securebuildhq/securebuild/releases/latest | jq -r .tag_name)
-          curl -sL "https://github.com/securebuildhq/securebuild/releases/download/${LATEST_TAG}/securebuild-cli-linux-amd64" -o securebuild
+          curl -fsSL --retry 3 https://github.com/securebuildhq/securebuild/releases/latest/download/securebuild-cli-linux-amd64 -o securebuild
           chmod +x securebuild
 
       - name: Build package
@@ -66,8 +65,7 @@ jobs:
     steps:
       - name: Install securebuild CLI
         run: |
-          LATEST_TAG=$(curl -s https://api.github.com/repos/securebuildhq/securebuild/releases/latest | jq -r .tag_name)
-          curl -sL "https://github.com/securebuildhq/securebuild/releases/download/${LATEST_TAG}/securebuild-cli-linux-amd64" -o securebuild
+          curl -fsSL --retry 3 https://github.com/securebuildhq/securebuild/releases/latest/download/securebuild-cli-linux-amd64 -o securebuild
           chmod +x securebuild
 
       - name: Build image
