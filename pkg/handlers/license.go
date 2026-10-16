@@ -9,8 +9,10 @@ import (
 	kotsv1beta1 "github.com/replicatedhq/kotskinds/apis/kots/v1beta1"
 	kotsv1beta2 "github.com/replicatedhq/kotskinds/apis/kots/v1beta2"
 	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
+	"github.com/replicatedhq/replicated-sdk/pkg/installationtoken"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
 	sdklicensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
+	"github.com/replicatedhq/replicated-sdk/pkg/licensestate"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/store"
 	"github.com/replicatedhq/replicated-sdk/pkg/util"
@@ -18,6 +20,7 @@ import (
 
 type LicenseInfo struct {
 	LicenseID                      string      `json:"licenseID"`
+	InstallationID                 string      `json:"installationID,omitempty"`
 	AppSlug                        string      `json:"appSlug"`
 	ChannelName                    string      `json:"channelName"`
 	CustomerID                     string      `json:"customerID"`
@@ -40,7 +43,7 @@ type LicenseInfo struct {
 func GetLicenseInfo(w http.ResponseWriter, r *http.Request) {
 	wrapper := store.GetStore().GetLicense()
 
-	if !util.IsAirgap() {
+	if !util.IsAirgap() && !licensestate.SDKManaged() {
 		l, err := sdklicense.GetLatestLicense(wrapper, store.GetStore().GetReplicatedAppEndpoint())
 		if err != nil {
 			logger.Error(errors.Wrap(err, "failed to get latest license"))
@@ -135,8 +138,13 @@ func licenseInfoFromWrapper(wrapper licensewrapper.LicenseWrapper) LicenseInfo {
 		}
 	}
 
+	licenseID, installationID := wrapper.GetLicenseID(), ""
+	if token, err := installationtoken.Parse(licenseID); err == nil {
+		installationID, licenseID = token.InstallationID, ""
+	}
 	return LicenseInfo{
-		LicenseID:                      wrapper.GetLicenseID(),
+		LicenseID:                      licenseID,
+		InstallationID:                 installationID,
 		AppSlug:                        wrapper.GetAppSlug(),
 		ChannelName:                    wrapper.GetChannelName(),
 		CustomerID:                     wrapper.GetCustomerID(),

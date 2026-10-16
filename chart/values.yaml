@@ -297,6 +297,22 @@ integration:
 
 isAirgap: false
 
+# sdkManagedLicense enables SDK-owned runtime state. The installer must create the named
+# imagePullSecret with short-lived bootstrap credentials before the first pod
+# starts; Helm never renders its data. The SDK replaces it in place on bind and
+# on credential rotation.
+sdkManagedLicense:
+  enabled: false
+  stateSecretName: replicated-sdk-state
+  imagePullSecretName: enterprise-pull-secret
+  # Registry hosts written into the image pull Secret. The installer knows
+  # whether this installation pulls from the Replicated proxy, a customer's own
+  # registry, or an airgap registry; rotation only changes the credential.
+  registryDomains: []
+  # EC/Helm tooling creates this short-lived Secret directly, never through
+  # Helm values. It contains the one-time grant and signed installation license.
+  bootstrapSecretName: replicated-sdk-bootstrap
+
 replicatedID: ""
 appID: ""
 
