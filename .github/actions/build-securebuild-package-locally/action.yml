@@ -1,0 +1,46 @@
+name: Build the SecureBuild package locally
+description: Build the SecureBuild Melange spec locally for prerelease versions
+
+inputs:
+  arch:
+    description: Architecture to build for
+    required: true
+  source-ref:
+    description: Exact source commit used for package provenance; defaults to the workflow commit
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: chainguard-dev/actions/setup-melange@v1.6.41
+
+    - name: Build packages
+      shell: bash
+      env:
+        ARCH: ${{ inputs.arch }}
+        SOURCE_REF: ${{ inputs.source-ref || github.sha }}
+      run: |
+        signing_key="$RUNNER_TEMP/melange-${ARCH}.rsa"
+
+        sudo melange keygen "$signing_key"
+        sudo melange build securebuild/package/melange.yaml \
+          --arch "$ARCH" \
+          --git-commit "$SOURCE_REF" \
+          --git-repo-url "${{ github.server_url }}/${{ github.repository }}" \
+          --out-dir "$GITHUB_WORKSPACE/packages" \
+          --pipeline-dir "${{ github.action_path }}/pipelines" \
+          --signing-key "$signing_key" \
+          --source-dir "$GITHUB_WORKSPACE"
+        sudo cp "$signing_key.pub" "$GITHUB_WORKSPACE/melange-${ARCH}.rsa.pub"
+        sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/packages" "$GITHUB_WORKSPACE/melange-${ARCH}.rsa.pub"
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: securebuild-melange-packages-${{ inputs.arch }}
+        path: ./packages
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: securebuild-melange-rsa-pub-${{ inputs.arch }}
+        path: ./melange-${{ inputs.arch }}.rsa.pub

@@ -1,0 +1,17 @@
+apiVersion: kots.io/v1beta2
+kind: HelmChart
+metadata:
+  name: replicated-sdk-e2e
+spec:
+  # chart identifies a matching chart from a .tgz
+  chart:
+    name: test-chart
+    chartVersion: 0.1.0
+  
+  # values are used in the customer environment, as a pre-render step
+  # these values will be supplied to helm template
+  values: {}
+
+  # builder values provide a way to render the chart with all images
+  # and manifests. this is used in replicated to create air gap packages
+  builder: {}

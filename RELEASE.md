@@ -56,8 +56,8 @@ Note: While older beta releases used a 'v' prefix (e.g., v1.0.0-beta.28), curren
 The release workflow uses the specs in `securebuild/package` and `securebuild/image` as the single source of truth:
 
 1. **Stable image releases** call `.github/workflows/publish-securebuild.yml`. SecureBuild builds the `replicated-sdk` package and the `replicated-sdk` and `replicated-sdk-fips` images.
-2. **Prerelease images** are built locally by Dagger, which adapts those same specs in memory. This preserves the existing prerelease registry credentials while following the KOTS stable-service/prerelease-local split.
-3. **Development and E2E images** use that same Dagger adapter; there are no separate Melange or APKO specs under `deploy/`.
+2. **Prerelease images** are built and published through the local package and image actions in `.github/workflows/publish.yml`. Melange uses a local `git-checkout` pipeline override, and APKO appends the local package repository and signing keys. Both consume the SecureBuild specs unchanged and preserve the existing prerelease registry credentials.
+3. **Development and E2E images** use the same approach in `Makefile.image.mk` and `.github/workflows/validate.yml`; there are no separate Melange or APKO specs under `deploy/`. Local Make targets invoke `melange` and `apko` directly, so both tools must already be installed on the build host. Melange builds run with `sudo`. Local builds reuse static per-user ttl.sh destinations and write the SDK chart to `chart/replicated-0.0.0.tgz`; CI uses isolated per-run destinations.
 4. **Registry destinations** previously used by the release pipeline were:
    - Public Docker Hub: `index.docker.io/replicated/replicated-sdk:${VERSION}`
    - Staging Replicated registry: `registry.staging.replicated.com/library/replicated-sdk-image:${VERSION}`
@@ -73,19 +73,8 @@ The release workflow uses the specs in `securebuild/package` and `securebuild/im
    - Publishes to:
      - Staging: `registry.staging.replicated.com/library`
      - Production: `registry.replicated.com/library`
-   ```go
-   // Example of chart publishing process
-   ctr := dag.Container().From("alpine/helm:latest").
-       WithMountedDirectory("/source", source).
-       WithWorkdir("/source/chart").
-       WithNewFile("/source/chart/values.yaml", valuesYaml).
-       WithEnvVariable("HELM_USERNAME", username).
-       WithSecretVariable("HELM_PASSWORD", password).
-       WithExec([]string{"helm", "dependency", "update"}).
-       WithExec([]string{"helm", "package", "--version", version, "--app-version", version, "."}).
-       WithExec([]string{"helm", "registry", "login", "registry.replicated.com", "--username", username, "--password", password}).
-       WithExec([]string{"helm", "push", helmChartFilename, "oci://registry.replicated.com/library"})
-   ```
+   The four Helm commands run directly in the staging and production jobs
+   in `.github/workflows/publish.yml`.
 
 6. **Image provenance** is produced and published by SecureBuild for stable
    release images.

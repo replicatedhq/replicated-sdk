@@ -27,23 +27,84 @@ jobs:
         with:
           go-version-file: go.mod
       - uses: replicatedhq/action-install-pact@main
+      - name: Compile E2E tests (live tests disabled)
+        run: go test ./e2e
       - name: Run unit and pact tests
         run: make test
 
+  build-packages:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        arch: [amd64]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/build-securebuild-package-locally
+        with:
+          arch: ${{ matrix.arch }}
+
   build:
+    needs: build-packages
     runs-on: ubuntu-22.04
+    env:
+      IMAGE_REPOSITORY: automated-${{ github.run_id }}-${{ github.run_attempt }}/replicated-image/replicated-sdk
+      CHART_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}-${{ github.run_attempt }}/replicated-chart
+      CHANNEL_NAME: automated-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       distributions: ${{ steps.distributions.outputs.result }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dagger/dagger-for-github@v8.4.1
-        id: build
-        env:
-          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
+      - uses: ./.github/actions/setup-sdk-tools
         with:
-          version: "0.21.7"
-          verb: call
-          args: build-for-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT export --path=./build-info.json
+          profile: build
+      - name: Load Replicated credentials
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT }}
+          REPLICATED_API_TOKEN: "op://ikfulaksdrbqtjgybu2vkcggeu/Replicated/service_account"
+      - name: Publish test image
+        uses: ./.github/actions/build-securebuild-image-locally
+        with:
+          config: securebuild/image/apko.yaml
+          image-name: ttl.sh/${{ env.IMAGE_REPOSITORY }}:24h
+          archs: amd64
+          keyring: ./melange-amd64.rsa.pub
+      - name: Prepare test charts
+        run: |
+          cp -R chart "$RUNNER_TEMP/sdk-chart"
+          sed -e 's/registry: proxy.replicated.com/registry: ttl.sh/' -e "s|repository: \"library/replicated-sdk-image\"|repository: \"$IMAGE_REPOSITORY\"|" -e 's/tag: "1.0.0"/tag: "24h"/' chart/values.yaml > "$RUNNER_TEMP/sdk-chart/values.yaml"
+          cp -R test-chart "$RUNNER_TEMP/test-chart"
+          sed "s|CHART_REPOSITORY|$CHART_REPOSITORY|" e2e/chart-dependency.yaml >> "$RUNNER_TEMP/test-chart/Chart.yaml"
+      - name: Publish test chart
+        run: |
+          helm package "$RUNNER_TEMP/sdk-chart" --destination "$RUNNER_TEMP"
+          helm push "$RUNNER_TEMP/replicated-1.0.0.tgz" "$CHART_REPOSITORY"
+          helm dependency update "$RUNNER_TEMP/test-chart"
+          helm package "$RUNNER_TEMP/test-chart" --destination "$RUNNER_TEMP"
+      - name: Create test release
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          cp e2e/manifests/*.yaml "$RUNNER_TEMP/release/"
+          cp "$RUNNER_TEMP/test-chart-0.1.0.tgz" "$RUNNER_TEMP/release/"
+          replicated channel create --app replicated-sdk-e2e --name "$CHANNEL_NAME"
+          replicated release create --app replicated-sdk-e2e --version 0.1.0 --promote "$CHANNEL_NAME" --yaml-dir "$RUNNER_TEMP/release"
+      - name: Create test customer
+        run: |
+          replicated customer create --app replicated-sdk-e2e --kots-install=false --name test-customer --channel "$CHANNEL_NAME" --email test-customer@replicated.com --output json > "$RUNNER_TEMP/customer.json"
+      - name: Write build metadata
+        run: |
+          replicated cluster versions --output json | jq '[.[] | select(.short_name=="gke" or .short_name=="eks" or .short_name=="openshift") | {Distribution:.short_name,Version:.versions[-1]}]' > "$RUNNER_TEMP/distributions.json"
+          jq -n \
+            --arg repository "$IMAGE_REPOSITORY" \
+            --arg chart "$CHART_REPOSITORY" \
+            --arg channel "$CHANNEL_NAME" \
+            --arg digest "$(crane digest --platform linux/amd64 "ttl.sh/$IMAGE_REPOSITORY:24h")" \
+            --arg appID "$(replicated app ls | awk '$(NF-1)=="replicated-sdk-e2e" {print $1}')" \
+            --slurpfile customer "$RUNNER_TEMP/customer.json" \
+            --slurpfile distributions "$RUNNER_TEMP/distributions.json" \
+            '{imageRegistry:"ttl.sh",imageRepository:$repository,imageTag:"24h",imageDigest:$digest,chart:$chart,channelSlug:$channel,appID:$appID,customerID:$customer[0].id,licenseID:$customer[0].installationId,distributions:$distributions[0]}' > build-info.json
 
       - name: Extract distributions for matrix
         id: distributions
@@ -81,26 +142,17 @@ jobs:
           output-format: "table"
 
   e2e:
-    runs-on: ubuntu-22.04
     needs: build
     strategy:
       fail-fast: false
       matrix:
         dist: ${{ fromJson(needs.build.outputs.distributions) }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: build-info
-
-      - uses: dagger/dagger-for-github@v8.4.1
-        env:
-          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
-        with:
-          version: "0.21.7"
-          verb: call
-          args: run-single-e-2-e --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --distribution="${{ matrix.dist.Distribution }}" --version="${{ matrix.dist.Version }}" --build-info-file=./build-info.json
+    uses: ./.github/workflows/e2e.yml
+    with:
+      distribution: ${{ matrix.dist.Distribution }}
+      version: ${{ matrix.dist.Version }}
+    secrets:
+      OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
 
   publish-pact:
     runs-on: ubuntu-22.04
