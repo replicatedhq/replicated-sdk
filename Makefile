@@ -56,10 +56,6 @@ fmt:
 vet:
 	go vet $(BUILDFLAGS) ./pkg/... ./cmd/...
 
-.PHONY: build-ttl.sh
-build-ttl.sh:
-	dagger call test-chart --progress=plain
-
 .PHONY: mock
 mock:
 	go install github.com/golang/mock/mockgen@v1.6.0
@@ -82,3 +78,5 @@ scan: get-govulncheck get-grype
 		--fail-on medium \
 		-o template \
 		-t .grype.tmpl
+
+include Makefile.image.mk

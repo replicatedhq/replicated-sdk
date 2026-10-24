@@ -1,12 +1,19 @@
 ## Development
 
-Build and push the replicated Docker image and Helm chart to ttl.sh:
+Build and push the Replicated SDK image, SDK Helm chart, and wrapped test chart to ttl.sh:
 
 ```shell
 make build-ttl.sh
 ```
 
-**Note**: The above command will also output the .tgz Helm chart under `chart/replicated-0.0.0.tgz`.
+The local destinations stay the same between runs: `ttl.sh/[USER]/replicated-sdk:24h`,
+`oci://ttl.sh/[USER]/replicated:0.0.0`, and `oci://ttl.sh/[USER]/test-chart:0.1.0`.
+`[USER]` defaults to your local username; override it with `LOCAL_USER` when running Make.
+Each build overwrites these development artifacts. The SDK chart is also written to
+`chart/replicated-0.0.0.tgz`, and build files are kept in `bin/sdk-image`.
+
+Melange, APKO, Helm, jq, and their build prerequisites must already be installed.
+The package build runs Melange with `sudo`.
 
 You can then install the Helm chart using one of the following options:
 
@@ -32,7 +39,7 @@ Use the following command to install replicated in production mode:
 **Note**: if using a `Development` license, disable integration mode by passing `--set integration.enabled=false` as well.
 
 ```shell
-helm install replicated oci://ttl.sh/[USER]/replicated \
+helm install replicated oci://ttl.sh/[USER]/replicated --version 0.0.0 \
     --namespace [NAMESPACE] \
     --set-file license=[path/to/license.yaml] \
     --set-file licenseFields=[path/to/license-fields.yaml] \
@@ -51,7 +58,7 @@ helm install replicated oci://ttl.sh/[USER]/replicated \
 
 Example:
 ```shell
-helm install replicated oci://ttl.sh/salah/replicated \
+helm install replicated oci://ttl.sh/salah/replicated --version 0.0.0 \
     --namespace default \
     --set-file license=license.yaml \
     --set-file licenseFields=license-fields.yaml \
