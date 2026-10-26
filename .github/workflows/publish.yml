@@ -94,53 +94,227 @@ jobs:
       version: ${{ github.ref_name }}
     secrets: inherit
 
+  build-packages:
+    runs-on: ${{ matrix.runner.name }}
+    if: contains(github.ref_name, '-')
+    strategy:
+      matrix:
+        runner:
+          - {name: ubuntu-24.04, arch: amd64}
+          - {name: ubuntu-24.04-arm, arch: arm64}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/build-securebuild-package-locally
+        with:
+          arch: ${{ matrix.runner.arch }}
+
   staging:
-    needs: build-securebuild
-    if: ${{ !cancelled() && (contains(github.ref_name, '-') || needs.build-securebuild.result == 'success') }}
+    needs: [build-securebuild, build-packages]
+    if: ${{ !cancelled() && ((contains(github.ref_name, '-') && needs.build-packages.result == 'success') || needs.build-securebuild.result == 'success') }}
     runs-on:
       labels: ReplicatedSDK
-    outputs:
-      digest: ${{ steps.dagger-publish.outputs.stdout }}
+    env:
+      DOCKER_CONFIG: ${{ github.workspace }}/bin/sdk-docker
+      RELEASE_VERSION: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+      - uses: ./.github/actions/setup-sdk-tools
         with:
-          platforms: arm64,amd64
-
-      - uses: dagger/dagger-for-github@v8.4.1
-        id: dagger-publish
+          profile: publish
+      - name: Load library credentials
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
         env:
-          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
-          OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+          LIBRARY_USERNAME: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated SDK Publish/library_username"
+          LIBRARY_PASSWORD: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated SDK Publish/staging_library_password"
+      - name: Load prerelease image credentials
+        if: contains(github.ref_name, '-')
+        uses: 1password/load-secrets-action@v2
         with:
-          version: "0.21.7"
-          verb: call
-          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --staging=true --skip-image=${{ !contains(github.ref_name, '-') }} --version ${{ github.ref_name }}
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+          DOCKERHUB_USERNAME: "op://4r7lasfjeevrao4qi4wsqgnn6e/Docker Hub Release Account/username"
+          DOCKERHUB_PASSWORD: "op://4r7lasfjeevrao4qi4wsqgnn6e/Docker Hub Release Account/password"
+          COSIGN_KEY_BASE64: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated-SDK-Staging-Cosign.key/cosign.key"
+          COSIGN_PASSWORD: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated-SDK-Staging-Cosign.key/password"
+      - name: Log in to index.docker.io
+        if: contains(github.ref_name, '-')
+        uses: docker/login-action@v3
+        with:
+          registry: index.docker.io
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+      - name: Publish dockerhub images
+        if: contains(github.ref_name, '-')
+        uses: ./.github/actions/build-securebuild-image-locally
+        with:
+          config: securebuild/image/apko.yaml
+          image-name: index.docker.io/replicated/replicated-sdk:${{ env.RELEASE_VERSION }}
+          sbom-path: ./bin/sdk-image/sbom/dockerhub
+          registry-username: ${{ env.DOCKERHUB_USERNAME }}
+          registry-password: ${{ env.DOCKERHUB_PASSWORD }}
+      - name: Attest dockerhub SBOMs
+        if: contains(github.ref_name, '-')
+        run: |
+          echo "$COSIGN_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/cosign.key"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/dockerhub/sbom-x86_64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/dockerhub-amd64.json"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/dockerhub/sbom-aarch64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/dockerhub-arm64.json"
+          for arch in amd64 arm64; do
+            digest=$(crane digest --platform "linux/$arch" "index.docker.io/replicated/replicated-sdk:$RELEASE_VERSION")
+            cosign attest --yes --key "$RUNNER_TEMP/cosign.key" --type spdxjson --predicate "$GITHUB_WORKSPACE/bin/sdk-image/dockerhub-$arch.json" "index.docker.io/replicated/replicated-sdk@$digest"
+          done
+      - name: Log in to registry.staging.replicated.com
+        if: contains(github.ref_name, '-')
+        uses: docker/login-action@v3
+        with:
+          registry: registry.staging.replicated.com
+          username: ${{ env.LIBRARY_USERNAME }}
+          password: ${{ env.LIBRARY_PASSWORD }}
+      - name: Publish library images
+        if: contains(github.ref_name, '-')
+        uses: ./.github/actions/build-securebuild-image-locally
+        with:
+          config: securebuild/image/apko.yaml
+          image-name: registry.staging.replicated.com/library/replicated-sdk-image:${{ env.RELEASE_VERSION }}
+          sbom-path: ./bin/sdk-image/sbom/library
+          registry-username: ${{ env.LIBRARY_USERNAME }}
+          registry-password: ${{ env.LIBRARY_PASSWORD }}
+      - name: Attest library SBOMs
+        if: contains(github.ref_name, '-')
+        run: |
+          echo "$COSIGN_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/cosign.key"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/library/sbom-x86_64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/library-amd64.json"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/library/sbom-aarch64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/library-arm64.json"
+          for arch in amd64 arm64; do
+            digest=$(crane digest --platform "linux/$arch" "registry.staging.replicated.com/library/replicated-sdk-image:$RELEASE_VERSION")
+            cosign attest --yes --key "$RUNNER_TEMP/cosign.key" --type spdxjson --predicate "$GITHUB_WORKSPACE/bin/sdk-image/library-$arch.json" "registry.staging.replicated.com/library/replicated-sdk-image@$digest"
+          done
+      - name: Prepare chart
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          cp -R chart "$RUNNER_TEMP/sdk-chart"
+          sed -e "s/tag: \"1.0.0\"/tag: \"$RELEASE_VERSION\"/" -e 's/registry: proxy.replicated.com/registry: proxy.staging.replicated.com/' chart/values.yaml > "$RUNNER_TEMP/sdk-chart/values.yaml"
+      - name: Publish chart
+        working-directory: ${{ runner.temp }}/sdk-chart
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          HELM_CONFIG_HOME: ${{ runner.temp }}/sdk-helm
+        run: |
+          helm dependency update
+          helm package --version "$RELEASE_VERSION" --app-version "$RELEASE_VERSION" .
+          helm registry login registry.staging.replicated.com --username "$LIBRARY_USERNAME" --password "$LIBRARY_PASSWORD"
+          helm push "replicated-$RELEASE_VERSION.tgz" oci://registry.staging.replicated.com/library
 
   production:
-    needs: build-securebuild
-    if: ${{ !cancelled() && (contains(github.ref_name, '-') || needs.build-securebuild.result == 'success') }}
+    permissions:
+      contents: write
+    needs: [build-securebuild, build-packages]
+    if: ${{ !cancelled() && ((contains(github.ref_name, '-') && needs.build-packages.result == 'success') || needs.build-securebuild.result == 'success') }}
     runs-on:
       labels: ReplicatedSDK
-    outputs:
-      digest: ${{ steps.dagger-publish.outputs.stdout }}
+    env:
+      DOCKER_CONFIG: ${{ github.workspace }}/bin/sdk-docker
+      RELEASE_VERSION: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+      - uses: ./.github/actions/setup-sdk-tools
         with:
-          platforms: arm64,amd64
-
-      - uses: dagger/dagger-for-github@v8.4.1
-        id: dagger-publish
+          profile: publish
+      - name: Load library credentials
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
         env:
-          OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
-          OP_SERVICE_ACCOUNT_PRODUCTION: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+          LIBRARY_USERNAME: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated SDK Publish/library_username"
+          LIBRARY_PASSWORD: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated SDK Publish/library_password"
+      - name: Load prerelease image credentials
+        if: contains(github.ref_name, '-')
+        uses: 1password/load-secrets-action@v2
         with:
-          version: "0.21.7"
-          verb: call
-          args: publish --progress=plain --op-service-account=env:OP_SERVICE_ACCOUNT --op-service-account-production=env:OP_SERVICE_ACCOUNT_PRODUCTION --dev=false --production=true --skip-image=${{ !contains(github.ref_name, '-') }} --version ${{ github.ref_name }} --github-token=env:GITHUB_TOKEN
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_PRODUCTION }}
+          DOCKERHUB_USERNAME: "op://4r7lasfjeevrao4qi4wsqgnn6e/Docker Hub Release Account/username"
+          DOCKERHUB_PASSWORD: "op://4r7lasfjeevrao4qi4wsqgnn6e/Docker Hub Release Account/password"
+          COSIGN_KEY_BASE64: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated-SDK-Production-Cosign.key/cosign.key"
+          COSIGN_PASSWORD: "op://4r7lasfjeevrao4qi4wsqgnn6e/Replicated-SDK-Production-Cosign.key/password"
+      - name: Log in to index.docker.io
+        if: contains(github.ref_name, '-')
+        uses: docker/login-action@v3
+        with:
+          registry: index.docker.io
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+      - name: Publish dockerhub images
+        if: contains(github.ref_name, '-')
+        uses: ./.github/actions/build-securebuild-image-locally
+        with:
+          config: securebuild/image/apko.yaml
+          image-name: index.docker.io/replicated/replicated-sdk:${{ env.RELEASE_VERSION }}
+          sbom-path: ./bin/sdk-image/sbom/dockerhub
+          registry-username: ${{ env.DOCKERHUB_USERNAME }}
+          registry-password: ${{ env.DOCKERHUB_PASSWORD }}
+      - name: Attest dockerhub SBOMs
+        if: contains(github.ref_name, '-')
+        run: |
+          echo "$COSIGN_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/cosign.key"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/dockerhub/sbom-x86_64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/dockerhub-amd64.json"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/dockerhub/sbom-aarch64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/dockerhub-arm64.json"
+          for arch in amd64 arm64; do
+            digest=$(crane digest --platform "linux/$arch" "index.docker.io/replicated/replicated-sdk:$RELEASE_VERSION")
+            cosign attest --yes --key "$RUNNER_TEMP/cosign.key" --type spdxjson --predicate "$GITHUB_WORKSPACE/bin/sdk-image/dockerhub-$arch.json" "index.docker.io/replicated/replicated-sdk@$digest"
+          done
+      - name: Log in to registry.replicated.com
+        if: contains(github.ref_name, '-')
+        uses: docker/login-action@v3
+        with:
+          registry: registry.replicated.com
+          username: ${{ env.LIBRARY_USERNAME }}
+          password: ${{ env.LIBRARY_PASSWORD }}
+      - name: Publish library images
+        if: contains(github.ref_name, '-')
+        uses: ./.github/actions/build-securebuild-image-locally
+        with:
+          config: securebuild/image/apko.yaml
+          image-name: registry.replicated.com/library/replicated-sdk-image:${{ env.RELEASE_VERSION }}
+          sbom-path: ./bin/sdk-image/sbom/library
+          registry-username: ${{ env.LIBRARY_USERNAME }}
+          registry-password: ${{ env.LIBRARY_PASSWORD }}
+      - name: Attest library SBOMs
+        if: contains(github.ref_name, '-')
+        run: |
+          echo "$COSIGN_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/cosign.key"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/library/sbom-x86_64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/library-amd64.json"
+          jq '.creationInfo.creators += ["Organization: Replicated, Inc."]' "$GITHUB_WORKSPACE/bin/sdk-image/sbom/library/sbom-aarch64.spdx.json" > "$GITHUB_WORKSPACE/bin/sdk-image/library-arm64.json"
+          for arch in amd64 arm64; do
+            digest=$(crane digest --platform "linux/$arch" "registry.replicated.com/library/replicated-sdk-image:$RELEASE_VERSION")
+            cosign attest --yes --key "$RUNNER_TEMP/cosign.key" --type spdxjson --predicate "$GITHUB_WORKSPACE/bin/sdk-image/library-$arch.json" "registry.replicated.com/library/replicated-sdk-image@$digest"
+          done
+      - name: Prepare chart
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          cp -R chart "$RUNNER_TEMP/sdk-chart"
+          sed "s/tag: \"1.0.0\"/tag: \"$RELEASE_VERSION\"/" chart/values.yaml > "$RUNNER_TEMP/sdk-chart/values.yaml"
+      - name: Publish chart
+        working-directory: ${{ runner.temp }}/sdk-chart
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          HELM_CONFIG_HOME: ${{ runner.temp }}/sdk-helm
+        run: |
+          helm dependency update
+          helm package --version "$RELEASE_VERSION" --app-version "$RELEASE_VERSION" .
+          helm registry login registry.replicated.com --username "$LIBRARY_USERNAME" --password "$LIBRARY_PASSWORD"
+          helm push "replicated-$RELEASE_VERSION.tgz" oci://registry.replicated.com/library
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_VERSION" --repo replicatedhq/replicated-sdk --title "$RELEASE_VERSION" --notes ''

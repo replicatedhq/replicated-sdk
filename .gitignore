@@ -43,3 +43,6 @@ pacts/
 
 # Custor Spec Story
 .specstory/
+
+# Local pipeline metadata
+/build-info.json

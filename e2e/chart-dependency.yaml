@@ -1,0 +1,5 @@
+
+dependencies:
+- name: replicated
+  version: 1.0.0
+  repository: CHART_REPOSITORY

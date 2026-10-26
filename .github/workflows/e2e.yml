@@ -1,0 +1,79 @@
+name: SDK E2E test and cleanup
+
+on:
+  workflow_call:
+    inputs:
+      distribution:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+    secrets:
+      OP_SERVICE_ACCOUNT:
+        required: true
+
+env:
+  CLUSTER_TAG: sdk-ci-run=replicated-sdk-${{ github.run_id }}-${{ inputs.distribution }}-${{ inputs.version }}
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    env:
+      KUBECONFIG: ${{ github.workspace }}/bin/sdk-kubeconfig
+      E2E_BUILD_INFO: ${{ github.workspace }}/build-info.json
+      E2E_DISTRIBUTION: ${{ inputs.distribution }}
+      E2E_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: build-info
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: ./.github/actions/setup-sdk-tools
+        with:
+          profile: e2e
+      - name: Load Replicated credentials
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT }}
+          REPLICATED_API_TOKEN: "op://ikfulaksdrbqtjgybu2vkcggeu/Replicated/service_account"
+      - name: Create cluster
+        run: replicated cluster create --distribution "$E2E_DISTRIBUTION" --version "$E2E_VERSION" --tag "$CLUSTER_TAG" --wait 15m --output json > "$RUNNER_TEMP/cluster.json"
+      - name: Get kubeconfig
+        run: |
+          mkdir -p bin
+          replicated cluster kubeconfig "$(jq -r '.id' "$RUNNER_TEMP/cluster.json")" --stdout > "$KUBECONFIG"
+      - name: Authenticate Helm
+        env:
+          HELM_CONFIG_HOME: ${{ runner.temp }}/sdk-helm
+        run: helm registry login registry.replicated.com --username test-customer@replicated.com --password "$(jq -r '.licenseID' build-info.json)"
+      - name: Run E2E tests
+        env:
+          SDK_E2E: '1'
+          HELM_CONFIG_HOME: ${{ runner.temp }}/sdk-helm
+        run: go test ./e2e -run '^TestSDK$' -count=1 -v -timeout=90m
+
+  cleanup:
+    needs: test
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install Replicated CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL "$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/replicatedhq/replicated/releases/latest | jq -r '.assets[] | select(.name | endswith("_linux_amd64.tar.gz")) | .browser_download_url')" | sudo tar -xz -C /usr/local/bin replicated
+      - name: Load Replicated credentials
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT }}
+          REPLICATED_API_TOKEN: "op://ikfulaksdrbqtjgybu2vkcggeu/Replicated/service_account"
+      - name: Remove test clusters
+        run: replicated cluster rm --tag "$CLUSTER_TAG"

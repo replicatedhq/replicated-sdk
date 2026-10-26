@@ -1,0 +1,38 @@
+name: Set up SDK tools
+description: Install CLI tools used directly by the build, E2E, and release workflows
+inputs:
+  profile:
+    description: build, e2e, or publish
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: azure/setup-helm@v4
+    - name: Install Replicated CLI
+      if: inputs.profile == 'build' || inputs.profile == 'e2e'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        curl -fsSL "$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/replicatedhq/replicated/releases/latest | jq -r '.assets[] | select(.name | endswith("_linux_amd64.tar.gz")) | .browser_download_url')" | sudo tar -xz -C /usr/local/bin replicated
+    - name: Install crane
+      if: inputs.profile == 'build' || inputs.profile == 'publish'
+      shell: bash
+      run: |
+        curl -fsSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | sudo tar -xz -C /usr/local/bin crane
+    - name: Install GitHub CLI
+      if: inputs.profile == 'publish'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        curl -fsSL "$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/cli/cli/releases/latest | jq -r '.assets[] | select(.name | endswith("_linux_amd64.tar.gz")) | .browser_download_url')" | sudo tar -xz -C /usr/local/bin --strip-components=2 --wildcards '*/bin/gh'
+    - uses: sigstore/cosign-installer@v3
+      if: inputs.profile == 'publish'
+    - uses: azure/setup-kubectl@v4
+      if: inputs.profile == 'e2e'
+    - name: Install support-bundle CLI
+      if: inputs.profile == 'e2e'
+      shell: bash
+      run: |
+        curl -fsSL https://github.com/replicatedhq/troubleshoot/releases/latest/download/support-bundle_linux_amd64.tar.gz | sudo tar -xz -C /usr/local/bin support-bundle

@@ -1,0 +1,13 @@
+apiVersion: kots.io/v1beta1
+kind: Config
+metadata:
+  name: my-application
+spec:
+  groups:
+    - name: replicated_sdk_e2e
+      title: Replicated SDK E2E
+      description: Configuration for the Replicated SDK E2E
+      items:
+        - name: test_item
+          type: bool
+          default: "0"
