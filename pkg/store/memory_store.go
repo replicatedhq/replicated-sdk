@@ -2,11 +2,12 @@ package store
 
 import (
 	"strings"
+	"sync"
 
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
-	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 )
 
 type InMemoryStore struct {
@@ -28,8 +29,10 @@ type InMemoryStore struct {
 	namespace             string
 	appStatus             appstatetypes.AppStatus
 	updates               []upstreamtypes.ChannelRelease
-	// podImages holds namespace -> podUID -> []ImageInfo
+	// podImages holds namespace -> podUID -> []ImageInfo. It is written by the
+	// pod informer and read by instance reporting, so access is guarded by podImagesMtx.
 	podImages       map[string]map[string][]appstatetypes.ImageInfo
+	podImagesMtx    sync.RWMutex
 	reportAllImages bool
 	readOnlyMode    bool
 }
@@ -181,6 +184,9 @@ func (s *InMemoryStore) SetAppStatus(status appstatetypes.AppStatus) {
 }
 
 func (s *InMemoryStore) SetPodImages(namespace string, podUID string, images []appstatetypes.ImageInfo) {
+	s.podImagesMtx.Lock()
+	defer s.podImagesMtx.Unlock()
+
 	if s.podImages == nil {
 		s.podImages = make(map[string]map[string][]appstatetypes.ImageInfo)
 	}
@@ -280,6 +286,9 @@ func canonicalNameTag(s string) string {
 }
 
 func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {
+	s.podImagesMtx.Lock()
+	defer s.podImagesMtx.Unlock()
+
 	if s.podImages == nil {
 		return
 	}
@@ -293,6 +302,9 @@ func (s *InMemoryStore) DeletePodImages(namespace string, podUID string) {
 }
 
 func (s *InMemoryStore) GetRunningImages() map[string][]string {
+	s.podImagesMtx.RLock()
+	defer s.podImagesMtx.RUnlock()
+
 	// Aggregate image -> unique SHA set across all namespaces/pods
 	resultSet := make(map[string]map[string]struct{})
 	for _, pods := range s.podImages {
