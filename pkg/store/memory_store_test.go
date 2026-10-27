@@ -1,6 +1,8 @@
 package store
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
@@ -204,4 +206,44 @@ func TestInMemoryStore_SetPodImages_PrivateRegistryRewrite_DoesNotOvermatchSimil
 	got := s.GetRunningImages()
 	require.Nil(t, got["registry.example.com/team/myapp/mynginx:latest"])                                // not matched
 	require.ElementsMatch(t, []string{"sha256:ok"}, got["registry.example.com/team/myapp/nginx:latest"]) // matched
+}
+
+// The pod informer writes podImages while instance reporting reads it from other
+// goroutines. Without locking this aborts with "concurrent map iteration and map write".
+func TestInMemoryStore_PodImagesConcurrentAccess(t *testing.T) {
+	s := &InMemoryStore{reportAllImages: true}
+	img := []appstatetypes.ImageInfo{{Name: "repo/img:1", SHA: "sha256:abc"}}
+	for i := 0; i < 50; i++ {
+		s.SetPodImages("ns", fmt.Sprintf("pod-%d", i), img)
+	}
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := 0; ; i++ {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			uid := fmt.Sprintf("pod-%d", i%100)
+			if i%2 == 0 {
+				s.SetPodImages("ns", uid, img)
+			} else {
+				s.DeletePodImages("ns", uid)
+			}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		defer close(stop)
+		for i := 0; i < 1000; i++ {
+			_ = s.GetRunningImages()
+		}
+	}()
+	wg.Wait()
+
+	require.ElementsMatch(t, []string{"sha256:abc"}, s.GetRunningImages()["repo/img:1"])
 }
