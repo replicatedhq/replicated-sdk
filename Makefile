@@ -1,12 +1,8 @@
 include Makefile.build.mk
 
 .PHONY: test-unit
-test-unit:
-	go test -v $(TEST_BUILDFLAGS) ./pkg/... ./cmd/...
-
 # -race requires cgo, which Makefile.build.mk disables for release builds
-.PHONY: test-race
-test-race:
+test-unit:
 	CGO_ENABLED=1 go test -v $(TEST_BUILDFLAGS) -race ./pkg/... ./cmd/...
 
 .PHONY: test-pact

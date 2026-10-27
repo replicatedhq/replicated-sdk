@@ -32,16 +32,6 @@ jobs:
       - name: Run unit and pact tests
         run: make test
 
-  test-race:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-      - name: Run unit tests with race detector
-        run: make test-race
-
   build-packages:
     runs-on: ubuntu-24.04
     strategy:
