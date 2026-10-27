@@ -17,7 +17,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       PACT_BROKER_BASE_URL: ${{ vars.PACT_BROKER_BASE_URL }}
       PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
@@ -32,6 +32,16 @@ jobs:
       - name: Run unit and pact tests
         run: make test
 
+  test-race:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Run unit tests with race detector
+        run: make test-race
+
   build-packages:
     runs-on: ubuntu-24.04
     strategy:
@@ -45,7 +55,7 @@ jobs:
 
   build:
     needs: build-packages
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       IMAGE_REPOSITORY: automated-${{ github.run_id }}-${{ github.run_attempt }}/replicated-image/replicated-sdk
       CHART_REPOSITORY: oci://ttl.sh/automated-${{ github.run_id }}-${{ github.run_attempt }}/replicated-chart
@@ -119,7 +129,7 @@ jobs:
           retention-days: 1
 
   scan:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build
     steps:
       - uses: actions/download-artifact@v8
@@ -155,7 +165,7 @@ jobs:
       OP_SERVICE_ACCOUNT: ${{ secrets.OP_SERVICE_ACCOUNT }}
 
   publish-pact:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [test]
     if: github.event_name == 'push'
     env:
@@ -177,7 +187,7 @@ jobs:
             --verbose
 
   validate:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [test, e2e, scan]
     if: always()
     steps:
