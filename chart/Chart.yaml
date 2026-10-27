@@ -4,3 +4,5 @@ description: The Replicated SDK subchart
 type: application
 version: 1.0.0
 appVersion: 1.0.0
+annotations:
+  replicated.com/sdk-managed-license: installation-token-v1

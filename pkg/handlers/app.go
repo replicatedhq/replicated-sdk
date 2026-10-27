@@ -18,6 +18,7 @@ import (
 	integrationtypes "github.com/replicatedhq/replicated-sdk/pkg/integration/types"
 	"github.com/replicatedhq/replicated-sdk/pkg/k8sutil"
 	sdklicense "github.com/replicatedhq/replicated-sdk/pkg/license"
+	"github.com/replicatedhq/replicated-sdk/pkg/licensestate"
 	"github.com/replicatedhq/replicated-sdk/pkg/logger"
 	"github.com/replicatedhq/replicated-sdk/pkg/meta"
 	"github.com/replicatedhq/replicated-sdk/pkg/meta/types"
@@ -282,9 +283,20 @@ func GetAppUpdates(w http.ResponseWriter, r *http.Request) {
 		JSONCached(w, http.StatusOK, updates)
 		return
 	}
-
 	license = licenseData.License
-	store.GetStore().SetLicense(license)
+	if manager := licensestate.Current(); manager != nil {
+		// The Portal returns an installation-targeted license here, because the
+		// refresh authenticates with this installation's token. Apply it through
+		// the same durable path as rotation and upload; ApplyLicense rejects a
+		// stale response if a rotation happened meanwhile.
+		if _, err := manager.ApplyLicense(r.Context(), licenseData.LicenseBytes, licensestate.ApplyOptions{}); err != nil {
+			logger.Error(errors.Wrap(err, "failed to apply refreshed license"))
+			JSONCached(w, http.StatusOK, updates)
+			return
+		}
+	} else {
+		store.GetStore().SetLicense(license)
+	}
 
 	currentCursor := upstreamtypes.ReplicatedCursor{
 		ChannelID:       store.GetStore().GetChannelID(),
