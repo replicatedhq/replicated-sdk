@@ -239,7 +239,7 @@ func TestInMemoryStore_PodImagesConcurrentAccess(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		defer close(stop)
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			_ = s.GetRunningImages()
 		}
 	}()

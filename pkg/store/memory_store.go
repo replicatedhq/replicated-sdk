@@ -4,10 +4,10 @@ import (
 	"strings"
 	"sync"
 
+	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 	appstatetypes "github.com/replicatedhq/replicated-sdk/pkg/appstate/types"
 	licensetypes "github.com/replicatedhq/replicated-sdk/pkg/license/types"
 	upstreamtypes "github.com/replicatedhq/replicated-sdk/pkg/upstream/types"
-	licensewrapper "github.com/replicatedhq/kotskinds/pkg/licensewrapper"
 )
 
 type InMemoryStore struct {
