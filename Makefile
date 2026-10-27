@@ -2,7 +2,7 @@ include Makefile.build.mk
 
 .PHONY: test-unit
 test-unit:
-	go test -v $(TEST_BUILDFLAGS) ./pkg/... ./cmd/...
+	go test -v $(TEST_BUILDFLAGS) -race ./pkg/... ./cmd/...
 
 .PHONY: test-pact
 test-pact:
