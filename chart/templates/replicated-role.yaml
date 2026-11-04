@@ -36,10 +36,26 @@ rules:
   - 'update'
   resourceNames:
   - {{ include "replicated.secretName" . }}
+{{- if (.Values.sdkManagedLicense).enabled }}
+  - {{ .Values.sdkManagedLicense.stateSecretName }}
+  - {{ .Values.sdkManagedLicense.imagePullSecretName }}
+  - {{ .Values.sdkManagedLicense.bootstrapSecretName }}
+{{ end }}
   - replicated-instance-report
   - replicated-custom-app-metrics-report
   - replicated-meta-data
   - replicated-support-metadata
+{{- if (.Values.sdkManagedLicense).enabled }}
+- apiGroups:
+  - ''
+  resources:
+  - 'secrets'
+  verbs:
+  - 'delete'
+  resourceNames:
+  - {{ .Values.sdkManagedLicense.imagePullSecretName }}
+  - {{ .Values.sdkManagedLicense.bootstrapSecretName }}
+{{ end }}
 {{ end }}
 {{ if .Values.tlsCertSecretName }}
 - apiGroups:
@@ -86,6 +102,11 @@ rules:
   - "get"
   resourceNames:
   - {{ include "replicated.secretName" . }}
+{{- if (.Values.sdkManagedLicense).enabled }}
+  - {{ .Values.sdkManagedLicense.stateSecretName }}
+  - {{ .Values.sdkManagedLicense.imagePullSecretName }}
+  - {{ .Values.sdkManagedLicense.bootstrapSecretName }}
+{{ end }}
   - replicated-meta-data
   - replicated-support-metadata
 # the legacy replicated-sdk configmap is required when the SDK secret is not found

@@ -14,10 +14,11 @@ type CustomAppMetricsReport struct {
 }
 
 type CustomAppMetricsReportEvent struct {
-	ReportedAt int64                  `json:"reported_at"`
-	LicenseID  string                 `json:"license_id"`
-	InstanceID string                 `json:"instance_id"`
-	Data       map[string]interface{} `json:"data"`
+	ReportedAt     int64                  `json:"reported_at"`
+	LicenseID      string                 `json:"license_id"`
+	InstallationID string                 `json:"installation_id,omitempty"`
+	InstanceID     string                 `json:"instance_id"`
+	Data           map[string]interface{} `json:"data"`
 }
 
 func (r *CustomAppMetricsReport) GetType() ReportType {

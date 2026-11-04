@@ -26,6 +26,10 @@ type ReplicatedConfig struct {
 	TlsCertSecretName     string                               `yaml:"tlsCertSecretName"`
 	ReportAllImages       bool                                 `yaml:"reportAllImages"`
 	ReadOnlyMode          bool                                 `yaml:"readOnlyMode"`
+	StateSecretName       string                               `yaml:"stateSecretName"`
+	ImagePullSecretName   string                               `yaml:"imagePullSecretName"`
+	RegistryDomains       []string                             `yaml:"registryDomains"`
+	BootstrapSecretName   string                               `yaml:"bootstrapSecretName"`
 }
 
 func ParseReplicatedConfig(config []byte) (*ReplicatedConfig, error) {
