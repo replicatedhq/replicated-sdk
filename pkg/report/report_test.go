@@ -64,11 +64,9 @@ func Test_EncodeDecodeReport(t *testing.T) {
 func Test_AppendReport(t *testing.T) {
 	req := require.New(t)
 
-	instanceReportWithMaxEvents := getTestInstanceReportWithMaxEvents()
 	instanceReportWithMaxSize, err := getTestInstanceReportWithMaxSize()
 	req.NoError(err)
 
-	customAppMetricsReportWithMaxEvents := getTestCustomAppMetricsReportWithMaxEvents()
 	customAppMetricsReportWithMaxSize, err := getTestCustomAppMetricsReportWithMaxSize()
 	req.NoError(err)
 
@@ -141,24 +139,6 @@ func Test_AppendReport(t *testing.T) {
 					createTestInstanceEvent(5),
 					createTestInstanceEvent(6),
 				},
-			},
-		},
-		{
-			name:           "instance report - report exists with max number of events",
-			existingReport: instanceReportWithMaxEvents,
-			newReport: &InstanceReport{
-				Events: []InstanceReportEvent{
-					createTestInstanceEvent(int64(instanceReportWithMaxEvents.GetEventLimit())),
-					createTestInstanceEvent(int64(instanceReportWithMaxEvents.GetEventLimit() + 1)),
-					createTestInstanceEvent(int64(instanceReportWithMaxEvents.GetEventLimit() + 2)),
-				},
-			},
-			wantReport: &InstanceReport{
-				Events: append(instanceReportWithMaxEvents.Events[3:], []InstanceReportEvent{
-					createTestInstanceEvent(int64(instanceReportWithMaxEvents.GetEventLimit())),
-					createTestInstanceEvent(int64(instanceReportWithMaxEvents.GetEventLimit() + 1)),
-					createTestInstanceEvent(int64(instanceReportWithMaxEvents.GetEventLimit() + 2)),
-				}...),
 			},
 		},
 		{
@@ -242,24 +222,6 @@ func Test_AppendReport(t *testing.T) {
 					createTestCustomAppMetricsEvent(5),
 					createTestCustomAppMetricsEvent(6),
 				},
-			},
-		},
-		{
-			name:           "custom app metrics report - report exists with max number of events",
-			existingReport: customAppMetricsReportWithMaxEvents,
-			newReport: &CustomAppMetricsReport{
-				Events: []CustomAppMetricsReportEvent{
-					createTestCustomAppMetricsEvent(int64(customAppMetricsReportWithMaxEvents.GetEventLimit())),
-					createTestCustomAppMetricsEvent(int64(customAppMetricsReportWithMaxEvents.GetEventLimit() + 1)),
-					createTestCustomAppMetricsEvent(int64(customAppMetricsReportWithMaxEvents.GetEventLimit() + 2)),
-				},
-			},
-			wantReport: &CustomAppMetricsReport{
-				Events: append(customAppMetricsReportWithMaxEvents.Events[3:], []CustomAppMetricsReportEvent{
-					createTestCustomAppMetricsEvent(int64(customAppMetricsReportWithMaxEvents.GetEventLimit())),
-					createTestCustomAppMetricsEvent(int64(customAppMetricsReportWithMaxEvents.GetEventLimit() + 1)),
-					createTestCustomAppMetricsEvent(int64(customAppMetricsReportWithMaxEvents.GetEventLimit() + 2)),
-				}...),
 			},
 		},
 		{
@@ -398,16 +360,6 @@ func createLargeTestInstanceEvent(seed int64) InstanceReportEvent {
 	}
 }
 
-func getTestInstanceReportWithMaxEvents() *InstanceReport {
-	report := &InstanceReport{
-		Events: []InstanceReportEvent{},
-	}
-	for i := 0; i < report.GetEventLimit(); i++ {
-		report.Events = append(report.Events, createTestInstanceEvent(int64(i)))
-	}
-	return report
-}
-
 func getTestInstanceReportWithMaxSize() (*InstanceReport, error) {
 	report := &InstanceReport{
 		Events: []InstanceReportEvent{},
@@ -472,16 +424,6 @@ func createLargeTestCustomAppMetricsEvent(seed int64) CustomAppMetricsReportEven
 	}
 }
 
-func getTestCustomAppMetricsReportWithMaxEvents() *CustomAppMetricsReport {
-	report := &CustomAppMetricsReport{
-		Events: []CustomAppMetricsReportEvent{},
-	}
-	for i := 0; i < report.GetEventLimit(); i++ {
-		report.Events = append(report.Events, createTestCustomAppMetricsEvent(int64(i)))
-	}
-	return report
-}
-
 func Test_AppendReport_ReadOnlyMode(t *testing.T) {
 	req := require.New(t)
 
@@ -504,6 +446,48 @@ func Test_AppendReport_ReadOnlyMode(t *testing.T) {
 	// Verify no secret was created
 	_, err = clientset.CoreV1().Secrets("test-ns").Get(context.Background(), report.GetSecretName(), metav1.GetOptions{})
 	req.True(kuberneteserrors.IsNotFound(err), "secret should not have been created in read-only mode")
+}
+
+func Test_AppendReport_InitialWriteEnforcesSizeLimit(t *testing.T) {
+	instance, err := getTestInstanceReportWithMaxSize()
+	require.NoError(t, err)
+	instance.Events = append(instance.Events, createLargeTestInstanceEvent(100))
+	metrics, err := getTestCustomAppMetricsReportWithMaxSize()
+	require.NoError(t, err)
+	metrics.Events = append(metrics.Events, createLargeTestCustomAppMetricsEvent(100))
+
+	for _, input := range []Report{instance, metrics} {
+		for _, secretExists := range []bool{false, true} {
+			t.Run(string(input.GetType())+map[bool]string{false: "/new-secret", true: "/missing-key"}[secretExists], func(t *testing.T) {
+				objects := []runtime.Object{&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+					Name: util.GetReplicatedDeploymentName(), Namespace: "default", UID: "test-deployment-uid",
+				}}}
+				if secretExists {
+					objects = append(objects, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: input.GetSecretName(), Namespace: "default"}})
+				}
+				client := fake.NewSimpleClientset(objects...)
+				before, err := EncodeReport(input)
+				require.NoError(t, err)
+				require.Greater(t, len(before), input.GetSizeLimit())
+				require.NoError(t, AppendReport(client, "default", input))
+				secret, err := client.CoreV1().Secrets("default").Get(context.Background(), input.GetSecretName(), metav1.GetOptions{})
+				require.NoError(t, err)
+				require.LessOrEqual(t, len(secret.Data[input.GetSecretKey()]), input.GetSizeLimit())
+				got, err := DecodeReport(secret.Data[input.GetSecretKey()], input.GetType())
+				require.NoError(t, err)
+				switch r := got.(type) {
+				case *InstanceReport:
+					require.Equal(t, input.(*InstanceReport).Events[1:], r.Events)
+				case *CustomAppMetricsReport:
+					want, err := json.Marshal(input.(*CustomAppMetricsReport).Events[1:])
+					require.NoError(t, err)
+					actual, err := json.Marshal(r.Events)
+					require.NoError(t, err)
+					require.JSONEq(t, string(want), string(actual))
+				}
+			})
+		}
+	}
 }
 
 func getTestCustomAppMetricsReportWithMaxSize() (*CustomAppMetricsReport, error) {
