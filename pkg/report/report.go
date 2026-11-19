@@ -19,7 +19,6 @@ import (
 const (
 	ReportSecretNameFormat = "replicated-%s-report"
 	ReportSecretKey        = "report"
-	ReportEventLimit       = 4000
 	ReportSizeLimit        = 1 * 1024 * 1024 // 1MB
 )
 
@@ -35,7 +34,6 @@ type Report interface {
 	GetSecretName() string
 	GetSecretKey() string
 	AppendEvents(report Report) error
-	GetEventLimit() int
 	GetSizeLimit() int
 	GetMtx() *sync.Mutex
 }
@@ -58,7 +56,14 @@ func AppendReport(clientset kubernetes.Interface, namespace string, report Repor
 	}
 
 	if kuberneteserrors.IsNotFound(err) {
-		data, err := EncodeReport(report)
+		emptyReport, err := newReport(report.GetType())
+		if err != nil {
+			return err
+		}
+		if err := emptyReport.AppendEvents(report); err != nil {
+			return errors.Wrap(err, "failed to append events to new report")
+		}
+		data, err := EncodeReport(emptyReport)
 		if err != nil {
 			return errors.Wrap(err, "failed to encode report")
 		}
@@ -115,8 +120,13 @@ func AppendReport(clientset kubernetes.Interface, namespace string, report Repor
 			return errors.Wrap(err, "failed to append events to existing report")
 		}
 	} else {
-		// secret exists but doesn't have the report key, so just use the report that was passed in
-		existingReport = report
+		existingReport, err = newReport(report.GetType())
+		if err != nil {
+			return err
+		}
+		if err := existingReport.AppendEvents(report); err != nil {
+			return errors.Wrap(err, "failed to append events to new report")
+		}
 	}
 
 	data, err := EncodeReport(existingReport)
@@ -132,6 +142,17 @@ func AppendReport(clientset kubernetes.Interface, namespace string, report Repor
 	}
 
 	return nil
+}
+
+func newReport(reportType ReportType) (Report, error) {
+	switch reportType {
+	case ReportTypeInstance:
+		return &InstanceReport{}, nil
+	case ReportTypeCustomAppMetrics:
+		return &CustomAppMetricsReport{}, nil
+	default:
+		return nil, errors.Errorf("unknown report type %q", reportType)
+	}
 }
 
 func EncodeReport(r Report) ([]byte, error) {
@@ -158,20 +179,12 @@ func DecodeReport(encodedData []byte, reportType ReportType) (Report, error) {
 		return nil, errors.Wrap(err, "failed to gunzip report")
 	}
 
-	var r Report
-	switch reportType {
-	case ReportTypeInstance:
-		r = &InstanceReport{}
-		if err := json.Unmarshal(decompressedData, r); err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal instance report")
-		}
-	case ReportTypeCustomAppMetrics:
-		r = &CustomAppMetricsReport{}
-		if err := json.Unmarshal(decompressedData, r); err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal custom app metrics report")
-		}
-	default:
-		return nil, errors.Errorf("unknown report type %q", reportType)
+	r, err := newReport(reportType)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(decompressedData, r); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal %s report", reportType)
 	}
 
 	return r, nil
