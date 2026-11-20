@@ -27,6 +27,13 @@ Allow the release namespace to be overridden for multi-namespace deployments.
 Common labels
 */}}
 {{- define "replicated.labels" -}}
+{{- if .Values.useGlobalSettings -}}
+{{- $labels := mergeOverwrite (dict) (default dict .Values.global.labels) .Values.commonLabels -}}
+{{- $base := dict "helm.sh/chart" (include "replicated.chart" .) "app.kubernetes.io/managed-by" .Release.Service -}}
+{{- if .Chart.AppVersion }}{{- $_ := set $base "app.kubernetes.io/version" .Chart.AppVersion }}{{- end -}}
+{{- $labels = mergeOverwrite $base $labels (include "replicated.selectorLabels" . | fromYaml) -}}
+{{- toYaml $labels -}}
+{{- else -}}
 helm.sh/chart: {{ include "replicated.chart" . }}
 {{ include "replicated.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
@@ -35,6 +42,7 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- with .Values.commonLabels }}
 {{- toYaml . | nindent 0 }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -46,6 +54,13 @@ Pod Labels
 {{- toYaml . | nindent 0 }}
 {{- end }}
 {{- end }}
+
+{{/* Combined pod labels when global settings are enabled. */}}
+{{- define "replicated.mergedPodLabels" -}}
+{{- $labels := include "replicated.labels" . | fromYaml -}}
+{{- $labels = mergeOverwrite $labels (default dict .Values.global.podLabels) .Values.commonLabels .Values.podLabels (include "replicated.selectorLabels" . | fromYaml) -}}
+{{- toYaml $labels -}}
+{{- end -}}
 
 {{/*
 Selector labels
@@ -185,7 +200,11 @@ Return the proper image pull policy
 {{- if .Values.images -}}
     {{- print "IfNotPresent" -}}
 {{- else -}}
-    {{- .Values.image.pullPolicy | default "IfNotPresent" -}}
+    {{- $globalPolicy := "" -}}
+    {{- if .Values.useGlobalSettings -}}
+      {{- $globalPolicy = ((.Values.global.image).pullPolicy) | default .Values.global.imagePullPolicy | default "" -}}
+    {{- end -}}
+    {{- .Values.image.pullPolicy | default $globalPolicy | default "IfNotPresent" -}}
 {{- end -}}
 {{- end -}}
 
