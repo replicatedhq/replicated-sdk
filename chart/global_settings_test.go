@@ -108,6 +108,27 @@ podAnnotations: {example.com/pod: value}
 		t.Fatal("local pull policy did not win")
 	}
 }
+
+func TestGlobalPullPolicyAliases(t *testing.T) {
+	for _, tc := range []struct {
+		name, values, want string
+	}{
+		{"flat alias", "useGlobalSettings: true\nglobal: {imagePullPolicy: Always}\n", "Always"},
+		{"nested takes precedence", "useGlobalSettings: true\nglobal: {imagePullPolicy: Never, image: {pullPolicy: Always}}\n", "Always"},
+		{"local takes precedence", "useGlobalSettings: true\nglobal: {imagePullPolicy: Always}\nimage: {pullPolicy: Never}\n", "Never"},
+		{"opt-in required", "global: {imagePullPolicy: Always}\n", "IfNotPresent"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := deployment(t, render(t, tc.values))
+			spec := obj(obj(obj(d, "spec"), "template"), "spec")
+			got := spec["containers"].([]interface{})[0].(map[string]interface{})["imagePullPolicy"]
+			if got != tc.want {
+				t.Fatalf("imagePullPolicy = %v, want %s", got, tc.want)
+			}
+		})
+	}
+}
+
 func mustYAML(t *testing.T, v interface{}) []byte {
 	t.Helper()
 	b, err := yaml.Marshal(v)

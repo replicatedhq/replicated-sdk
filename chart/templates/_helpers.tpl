@@ -202,7 +202,7 @@ Return the proper image pull policy
 {{- else -}}
     {{- $globalPolicy := "" -}}
     {{- if .Values.useGlobalSettings -}}
-      {{- $globalPolicy = ((.Values.global.image).pullPolicy) | default "" -}}
+      {{- $globalPolicy = ((.Values.global.image).pullPolicy) | default .Values.global.imagePullPolicy | default "" -}}
     {{- end -}}
     {{- .Values.image.pullPolicy | default $globalPolicy | default "IfNotPresent" -}}
 {{- end -}}
