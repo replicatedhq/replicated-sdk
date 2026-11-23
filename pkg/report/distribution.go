@@ -81,7 +81,7 @@ func distributionFromLabels(clientset kubernetes.Interface) types.Distribution {
 			if k == "minikube.k8s.io/version" {
 				return types.Minikube
 			}
-			if k == "kots.io/embedded-cluster-role" {
+			if strings.HasPrefix(k, "kots.io/embedded-cluster-role") {
 				return types.EmbeddedCluster
 			}
 		}

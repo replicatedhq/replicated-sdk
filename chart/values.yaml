@@ -7,6 +7,12 @@ global:
   imageRegistry: ""  # Optional registry override to use for all images
   imagePullSecrets: [] # List of secrets containing docker registry credentials
 
+# Opt in to shared scheduling, labels, and image pull policy values under global.
+useGlobalSettings: false
+
+# Additional annotations applied only to SDK pods
+podAnnotations: {}
+
 # Additional labels to add to all resources created by this chart
 # Useful for organizational or filtering purposes
 commonLabels: {}
@@ -56,7 +62,7 @@ image:
   repository: "library/replicated-sdk-image"  # Image repository
   tag: "1.0.0"                                # Image tag, replaced in our pipeline
   digest: ""                                  # Image digest (e.g. sha256:abc123...), takes precedence over tag
-  pullPolicy: IfNotPresent                    # Image pull policy: Always, IfNotPresent, Never
+  pullPolicy: ""                              # Defaults to IfNotPresent; supports Always, IfNotPresent, Never
 
 # Additional labels to add to the pod template only
 # These will not be applied to other resources

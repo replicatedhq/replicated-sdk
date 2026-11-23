@@ -18,13 +18,23 @@ spec:
     metadata:
       annotations:
         checksum/replicated-secret: {{ include (print $.Template.BasePath "/replicated-secret.yaml") . | sha256sum }}
-        {{- if .Values.commonAnnotations }}
+        {{- if .Values.podAnnotations }}
+        {{- $annotations := mergeOverwrite (dict) .Values.commonAnnotations .Values.podAnnotations }}
+        {{- $_ := unset $annotations "checksum/replicated-secret" }}
+        {{- with $annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else if .Values.commonAnnotations }}
         {{- toYaml .Values.commonAnnotations | nindent 8 }}
         {{- end }}
       labels:
+        {{- if .Values.useGlobalSettings }}
+        {{- include "replicated.mergedPodLabels" . | nindent 8 }}
+        {{- else }}
         {{- include "replicated.labels" . | nindent 8 }}
         {{- if .Values.podLabels }}
         {{- include "replicated.podLabels" . | nindent 8 }}
+        {{- end }}
         {{- end }}
     spec:
       {{- with .Values.imagePullSecrets | default .Values.global.imagePullSecrets }}
@@ -40,8 +50,12 @@ spec:
       {{- if .Values.topologySpreadConstraints }}
       topologySpreadConstraints: {{- toYaml .Values.topologySpreadConstraints | nindent 8 }}
       {{- end }}
-      {{- if .Values.priorityClassName }}
-      priorityClassName: {{ .Values.priorityClassName }}
+      {{- $priorityClassName := .Values.priorityClassName }}
+      {{- if .Values.useGlobalSettings }}
+      {{- $priorityClassName = default .Values.global.priorityClassName $priorityClassName }}
+      {{- end }}
+      {{- if $priorityClassName }}
+      priorityClassName: {{ $priorityClassName }}
       {{- end }}
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName }}
@@ -55,7 +69,11 @@ spec:
       {{- if .Values.hostIPC }}
       hostIPC: {{ .Values.hostIPC }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- $tolerations := .Values.tolerations }}
+      {{- if .Values.useGlobalSettings }}
+      {{- $tolerations = concat (default list .Values.global.tolerations) $tolerations }}
+      {{- end }}
+      {{- with $tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -84,7 +102,11 @@ spec:
           {{- end }}
       {{- end }}
       {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- $nodeSelector := .Values.nodeSelector }}
+      {{- if .Values.useGlobalSettings }}
+      {{- $nodeSelector = default .Values.global.nodeSelector $nodeSelector }}
+      {{- end }}
+      {{- with $nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
