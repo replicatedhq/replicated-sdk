@@ -120,7 +120,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       
       - name: Scan image with Grype
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        uses: anchore/scan-action@11983a512817154c80a9db660c1a184be7513ed6
         id: scan
         continue-on-error: true  # Allow workflow to continue even if scan fails
         with:
